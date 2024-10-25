@@ -1,0 +1,103 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - dev
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update package.json version & update README using plugin data
+        id: version_update
+        run: |
+          # Define plugin filename
+          plugin_file="rrze-plugin-test.php"
+
+          # Extract current version from plugin file
+          version=$(grep -oP 'Version:\s*\K[0-9]+\.[0-9]+\.[0-9]+' "$plugin_file")
+          if [ -z "$version" ]; then
+            echo "Version not found in plugin file. Exiting."
+            exit 1
+          fi
+          echo "Current version: $version"
+
+          # Set version as an environment variable
+          echo "version=$version" >> $GITHUB_ENV
+
+          # Update version in package.json if it exists
+          if [ -f "package.json" ]; then
+            jq --arg new_version "$version" '.version = $new_version' package.json > tmp.json && mv tmp.json package.json
+          else
+            echo "package.json not found, skipping version update in package.json"
+          fi
+
+          # Extract plugin data from plugin file excluding the /* and */ lines
+          plugin_data=$(awk '/^[ \t]*\*?[ \t]*(Plugin Name|Plugin URI|Version|Description|Author|Author URI|License|License URI|Text Domain|Domain Path|Requires at least|Requires PHP|Update URI):/ { gsub(/^[ \t]*\*?[ \t]*/, ""); printf "%s<br>\n", $0 }' "$plugin_file")
+          echo "$plugin_data"
+
+          # Write plugin data to README.md
+          if [ -f "README.md" ]; then
+            # Extract plugin data and ensure proper formatting
+            escaped_plugin_data=$(echo "$plugin_data" | sed ':a;N;$!ba;s/\n/<br>/g' | sed 's/<br>$//' | sed 's/<br><br>/<br>\\n/g')
+            
+            # Update README.md content without trailing empty lines or extra <br>
+            sed -i "/<!-- BEGIN PLUGIN DATA -->/,/<!-- END PLUGIN DATA -->/c\\
+          <!-- BEGIN PLUGIN DATA -->\\
+          $escaped_plugin_data\\
+          <!-- END PLUGIN DATA -->" README.md
+          else
+            echo "README.md not found, skipping plugin data update in README.md"
+          fi
+
+      - name: Commit version changes to dev
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add .
+          git commit -m "Publish" || echo "No changes to commit"
+          git push origin dev || { echo "Error: Push to dev branch failed"; exit 1; }
+
+      - name: Check out the main branch
+        run: |
+          git fetch origin
+          git checkout main
+          git pull origin main
+
+      - name: Merge dev into main
+        run: |
+          git merge origin/dev --no-ff -m "Merging from dev to main" || { echo "Error: Merge failed"; exit 1; }
+
+      - name: Push changes to main branch
+        run: |
+          git push origin main || { echo "Error: Push to main branch failed"; exit 1; }
+
+      - name: Check if tag or release exists
+        env:
+          version: ${{ env.version }}
+        run: |
+          if git rev-parse "${{ env.version }}" >/dev/null 2>&1; then
+            echo "Tag ${{ env.version }} already exists. Skipping release."
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          version: ${{ env.version }}
+        with:
+          tag_name: "${{ env.version }}"
+          release_name: "v${{ env.version }}"
+          draft: false
+          prerelease: false

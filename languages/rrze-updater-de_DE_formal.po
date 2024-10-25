@@ -1,0 +1,417 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: RRZE Updater\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/rrze-updater\n"
+"POT-Creation-Date: 2023-10-11T12:50:19+00:00\n"
+"PO-Revision-Date: 2024-10-25 10:33+0000\n"
+"Last-Translator: RRZE Webteam <webmaster@fau.de>\n"
+"Language-Team: German (Formal)\n"
+"Language: de_DE_formal\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: Loco https://localise.biz/\n"
+"X-Loco-Version: 2.6.11; wp-6.6.2\n"
+"X-Loco-Fallback: de_DE\n"
+"X-Loco-Template: languages/rrze-updater-de_DE.po\n"
+"X-Loco-Template-Mode: PO,JSON"
+
+#: includes/views/plugins/edit.php:13 includes/views/themes/edit.php:13
+msgid "A new version is available."
+msgstr "Es ist eine neue Version verfügbar."
+
+#: includes/views/connectors/add.php:6 includes/views/connectors/add.php:43
+#: includes/views/plugins/add.php:30 includes/views/themes/add.php:30
+msgid "Add a New Service"
+msgstr "Neuen Dienst erstellen"
+
+#: includes/views/connectors/index.php:8
+msgid "Add new"
+msgstr "Neu hinzufügen"
+
+#: includes/Controller.php:505 includes/Controller.php:924
+#: includes/Controller.php:1363
+msgid "An error occurred. Please try again."
+msgstr "Ein Fehler ist aufgetreten. Bitte versuche es erneut."
+
+#: includes/ListTable/PluginsListTable.php:154
+#: includes/ListTable/RepoListTable.php:154
+#: includes/ListTable/ThemesListTable.php:154 includes/views/plugins/add.php:44
+#: includes/views/plugins/edit.php:95 includes/views/themes/add.php:44
+#: includes/views/themes/edit.php:70
+msgid "Branch"
+msgstr "Branch"
+
+#. translators: %s: Repository branch name
+#: includes/Main.php:621 includes/Main.php:663
+msgid "Branch %s"
+msgstr "Branch %s"
+
+#: includes/views/plugins/add.php:48 includes/views/plugins/edit.php:99
+#: includes/views/themes/add.php:48 includes/views/themes/edit.php:74
+msgid "By default the main branch will be used."
+msgstr "Standardmäßig wird der Main-Zweig verwendet."
+
+#: includes/views/plugins/add.php:80 includes/views/themes/add.php:80
+msgid "By default, the name of the repository."
+msgstr "Standardmäßig der Name des Repositories."
+
+#: includes/views/plugins/add.php:53 includes/views/plugins/edit.php:38
+#: includes/views/plugins/edit.php:104 includes/views/themes/add.php:53
+#: includes/views/themes/edit.php:28 includes/views/themes/edit.php:79
+msgid "Check for updates"
+msgstr "Auf Updates prüfen"
+
+#: includes/views/plugins/add.php:59 includes/views/plugins/edit.php:110
+#: includes/views/themes/add.php:59 includes/views/themes/edit.php:85
+msgid "Commits"
+msgstr "Commits"
+
+#: includes/ListTable/ConnListTable.php:103
+#: includes/ListTable/PluginsListTable.php:110
+#: includes/ListTable/PluginsListTable.php:184
+#: includes/ListTable/RepoListTable.php:114
+#: includes/ListTable/RepoListTable.php:188
+#: includes/ListTable/ThemesListTable.php:110
+#: includes/ListTable/ThemesListTable.php:184
+msgid "Delete"
+msgstr "Löschen"
+
+#: includes/ListTable/ConnListTable.php:84
+#: includes/ListTable/PluginsListTable.php:97
+#: includes/ListTable/RepoListTable.php:100
+#: includes/ListTable/ThemesListTable.php:97
+msgid "Edit"
+msgstr "Bearbeiten"
+
+#: includes/Main.php:217 includes/Main.php:218
+msgid "Edit repository"
+msgstr "Repository bearbeiten"
+
+#: includes/views/connectors/edit.php:9
+msgid "Edit Service"
+msgstr "Dienst bearbeiten"
+
+#. translators: %s: Error message
+#: includes/views/main.php:15
+msgid "Error: %s"
+msgstr "Fehler: %s"
+
+#: includes/ListTable/PluginsListTable.php:151
+#: includes/ListTable/ThemesListTable.php:151
+msgid "Folder"
+msgstr "Ordner"
+
+#. translators: %s: Installation folder path
+#: includes/Main.php:638 includes/Main.php:671
+msgid "Folder %s"
+msgstr "Ordner %s"
+
+#: includes/Core/Connector.php:154
+msgid "Forbidden (use valid authentication)"
+msgstr "Verboten (gültige Authentifizierung verwenden)"
+
+#. translators: %s: API rate limit time availabelity
+#: includes/Core/GithubConnector.php:242
+msgid "GitHub API Rate Limit is reached! It'll be available %s."
+msgstr "GitHub API-Rate-Limit ist erreicht! Es wird %s verfügbar sein."
+
+#. translators: 1: API rate limit, 2: API rate left, 3: API rate reset
+#: includes/Core/GithubConnector.php:226
+msgid "GitHub API Rate Limit: %1$s (%2$s left). It'll be reset %3$s."
+msgstr "GitHub API-Rate-Limit: %1$s (%2$s übrig). Es wird %3$s zurückgesetzt."
+
+#: includes/views/connectors/add.php:19
+msgid "GitHub.com"
+msgstr "GitHub.com"
+
+#. Author URI of the plugin
+#: rrze-updater.php
+msgid "https://gitlab.rrze.fau.de/rrze-webteam"
+msgstr "https://gitlab.rrze.fau.de/rrze-webteam"
+
+#. Plugin URI of the plugin
+#: rrze-updater.php
+msgid "https://gitlab.rrze.fau.de/rrze-webteam/rrze-updater"
+msgstr "https://gitlab.rrze.fau.de/rrze-webteam/rrze-updater"
+
+#. translators: %s: Human time difference
+#: includes/Core/GithubConnector.php:231 includes/Core/GithubConnector.php:245
+#| msgctxt "%s = github-rate-limit time difference"
+#| msgid "in %s"
+msgctxt "Human time difference"
+msgid "in %s"
+msgstr "in %s"
+
+#: rrze-updater.php:102
+msgid ""
+"In a multisite installation, the plugin can only be installed network-wide."
+msgstr ""
+"Bei einer Multisite-Installation kann das Plugin nur netzwerkweit "
+"installiert werden."
+
+#: includes/views/plugins/index.php:9 includes/views/themes/index.php:9
+msgid "Install"
+msgstr "Installieren"
+
+#: includes/views/plugins/add.php:7 includes/views/plugins/add.php:85
+msgid "Install Plugin"
+msgstr "Plugin installieren"
+
+#: includes/views/themes/add.php:7 includes/views/themes/add.php:85
+msgid "Install Theme"
+msgstr "Theme installieren"
+
+#. Description of the plugin
+#: rrze-updater.php
+msgid "Installs/updates plugins and themes of the RRZE repositories."
+msgstr "Installiert / Aktualisiert Plugins und Themes der RRZE-Repositories."
+
+#. translators: %s: Last extension checked error
+#: includes/views/plugins/edit.php:55 includes/views/themes/edit.php:33
+msgid "Last checked on: %s"
+msgstr "Zuletzt überprüft am: %s"
+
+#. translators: %s: Last extension error
+#: includes/views/plugins/edit.php:30 includes/views/themes/edit.php:23
+msgid "Last error: %s"
+msgstr "Letzter Fehler: %s"
+
+#. translators: %s: Local version of the repository
+#: includes/views/plugins/edit.php:43 includes/views/themes/edit.php:31
+msgid "Local Version: %s"
+msgstr "Lokale Version: %s"
+
+#: includes/Controller.php:159 includes/Controller.php:305
+#: includes/Controller.php:603 includes/Controller.php:1038
+msgid "Number of items per page:"
+msgstr "Einträge pro Seite:"
+
+#: includes/views/connectors/add.php:38 includes/views/connectors/edit.php:39
+msgid "Optional."
+msgstr "Optional."
+
+#: includes/Controller.php:113 includes/ListTable/PluginsListTable.php:149
+#: includes/views/plugins/edit.php:37
+msgid "Plugin"
+msgstr "Plugin"
+
+#: includes/views/plugins/add.php:76 includes/views/plugins/edit.php:127
+msgid "Plugin folder"
+msgstr "Ordner des Plugins"
+
+#: includes/Main.php:150 includes/Main.php:151
+#: includes/views/plugins/index.php:8
+msgid "Plugins"
+msgstr "Plugins"
+
+#. translators: 1: The plugin name, 2: The error string.
+#: rrze-updater.php:111 rrze-updater.php:221
+msgid "Plugins: %1$s: %2$s"
+msgstr "Plugins: %1$s: %2$s"
+
+#. translators: %s: Remote extension version
+#: includes/views/plugins/edit.php:49 includes/views/themes/edit.php:32
+msgid "Remote Version: %s"
+msgstr "Remote-Version: %s"
+
+#: includes/ListTable/ConnListTable.php:129 includes/Main.php:130
+#: includes/Main.php:131 includes/views/repositories/index.php:8
+msgid "Repositories"
+msgstr "Repositories"
+
+#: includes/ListTable/PluginsListTable.php:153
+#: includes/ListTable/RepoListTable.php:153
+#: includes/ListTable/ThemesListTable.php:153 includes/Main.php:626
+#: includes/Main.php:633 includes/Main.php:666 includes/Main.php:668
+#: includes/views/plugins/add.php:35 includes/views/plugins/edit.php:86
+#: includes/views/themes/add.php:35 includes/views/themes/edit.php:61
+msgid "Repository"
+msgstr "Repository"
+
+#: includes/Core/Connector.php:155
+msgid "Resource not found (check repository name, branch/tag/commit name)"
+msgstr ""
+"Ressource nicht gefunden (Repository-Name prüfen, Branch / Tag / Commit-Name)"
+
+#: includes/views/connectors/add.php:20
+msgid "RRZE Gitlab"
+msgstr "RRZE Gitlab"
+
+#. Plugin Name of the plugin
+#: rrze-updater.php
+msgid "RRZE Updater"
+msgstr "RRZE Updater"
+
+#. Author of the plugin
+#: rrze-updater.php
+msgid "RRZE Webteam"
+msgstr "RRZE-Webteam"
+
+#: includes/views/connectors/edit.php:44 includes/views/plugins/edit.php:135
+#: includes/views/themes/edit.php:110
+msgid "Save Changes"
+msgstr "Änderungen übernehmen"
+
+#: includes/views/connectors/index.php:14 includes/views/plugins/index.php:15
+#: includes/views/repositories/index.php:14 includes/views/themes/index.php:15
+msgid "Search"
+msgstr "Suchen"
+
+#: includes/ListTable/ConnListTable.php:126
+#: includes/ListTable/PluginsListTable.php:152
+#: includes/ListTable/RepoListTable.php:155
+#: includes/ListTable/ThemesListTable.php:152
+#: includes/views/connectors/add.php:15 includes/views/connectors/edit.php:19
+#: includes/views/plugins/add.php:16 includes/views/plugins/edit.php:68
+#: includes/views/themes/add.php:16 includes/views/themes/edit.php:43
+msgid "Service"
+msgstr "Dienst"
+
+#: includes/Main.php:141 includes/Main.php:142
+#: includes/views/connectors/index.php:7
+msgid "Services"
+msgstr "Dienste"
+
+#: includes/views/plugins/add.php:60 includes/views/plugins/edit.php:111
+#: includes/views/themes/add.php:60 includes/views/themes/edit.php:86
+msgid "Tags"
+msgstr "Tags"
+
+#: includes/views/plugins/add.php:39 includes/views/plugins/edit.php:90
+#: includes/views/themes/add.php:39 includes/views/themes/edit.php:65
+msgid "The name of the repository."
+msgstr "Der Name des Repositorys."
+
+#: includes/Controller.php:841 includes/Controller.php:1280
+msgid "The Repository already exists."
+msgstr "Das Repository existiert bereits."
+
+#: includes/Controller.php:833 includes/Controller.php:929
+#: includes/Controller.php:1272 includes/Controller.php:1368
+msgid "The Repository field must not be empty."
+msgstr "Das Feld Repository darf nicht leer sein."
+
+#. translators: 1: Server PHP version number, 2: Required PHP version number.
+#: rrze-updater.php:180
+msgid ""
+"The server is running PHP version %1$s. The plugin requires at least PHP "
+"version %2$s."
+msgstr ""
+"Auf dem Server wird die PHP-Version %1$s ausgeführt. Das Plugin erfordert "
+"mindestens die PHP-Version %2$s."
+
+#. translators: 1: Server WordPress version number, 2: Required WordPress version number.
+#: rrze-updater.php:172
+msgid ""
+"The server is running WordPress version %1$s. The plugin requires at least "
+"WordPress version %2$s."
+msgstr ""
+"Auf dem Server wird die WordPress-Version %1$s ausgeführt. Das Plugin "
+"erfordert mindestens die WordPress-Version %2$s."
+
+#: includes/Controller.php:457
+msgid "The User/Group field must not be empty."
+msgstr "Das Feld Benutzer/Gruppe darf nicht leer sein."
+
+#: includes/Controller.php:117 includes/ListTable/ThemesListTable.php:149
+#: includes/views/themes/edit.php:27
+msgid "Theme"
+msgstr "Theme"
+
+#: includes/views/themes/add.php:76 includes/views/themes/edit.php:102
+msgid "Theme folder"
+msgstr "Ordner des Themes"
+
+#: includes/Main.php:159 includes/Main.php:160
+#: includes/views/themes/index.php:8
+msgid "Themes"
+msgstr "Themes"
+
+#. translators: 1: Extension name, 2: Update URL, 3: Additional link attributes
+#: includes/Main.php:562
+msgid ""
+"There is a new version of %1$s available. <a href=\"%2$s\" %3$s>Update "
+"now</a>."
+msgstr ""
+"Eine neue Version von %1$s ist verfügbar. <a href=\"%2$s\" %3$s>Jetzt "
+"aktualisieren</a>."
+
+#. translators: %s: Extension name
+#: includes/Main.php:460 includes/Main.php:550
+msgid "There is a new version of %s available."
+msgstr "Eine neue Version von %s ist verfügbar."
+
+#. translators: %s: Extension name
+#: includes/Main.php:466
+msgid ""
+"There is a new version of %s available. <em>Automatic update is unavailable "
+"for this plugin.</em>"
+msgstr ""
+"Eine neue Version von %s ist verfügbar. <em>Eine automatische Aktualisierung "
+"für dieses Plugin ist nicht verfügbar.</em>"
+
+#. translators: %s: Extension name
+#: includes/Main.php:556
+msgid ""
+"There is a new version of %s available. <em>Automatic update is unavailable "
+"for this theme.</em>"
+msgstr ""
+"Eine neue Version von %s ist verfügbar. <em>Eine automatische Aktualisierung "
+"für dieses Theme ist nicht verfügbar.</em>"
+
+#: includes/ListTable/ConnListTable.php:128
+#: includes/views/connectors/add.php:34 includes/views/connectors/edit.php:35
+msgid "Token"
+msgstr "Token"
+
+#: includes/Core/Connector.php:156
+msgid "Too many requests"
+msgstr "Zu viele Anfragen"
+
+#: includes/ListTable/RepoListTable.php:157
+msgid "Type"
+msgstr "Typ"
+
+#: includes/Controller.php:207 includes/Controller.php:401
+#: includes/Controller.php:763 includes/Controller.php:1198
+msgid "Unable to submit this form, please refresh and try again."
+msgstr ""
+"Dieses Formular konnte nicht gesendet werden. Bitte aktualisieren Sie es und "
+"versuchen Sie es erneut."
+
+#: includes/Core/Connector.php:153
+msgid "Unauthorized (use valid authentication)"
+msgstr "Nicht autorisiert (gültige Authentifizierung verwenden)"
+
+#. translators: %s: Extension name
+#: includes/Main.php:479 includes/Main.php:570
+msgid "Update %s now"
+msgstr "%s jetzt aktualisieren"
+
+#: includes/ListTable/ConnListTable.php:127
+#: includes/ListTable/RepoListTable.php:156
+#: includes/views/connectors/add.php:26 includes/views/connectors/edit.php:27
+msgid "User/Group"
+msgstr "Benutzer / Gruppe"
+
+#: includes/ListTable/PluginsListTable.php:150
+#: includes/ListTable/RepoListTable.php:158
+#: includes/ListTable/ThemesListTable.php:150
+msgid "Version"
+msgstr "Version"
+
+#. translators: %s: Warning message
+#: includes/views/plugins/edit.php:20 includes/views/themes/edit.php:18
+msgid "Warning: %s"
+msgstr "Warnhinweis: %s"
+
+#: includes/Controller.php:215 includes/Controller.php:406
+#: includes/Controller.php:444 includes/Controller.php:490
+#: includes/Controller.php:768 includes/Controller.php:820
+#: includes/Controller.php:918 includes/Controller.php:1203
+#: includes/Controller.php:1259 includes/Controller.php:1357
+#: includes/Controller.php:1503
+msgid "You need a higher level of permission."
+msgstr "Sie benötigen eine höhere Berechtigungsstufe."
