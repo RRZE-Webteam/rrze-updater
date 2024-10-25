@@ -3,7 +3,7 @@
 /*
 Plugin Name:        RRZE Updater
 Plugin URI:         https://github.com/RRZE-Webteam/rrze-updater
-Version:            2.5.0
+Version:            2.5.1
 Description:        Installs/updates plugins and themes of the RRZE repositories.
 Author:             RRZE Webteam
 Author URI:         https://github.com/RRZE-Webteam
