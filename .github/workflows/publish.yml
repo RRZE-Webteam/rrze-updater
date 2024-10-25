@@ -42,22 +42,16 @@ jobs:
             echo "package.json not found, skipping version update in package.json"
           fi
 
-          # Extract plugin data from plugin file excluding the /* and */ lines
-          plugin_data=$(awk '/^[ \t]*\*?[ \t]*(Plugin Name|Plugin URI|Version|Description|Author|Author URI|License|License URI|Text Domain|Domain Path|Requires at least|Requires PHP|Update URI):/ { gsub(/^[ \t]*\*?[ \t]*/, ""); printf "%s<br>\n", $0 }' "$plugin_file")
+          # Extract plugin data from plugin file
+          plugin_data=$(awk '/^[ \t]*\*?[ \t]*(Plugin Name|Plugin URI|Version|Description|Author|Author URI|License|License URI|Text Domain|Domain Path|Requires at least|Requires PHP|Update URI):/ { gsub(/^[ \t]*\*?[ \t]*/, ""); print $0 }' "$plugin_file")
           echo "$plugin_data"
 
-          # Write plugin data to README.md
-          if [ -f "README.md" ]; then
-            # Extract plugin data and ensure proper formatting
-            escaped_plugin_data=$(echo "$plugin_data" | sed ':a;N;$!ba;s/\n/<br>/g' | sed 's/<br>$//' | sed 's/<br><br>/<br>\\n/g')
-            
-            # Update README.md content without trailing empty lines or extra <br>
-            sed -i "/<!-- BEGIN PLUGIN DATA -->/,/<!-- END PLUGIN DATA -->/c\\
-          <!-- BEGIN PLUGIN DATA -->\\
-          $escaped_plugin_data\\
-          <!-- END PLUGIN DATA -->" README.md
+          # Write plugin data to readme.txt if it exists
+          if [ -f "readme.txt" ]; then
+            # Update readme.txt content
+            echo "$plugin_data" > readme.txt
           else
-            echo "README.md not found, skipping plugin data update in README.md"
+            echo "readme.txt not found, skipping plugin data update in readme.txt"
           fi
 
       - name: Commit version changes to dev
