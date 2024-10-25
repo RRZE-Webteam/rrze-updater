@@ -1,4 +1,17 @@
 <!-- BEGIN PLUGIN DATA -->
+Plugin Name:        RRZE Updater<br>
+Plugin URI:         https://github.com/RRZE-Webteam/rrze-updater<br>
+Version:            2.5.0<br>
+Description:        Installs/updates plugins and themes of the RRZE repositories.<br>
+Author:             RRZE Webteam<br>
+Author URI:         https://github.com/RRZE-Webteam<br>
+License:            GNU General Public License v2<br>
+License URI:        http://www.gnu.org/licenses/gpl-2.0.html<br>
+Text Domain:        rrze-updater<br>
+Domain Path:        /languages<br>
+Requires at least:  6.6<br>
+Requires PHP:       8.2<br>
+Update URI:         https://github.com/RRZE-Webteam/rrze-updater
 <!-- END PLUGIN DATA -->
 
 [![Release Version](https://img.shields.io/github/v/release/RRZE-Webteam/rrze-updater?label=Release+Version)](https://github.com/RRZE-Webteam/rrze-updater/releases/)
