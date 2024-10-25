@@ -457,19 +457,19 @@ class Main
             if (!current_user_can('update_plugins')) {
                 printf(
                     /* translators: %s: Extension name */
-                    esc_html__('There is a new version of %s available.', 'rrze-updater'),
+                    __('There is a new version of %s available.', 'rrze-updater'),
                     $plugin_name
                 );
             } elseif (empty($response->package)) {
                 printf(
                     /* translators: %s: Extension name */
-                    esc_html__('There is a new version of %s available. <em>Automatic update is unavailable for this plugin.</em>', 'rrze-updater'),
+                    __('There is a new version of %s available. <em>Automatic update is unavailable for this plugin.</em>', 'rrze-updater'),
                     $plugin_name
                 );
             } else {
                 printf(
                     /* translators: 1: Extension name, 2: Update URL, 3: Additional link attributes */
-                    esc_html__('There is a new version of %1$s available. <a href="%2$s" %3$s>Update now</a>.'),
+                    __('There is a new version of %1$s available. <a href="%2$s" %3$s>Update now</a>.'),
                     $plugin_name,
                     wp_nonce_url(self_admin_url('update.php?action=upgrade-plugin&plugin=') . $file, 'upgrade-plugin_' . $file),
                     sprintf(
