@@ -22,7 +22,7 @@ jobs:
         id: version_update
         run: |
           # Define plugin filename
-          plugin_file="rrze-plugin-test.php"
+          plugin_file="rrze-updater.php"
 
           # Extract current version from plugin file
           version=$(grep -oP 'Version:\s*\K[0-9]+\.[0-9]+\.[0-9]+' "$plugin_file")
