@@ -3,7 +3,7 @@ msgstr ""
 "Project-Id-Version: RRZE Updater\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/rrze-updater\n"
 "POT-Creation-Date: 2023-10-11T12:50:19+00:00\n"
-"PO-Revision-Date: 2024-10-25 10:33+0000\n"
+"PO-Revision-Date: 2024-10-25 14:17+0000\n"
 "Last-Translator: RRZE Webteam <webmaster@fau.de>\n"
 "Language-Team: German (Formal)\n"
 "Language: de_DE_formal\n"
@@ -128,13 +128,13 @@ msgstr "GitHub.com"
 
 #. Author URI of the plugin
 #: rrze-updater.php
-msgid "https://gitlab.rrze.fau.de/rrze-webteam"
-msgstr "https://gitlab.rrze.fau.de/rrze-webteam"
+msgid "https://github.com/RRZE-Webteam"
+msgstr "https://github.com/RRZE-Webteam"
 
 #. Plugin URI of the plugin
 #: rrze-updater.php
-msgid "https://gitlab.rrze.fau.de/rrze-webteam/rrze-updater"
-msgstr "https://gitlab.rrze.fau.de/rrze-webteam/rrze-updater"
+msgid "https://github.com/RRZE-Webteam/rrze-updater"
+msgstr "https://github.com/RRZE-Webteam/rrze-updater"
 
 #. translators: %s: Human time difference
 #: includes/Core/GithubConnector.php:231 includes/Core/GithubConnector.php:245
@@ -162,11 +162,6 @@ msgstr "Plugin installieren"
 #: includes/views/themes/add.php:7 includes/views/themes/add.php:85
 msgid "Install Theme"
 msgstr "Theme installieren"
-
-#. Description of the plugin
-#: rrze-updater.php
-msgid "Installs/updates plugins and themes of the RRZE repositories."
-msgstr "Installiert / Aktualisiert Plugins und Themes der RRZE-Repositories."
 
 #. translators: %s: Last extension checked error
 #: includes/views/plugins/edit.php:55 includes/views/themes/edit.php:33
@@ -273,6 +268,14 @@ msgstr "Dienst"
 #: includes/views/connectors/index.php:7
 msgid "Services"
 msgstr "Dienste"
+
+#. Description of the plugin
+#: rrze-updater.php
+msgid ""
+"Sync Plugins and Themes with the corresponding GitHub or GitLab repositories."
+msgstr ""
+"Synchronisation von Plugins und Themes mit den entsprechenden GitHub- oder "
+"GitLab-Repositories."
 
 #: includes/views/plugins/add.php:60 includes/views/plugins/edit.php:111
 #: includes/views/themes/add.php:60 includes/views/themes/edit.php:86

@@ -4,7 +4,7 @@
 
 # RRZE Updater
 
-RRZE Updater is a WordPress plugin for synchronizing GitHub and GitLab repositories. RRZE Updater offers the following features:
+RRZE Updater is a WordPress plugin for synchronizing plugins and themes with the corresponding GitHub or GitLab repositories. RRZE Updater offers the following features:
 
 - Installation of WordPress plugins from a GitHub or GitLab repository
 - Installation of WordPress themes from a GitHub or GitLab repository
