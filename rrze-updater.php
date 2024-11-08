@@ -3,7 +3,7 @@
 /*
 Plugin Name:        RRZE Updater
 Plugin URI:         https://github.com/RRZE-Webteam/rrze-updater
-Version:            2.5.3
+Version:            2.5.4
 Description:        Sync Plugins and Themes with the corresponding GitHub or GitLab repositories.
 Author:             RRZE Webteam
 Author URI:         https://github.com/RRZE-Webteam
