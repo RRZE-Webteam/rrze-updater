@@ -62,6 +62,15 @@ jobs:
           git commit -m "Publish" || echo "No changes to commit"
           git push origin dev || { echo "Error: Push to dev branch failed"; exit 1; }
 
+      - name: Check if tag or release exists
+        env:
+          version: ${{ env.version }}
+        run: |
+          if git rev-parse "${{ env.version }}" >/dev/null 2>&1; then
+            echo "Tag ${{ env.version }} already exists. Skipping release."
+            exit 1
+          fi
+
       - name: Check out the main branch
         run: |
           git fetch origin
@@ -75,15 +84,6 @@ jobs:
       - name: Push changes to main branch
         run: |
           git push origin main || { echo "Error: Push to main branch failed"; exit 1; }
-
-      - name: Check if tag or release exists
-        env:
-          version: ${{ env.version }}
-        run: |
-          if git rev-parse "${{ env.version }}" >/dev/null 2>&1; then
-            echo "Tag ${{ env.version }} already exists. Skipping release."
-            exit 1
-          fi
 
       - name: Create GitHub Release
         uses: actions/create-release@v1
