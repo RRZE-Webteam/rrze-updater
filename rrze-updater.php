@@ -3,24 +3,22 @@
 /*
 Plugin Name:        RRZE Updater
 Plugin URI:         https://github.com/RRZE-Webteam/rrze-updater
-Version:            2.5.4
+Version:            2.5.5
 Description:        Sync Plugins and Themes with the corresponding GitHub or GitLab repositories.
 Author:             RRZE Webteam
 Author URI:         https://github.com/RRZE-Webteam
-License:            GNU General Public License v2
-License URI:        http://www.gnu.org/licenses/gpl-2.0.html
+License:            GNU General Public License Version 3
+License URI:        https://www.gnu.org/licenses/gpl-3.0.html
 Text Domain:        rrze-updater
 Domain Path:        /languages
-Requires at least:  6.6
+Requires at least:  6.7
 Requires PHP:       8.2
-Update URI:         https://github.com/RRZE-Webteam/rrze-updater
+Network:            true
 */
 
 namespace RRZE\Updater;
 
 defined('ABSPATH') || exit;
-
-use RRZE\Updater\{Main, Plugin};
 
 /**
  * Register a custom autoloader (PSR-4) using spl_autoload_register().
@@ -52,6 +50,9 @@ spl_autoload_register(function ($class) {
     }
 });
 
+// Load the plugin's text domain for localization.
+add_action('init', fn() => load_plugin_textdomain('rrze-updater', false, dirname(plugin_basename(__FILE__)) . '/languages'));
+
 // Register activation hook for the plugin
 register_activation_hook(__FILE__, __NAMESPACE__ . '\activation');
 
@@ -67,49 +68,13 @@ register_deactivation_hook(__FILE__, __NAMESPACE__ . '\deactivation');
 add_action('plugins_loaded', __NAMESPACE__ . '\loaded');
 
 /**
- * Load the text domain for plugin localization.
- *
- * This method loads the translation files for the plugin.
- */
-function loadTextdomain()
-{
-    // Load the plugin's text domain for localization.
-    load_plugin_textdomain(
-        'rrze-updater', // The text domain used for translating plugin strings.
-        false, // Deprecated. Should be set to 'false'.
-        sprintf('%s/languages/', dirname(plugin_basename(__FILE__))) // The path to the translation files.
-    );
-}
-
-/**
  * Handle the activation of the plugin.
  *
  * This function is called when the plugin is activated.
- *
- * @param bool $networkWide True if the plugin is being activated network-wide on a multisite installation, false if it's site-specific.
  */
 function activation($networkWide)
 {
-    // Load the plugin's text domain for localization.
-    loadTextdomain();
-
-    // Initialize an error message string.
-    $error = '';
-
-    // If the plugin is being activated on a multisite installation and not network-wide.
-    if (is_multisite() && !$networkWide) {
-        // Set an error message indicating that the plugin can only be installed network-wide in a multisite installation.
-        $error = __('In a multisite installation, the plugin can only be installed network-wide.', 'rrze-updater');
-    }
-
-    // If there is an error, deactivate the plugin and display an error message.
-    if ($error) {
-        // Deactivate the plugin.
-        deactivate_plugins(plugin_basename(__FILE__));
-
-        // Display an error message with the plugin's name and the specific error message.
-        wp_die(sprintf(__('Plugins: %1$s: %2$s', 'rrze-updater'), plugin_basename(__FILE__), $error));
-    }
+    //
 }
 
 /**
@@ -181,6 +146,9 @@ function systemRequirements(): string
             $phpVersion,
             plugin()->getRequiresPHP()
         );
+    } elseif (is_multisite() && !is_plugin_active_for_network(plugin()->getBaseName())) {
+        // Set an error message indicating that the plugin can only be installed network-wide in a multisite installation.
+        $error = __('In a multisite installation, the plugin can only be installed network-wide.', 'rrze-updater');
     }
 
     // Return the error message string, which will be empty if requirements are satisfied.
@@ -195,16 +163,14 @@ function systemRequirements(): string
  */
 function loaded()
 {
-    // Load the plugin's text domain for localization.
-    loadTextdomain();
-
     // Trigger the 'loaded' method of the main plugin instance.
     plugin()->loaded();
 
-    // Check system requirements and store any error messages.
-    if ($error = systemRequirements()) {
+    // Check system requirements.
+    if (systemRequirements()) {
         // If there is an error, add an action to display an admin notice with the error message.
-        add_action('admin_init', function () use ($error) {
+        add_action('admin_init', function () {
+            $error = systemRequirements();
             // Check if the current user has the capability to activate plugins.
             if (current_user_can('activate_plugins')) {
                 // Get plugin data to retrieve the plugin's name.
