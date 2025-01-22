@@ -43,6 +43,7 @@ class Plugin
     public function __construct(string $pluginFile)
     {
         $this->pluginFile = $pluginFile;
+        require_once ABSPATH . 'wp-admin/includes/plugin.php';
     }
 
     /**
@@ -148,7 +149,7 @@ class Plugin
      */
     public function setData(): object
     {
-        $this->data = get_plugin_data($this->pluginFile, false);
+        $this->data = get_plugin_data($this->pluginFile, false, false);
         return $this;
     }
 
