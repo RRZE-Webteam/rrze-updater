@@ -111,7 +111,7 @@ abstract class Connector
      * @param string $branch     The branch name.
      * @return mixed
      */
-    abstract public function getZipUrl(string $repository, string $branch): mixed;
+    abstract public function downloadRepoZip(string $repository, string $branch): mixed;
 
     /**
      * Factory method to create a Connector object from an array of data.
