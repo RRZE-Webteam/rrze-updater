@@ -331,7 +331,7 @@ class Main
                         $response->plugin = $pluginFile;
                         $response->new_version = substr($extension->remoteVersion, 0, 6) . '&hellip; (commit)';
                         $response->url = $extension->connector->getUrl($extension->repository);
-                        $response->package = $extension->connector->getZipUrl($extension->repository, $extension->remoteVersion);
+                        $response->package = $extension->connector->downloadRepoZip($extension->repository, $extension->remoteVersion);
                         $response->icons = [];
                         $response->banners = [];
                         $response->banners_rtl = [];
@@ -386,7 +386,7 @@ class Main
                         $response['theme'] = $themeFolder;
                         $response['new_version'] = substr($extension->remoteVersion, 0, 6) . '&hellip; (commit)';
                         $response['url'] = $extension->connector->getUrl($extension->repository);
-                        $response['package'] = $extension->connector->getZipUrl($extension->repository, $extension->remoteVersion);
+                        $response['package'] = $extension->connector->downloadRepoZip($extension->repository, $extension->remoteVersion);
                         $response['requires'] = '';
                         $response['requires_php'] = '';
 
