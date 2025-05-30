@@ -86,6 +86,7 @@ jobs:
           git push origin main || { echo "Error: Push to main branch failed"; exit 1; }
 
       - name: Create GitHub Release
+        id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -95,3 +96,24 @@ jobs:
           release_name: "v${{ env.version }}"
           draft: false
           prerelease: false
+
+      - name: Check if Release was Created
+        if: steps.create_release.outputs.id == ''
+        run: |
+          echo "Release creation failed"
+          exit 1
+          
+      - name: Send Matrix notification
+        env:
+          MATRIX_ACCESS_TOKEN: ${{ secrets.MATRIX_ACCESS_TOKEN }}
+          MATRIX_ROOM_ID: "%21wyUpkRsFMDGzzGmxBf%3Afau.de" # HTML-encoded room ID
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://matrix.fau.de/_matrix/client/r0/rooms/${MATRIX_ROOM_ID}/send/m.room.message?access_token=${MATRIX_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"msgtype\": \"m.text\",
+              \"body\": \"New release created for ${GITHUB_REPOSITORY} by ${GITHUB_ACTOR}. 🎉\"
+            }")
+          if [ "$response" -ne 200 ]; then
+            echo "Error: Failed to send notification to Matrix. HTTP status code: $response"
+          fi
