@@ -5,6 +5,6 @@ namespace RRZE\Updater;
 defined('ABSPATH') || exit;
 
 $upgrader = $data['upgrader'];
-$zipUrl = $data['zipUrl'];
+$repoZip = $data['repoZip'];
 
-$upgrader->install($zipUrl);
+$upgrader->install($repoZip);
