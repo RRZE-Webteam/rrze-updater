@@ -75,6 +75,8 @@ class Controller
      * This function is responsible for fetching a list of repositories from various connectors,
      * filtering them based on a search query (if provided), and displaying them in a custom
      * admin list table. It also handles different types of repositories such as plugins and themes.
+     * 
+     * @return void
      */
     public function getRepoIndex()
     {
@@ -144,7 +146,7 @@ class Controller
      * for the admin list table. It determines the number of items to display per page and
      * provides options to customize the list table's behavior.
      *
-     * @since 1.0.0  // Replace with the actual version of your plugin or theme.
+     * @return void
      */
     public function repoListScreenOptions()
     {
@@ -172,7 +174,7 @@ class Controller
      * based on the provided action parameter. Additional actions can be added as needed.
      *
      * @param string $action The action to be performed on a repository.
-     * @since 1.0.0  // Replace with the actual version of your plugin or theme.
+     * @return void
      */
     protected function getRepoAction(string $action)
     {
@@ -195,6 +197,8 @@ class Controller
      * This method is responsible for processing the deletion of a repository when the 'delete' action
      * is triggered. It performs nonce validation, checks user permissions, and delegates the deletion
      * process to the 'repoDelete' method.
+     * 
+     * @return void
      */
     public function getRepoDelete()
     {
@@ -227,6 +231,7 @@ class Controller
      * on your application's logic.
      *
      * @param string $id The ID of the repository to be deleted.
+     * @return void
      */
     public function repoDelete($id)
     {
@@ -245,6 +250,8 @@ class Controller
      * This method is responsible for rendering the list of connectors and their associated repositories
      * in the admin panel. It also handles actions related to connectors, such as deletion. Depending
      * on the action, it may delegate further processing to the 'getConnectorAction' method.
+     * 
+     * @return void
      */
     public function getConnectorIndex()
     {
@@ -293,6 +300,8 @@ class Controller
      *
      * This method is responsible for setting up screen options for the connector list table in the admin panel.
      * It defines the label and default value for the 'per_page' option and registers it using 'add_screen_option'.
+     * 
+     * @return void
      */
     public function connListScreenOptions()
     {
@@ -318,6 +327,7 @@ class Controller
      * The action parameter determines the specific action to be taken, and the corresponding methods are called accordingly.
      *
      * @param string $action The action to be performed, e.g., 'add', 'edit', 'delete'.
+     * @return void
      */
     protected function getConnectorAction(string $action)
     {
@@ -358,6 +368,8 @@ class Controller
      *
      * This method is responsible for rendering the connector add form in the admin panel.
      * Users can use this form to add new connectors.
+     * 
+     * @return void
      */
     protected function getConnectorAdd()
     {
@@ -390,6 +402,8 @@ class Controller
      *
      * This method is responsible for processing the deletion of a connector based on the provided connector ID.
      * It performs necessary checks, including nonce verification and user permissions, before deleting the connector.
+     * 
+     * @return void
      */
     public function getConnectorDelete()
     {
@@ -417,6 +431,7 @@ class Controller
      * checks if the connector is not in use, and then removes it from the settings.
      *
      * @param string $id The ID of the connector to be deleted.
+     * @return void
      */
     public function connectorDelete($id)
     {
@@ -436,6 +451,8 @@ class Controller
      *
      * This method is responsible for processing the addition of a new connector based on the POST request data.
      * It performs data validation, checks user permissions, and then adds the new connector to the settings.
+     * 
+     * @return void
      */
     protected function postConnectorAdd()
     {
@@ -482,6 +499,8 @@ class Controller
      *
      * This method is responsible for processing the editing of an existing connector based on the POST request data.
      * It performs data validation, checks user permissions, and updates the connector's information in the settings.
+     * 
+     * @return void
      */
     protected function postConnectorEdit()
     {
@@ -618,6 +637,7 @@ class Controller
      * provided nonce field and action type.
      *
      * @param string $action The requested action, such as 'add', 'check-updates', 'edit', or 'delete'.
+     * @return void
      */
     protected function getPluginAction(string $action)
     {
@@ -663,6 +683,8 @@ class Controller
      * This method is responsible for displaying the form used to add a new plugin.
      * It prepares the necessary data, such as available connectors, and then renders the
      * 'plugins/add' view to allow users to input information for the new plugin.
+     * 
+     * @return void
      */
     protected function getPluginAdd()
     {
@@ -681,6 +703,8 @@ class Controller
      * This method is responsible for displaying the form used to edit an existing plugin's information.
      * It retrieves the plugin based on the provided ID, prepares the necessary data, and then renders the
      * 'plugins/edit' view, allowing users to modify the details of the selected plugin.
+     * 
+     * @return void
      */
     protected function getPluginEdit()
     {
@@ -711,6 +735,8 @@ class Controller
      * refreshes the 'update_plugins' transient to ensure that the WordPress update system detects
      * the available updates. Finally, it prepares the necessary data for the 'plugins/edit' view
      * and displays the results.
+     * 
+     * @return void
      */
     protected function getPluginUpdates()
     {
@@ -751,6 +777,8 @@ class Controller
      * nonce is valid, it proceeds to check the user's permissions. If the user has the required
      * permission to delete plugins, it calls the 'pluginDelete' method to perform the deletion.
      * Otherwise, it displays an error message indicating insufficient permission.
+     * 
+     * @return void
      */
     public function getPluginDelete()
     {
@@ -782,6 +810,7 @@ class Controller
      * settings.
      *
      * @param string $id The ID of the plugin to be deleted.
+     * @return void
      */
     public function pluginDelete($id)
     {
@@ -812,6 +841,8 @@ class Controller
      * data submitted through a form. It performs data validation, creates a new plugin instance,
      * checks for available updates, and initiates the installation process if required. The method
      * also handles error conditions and displays relevant messages.
+     * 
+     * @return void
      */
     protected function postPluginAdd()
     {
@@ -877,7 +908,9 @@ class Controller
         if ($extension->connector->error) {
             // Handle connector error with an error message.
             $this->messages[] = new WP_Error('error', $extension->connector->error);
-        } elseif ($repoZip) {
+        }
+
+        if ($repoZip) {
             // Initialize the plugin installation process.
             $upgrader = new Plugin_Upgrader(new PluginUpgraderSkin($extension));
             $data = [
@@ -900,32 +933,14 @@ class Controller
     }
 
     /**
-     * If $input is an existing local file path, deletes it.
-     * If it’s a URL, does nothing.
-     *
-     * @param string $input URL or file path.
-     * @return bool True if a file was deleted, false otherwise.
-     */
-    function deleteIfLocalFile(string $input): bool
-    {
-        if (filter_var($input, FILTER_VALIDATE_URL)) {
-            return false;
-        }
-
-        if (file_exists($input) && is_file($input)) {
-            return unlink($input);
-        }
-
-        return false;
-    }
-
-    /**
      * Handle the editing of an existing plugin definition.
      *
      * This method is responsible for processing the modification of an existing plugin definition based on the
      * data submitted through a form. It performs data validation, updates the plugin's properties, checks for
      * available updates, and saves the changes. The method also clears cached plugin updates and displays
      * relevant messages.
+     * 
+     * @return void
      */
     protected function postPluginEdit()
     {
@@ -990,6 +1005,8 @@ class Controller
      * If an action is provided, it delegates the action processing to the appropriate method. Otherwise, it
      * retrieves and prepares the theme data, including last checked timestamps and versions. It also handles
      * searching and filtering themes, prepares the theme list table, and displays the theme index page.
+     * 
+     * @return void
      */
     public function getThemeIndex()
     {
@@ -1072,6 +1089,7 @@ class Controller
      * nonce field to verify the request authenticity and dispatches the appropriate action accordingly.
      *
      * @param string $action The name of the action to perform.
+     * @return void
      */
     protected function getThemeAction(string $action)
     {
@@ -1272,6 +1290,8 @@ class Controller
      * data submitted through a form. It performs data validation, creates a new theme instance,
      * checks for available updates, and initiates the installation process if required. The method
      * also handles error conditions and displays relevant messages.
+     * 
+     * @return void
      */
     protected function postThemeAdd()
     {
@@ -1337,7 +1357,9 @@ class Controller
         if ($extension->connector->error) {
             // Handle connector error with an error message.
             $this->messages[] = new WP_Error('error', $extension->connector->error);
-        } elseif ($repoZip) {
+        }
+
+        if ($repoZip) {
             // Initialize the theme installation process.
             $upgrader = new Theme_Upgrader(new ThemeUpgraderSkin($extension));
             $data = [
@@ -1346,6 +1368,7 @@ class Controller
             ];
             $this->display('themes/add-progress', $data);
             $this->settings->save();
+            $this->deleteIfLocalFile($repoZip);
             return;
         }
 
@@ -1365,6 +1388,8 @@ class Controller
      * data submitted through a form. It performs data validation, updates the theme's properties, checks for
      * available updates, and saves the changes. The method also clears cached theme updates and displays
      * relevant messages.
+     * 
+     * @return void
      */
     protected function postThemeEdit()
     {
@@ -1429,7 +1454,6 @@ class Controller
      *
      * @param string $installationFolder The folder where the plugin is installed.
      * @param string $repository The name of the plugin's repository.
-     *
      * @return string The version of the plugin or an em dash if not available.
      */
     protected function pluginVersion($installationFolder, $repository)
@@ -1457,7 +1481,6 @@ class Controller
      * If the theme doesn't exist, it returns an em dash.
      *
      * @param string $installationFolder The folder where the theme is installed.
-     *
      * @return string The version of the theme or an em dash if the theme doesn't exist.
      */
     protected function themeVersion($installationFolder)
@@ -1514,7 +1537,6 @@ class Controller
      *
      * @param string $view The name of the view to be displayed.
      * @param array $data (Optional) An array of data to be passed to the view.
-     *
      * @return void The method outputs the view content to the screen.
      */
     protected function display($view, $data = [])
@@ -1545,6 +1567,8 @@ class Controller
      * plugins and themes and ensures that the settings are consistent with the current state of
      * the WordPress installation. Settings for plugins or themes that are no longer installed
      * are removed to maintain an accurate configuration.
+     * 
+     * @return void
      */
     public function synchronizeSettings()
     {
@@ -1577,5 +1601,25 @@ class Controller
 
         // Save the updated settings to maintain consistency.
         $this->settings->save();
+    }
+
+    /**
+     * If $input is an existing local file path, deletes it.
+     * If it’s a URL, does nothing.
+     *
+     * @param string $input URL or file path.
+     * @return bool True if a file was deleted, false otherwise.
+     */
+    private function deleteIfLocalFile(string $input): bool
+    {
+        if (filter_var($input, FILTER_VALIDATE_URL)) {
+            return false;
+        }
+
+        if (file_exists($input) && is_file($input)) {
+            return unlink($input);
+        }
+
+        return false;
     }
 }
