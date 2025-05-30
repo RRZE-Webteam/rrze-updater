@@ -868,24 +868,25 @@ class Controller
         $extension->checkForUpdates();
 
         // Install the plugin
-        $zipUrl = $extension->connector->getZipUrl($request['repository'], $request['branch']);
+        $repoZip = $extension->connector->downloadRepoZip($request['repository'], $request['branch']);
         if ($extension->remoteVersion) {
             $extension->localVersion = $extension->remoteVersion;
-            $zipUrl = $extension->connector->getZipUrl($request['repository'], $extension->remoteVersion);
+            $repoZip = $extension->connector->downloadRepoZip($request['repository'], $extension->remoteVersion);
         }
 
         if ($extension->connector->error) {
             // Handle connector error with an error message.
             $this->messages[] = new WP_Error('error', $extension->connector->error);
-        } elseif ($zipUrl) {
+        } elseif ($repoZip) {
             // Initialize the plugin installation process.
             $upgrader = new Plugin_Upgrader(new PluginUpgraderSkin($extension));
             $data = [
                 'upgrader' => $upgrader,
-                'zipUrl' => $zipUrl
+                'repoZip' => $repoZip
             ];
             $this->display('plugins/add-progress', $data);
             $this->settings->save();
+            $this->deleteIfLocalFile($repoZip);
             return;
         }
 
@@ -896,6 +897,26 @@ class Controller
 
         // Display the plugin add form.
         $this->display('plugins/add', $data);
+    }
+
+    /**
+     * If $input is an existing local file path, deletes it.
+     * If it’s a URL, does nothing.
+     *
+     * @param string $input URL or file path.
+     * @return bool True if a file was deleted, false otherwise.
+     */
+    function deleteIfLocalFile(string $input): bool
+    {
+        if (filter_var($input, FILTER_VALIDATE_URL)) {
+            return false;
+        }
+
+        if (file_exists($input) && is_file($input)) {
+            return unlink($input);
+        }
+
+        return false;
     }
 
     /**
@@ -1307,21 +1328,21 @@ class Controller
         $extension->checkForUpdates();
 
         // Install the theme
-        $zipUrl = $extension->connector->getZipUrl($request['repository'], $request['branch']);
+        $repoZip = $extension->connector->downloadRepoZip($request['repository'], $request['branch']);
         if ($extension->remoteVersion) {
             $extension->localVersion = $extension->remoteVersion;
-            $zipUrl = $extension->connector->getZipUrl($request['repository'], $extension->remoteVersion);
+            $repoZip = $extension->connector->downloadRepoZip($request['repository'], $extension->remoteVersion);
         }
 
         if ($extension->connector->error) {
             // Handle connector error with an error message.
             $this->messages[] = new WP_Error('error', $extension->connector->error);
-        } elseif ($zipUrl) {
+        } elseif ($repoZip) {
             // Initialize the theme installation process.
             $upgrader = new Theme_Upgrader(new ThemeUpgraderSkin($extension));
             $data = [
                 'upgrader' => $upgrader,
-                'zipUrl' => $zipUrl
+                'repoZip' => $repoZip
             ];
             $this->display('themes/add-progress', $data);
             $this->settings->save();
