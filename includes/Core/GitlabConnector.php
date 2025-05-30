@@ -156,7 +156,7 @@ class GitlabConnector extends Connector
      * @param string $repository The name of the repository.
      * @return string|boolean The latest remote tag or false on failure.
      */
-    public function getZipUrl(string $repository, string $branch = 'main'): string|bool
+    public function downloadRepoZip(string $repository, string $branch = 'main'): string|bool
     {
         // Construct and return the ZIP archive download URL.
         // Return false on failure or rate limit reached.
