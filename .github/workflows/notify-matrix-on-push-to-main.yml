@@ -1,0 +1,25 @@
+name: Notify Matrix on push to main
+
+on:
+  push:
+    branches:
+      - main # Trigger only when there is a push to the main branch
+
+jobs:
+  notify_matrix_on_push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Matrix notification
+        env:
+          MATRIX_ACCESS_TOKEN: ${{ secrets.MATRIX_ACCESS_TOKEN }}
+          MATRIX_ROOM_ID: "%21wyUpkRsFMDGzzGmxBf%3Afau.de" # HTML-encoded room ID
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://matrix.fau.de/_matrix/client/r0/rooms/${MATRIX_ROOM_ID}/send/m.room.message?access_token=${MATRIX_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"msgtype\": \"m.text\",
+              \"body\": \"A new push was made to the main branch in ${GITHUB_REPOSITORY} by ${GITHUB_ACTOR}. 🤔\"
+            }")
+          if [ "$response" -ne 200 ]; then
+            echo "Error: Failed to send notification to Matrix. HTTP status code: $response"
+          fi
