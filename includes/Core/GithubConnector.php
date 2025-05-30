@@ -154,17 +154,15 @@ class GithubConnector extends Connector
     }
 
     /**
-     * Get the URL for downloading a ZIP archive of a specific branch of a GitHub repository.
+     * Download a ZIP archive of a specific branch of a GitHub repository
+     * and save it to disk. Return false on failure or rate limit reached.
      *
      * @param string $repository The name of the repository.
-     * @param string $branch     The branch name.
-     * @return string|boolean    The ZIP archive download URL or false on failure.
+     * @param string $branch The branch name.
+     * @return string|boolean Local path to the ZIP file, or false on failure.
      */
-    public function getZipUrl(string $repository, string $branch = 'main'): string|bool
+    public function downloadRepoZip(string $repository, string $branch = 'main'): string|bool
     {
-        // Construct and return the ZIP archive download URL.
-        // Return false on failure or rate limit reached.
-
         $url = sprintf(
             'https://api.github.com/repos/%1$s/%2$s/zipball/%3$s',
             $this->owner,
@@ -185,7 +183,24 @@ class GithubConnector extends Connector
         if (!$response || $this->isRateLimitReached()) {
             return false;
         }
-        return $url;
+
+        $cdHeader = $response['headers']['content-disposition'] ?? '';
+        if (empty($cdHeader)) {
+            return false;
+        }
+
+        preg_match('/filename="?([^"]+)"?/', $cdHeader, $m);
+        $filename = $m[1] ?? '';
+        if (empty($filename)) {
+            return false;
+        }
+
+        $uploadDir = wp_upload_dir();
+        $dest = trailingslashit($uploadDir['path']) . $filename;
+
+        file_put_contents($dest, $response['body']);
+
+        return $dest;
     }
 
     /**
