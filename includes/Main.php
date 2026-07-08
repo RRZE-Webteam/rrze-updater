@@ -11,6 +11,7 @@ require_once ABSPATH . 'wp-admin/includes/plugin.php';
 use RRZE\Updater\Settings;
 use RRZE\Updater\Controller;
 
+use RRZE\Updater\Core\GithubConnector;
 use RRZE\Updater\Core\GitlabConnector;
 use RRZE\Updater\Core\Plugin;
 
@@ -55,21 +56,10 @@ class Main
      */
     public $currentExtension;
 
-    /**
-     * Main constructor.
-     *
-     * Initializes the RRZE Updater plugin by creating instances of the necessary components.
-     * It sets up the plugin for use within WordPress.
-     */
     public function __construct()
     {
-        // Add a new Settings instance for managing plugin settings.
         $this->settings = new Settings();
-
-        // Add a new Controller instance and pass in the settings.
         $this->controller = new Controller($this->settings);
-
-        // Initialize the Cron component for scheduling and running periodic tasks.
         new Cron($this->settings, $this->controller);
     }
 
@@ -82,16 +72,12 @@ class Main
      */
     public function loaded()
     {
-        // Initialize plugin settings.
         $this->initSettings();
 
-        // Set up hooks and actions based on whether it's a multisite or single site.
         if (!is_multisite()) {
-            // Single site setup.
             add_action('admin_menu', [$this, 'adminMenu']);
             add_filter('plugin_action_links', [$this, 'pluginActionLinks'], 10, 2);
         } else {
-            // Multisite network admin setup.
             add_action('network_admin_menu', [$this, 'adminMenu']);
             add_filter('network_admin_plugin_action_links', [$this, 'pluginActionLinks'], 10, 2);
         }
@@ -101,6 +87,9 @@ class Main
         add_filter('site_transient_update_themes', [$this, 'siteTransientUpdateThemes']);
         add_filter('pre_set_site_transient_update_plugins', [$this, 'preSetSiteTransientUpdatePlugins']);
         add_filter('pre_set_site_transient_update_themes', [$this, 'preSetSiteTransientUpdateThemes']);
+
+        // Download authenticated GitHub packages only when the upgrader actually needs them.
+        add_filter('upgrader_pre_download', [$this, 'upgraderPreDownloadFilter'], 10, 4);
 
         // Set up a filter for modifying the source selection during plugin/theme updates.
         add_filter('upgrader_source_selection', [$this, 'upgraderSourceSelectionFilter'], 10, 4);
@@ -127,40 +116,40 @@ class Main
     {
         // Add the main "Repositories" menu page.
         $repoPage = add_menu_page(
-            __('Repositories', 'rrze-updater'),  // Page title
-            __('Repositories', 'rrze-updater'),  // Menu title
-            'manage_options',                    // Capability required to access
-            'rrze-updater',                      // Menu slug
-            [$this->controller, 'getRepoIndex'], // Callback function for the page content
-            'dashicons-update'                   // Dashicon icon
+            __('Repositories', 'rrze-updater'),             // Page title
+            __('Repositories', 'rrze-updater'),             // Menu title
+            'manage_options',                      // Capability required to access
+            'rrze-updater',                       // Menu slug
+            [$this->controller, 'getRepoIndex'],            // Callback function for the page content
+            'dashicons-update'                      // Dashicon icon
         );
 
         // Add submenu pages for "Services," "Plugins," and "Themes."
         $connPage = add_submenu_page(
-            'rrze-updater',                          // Parent menu slug
-            __('Services', 'rrze-updater'),          // Page title
-            __('Services', 'rrze-updater'),          // Menu title
-            'manage_options',                        // Capability required to access
-            'rrze-updater-connectors',               // Menu slug
-            [$this->controller, 'getConnectorIndex'] // Callback function for the page content
+            'rrze-updater',                      // Parent menu slug
+            __('Services', 'rrze-updater'),                 // Page title
+            __('Services', 'rrze-updater'),                 // Menu title
+            'manage_options',                      // Capability required to access
+            'rrze-updater-connectors',            // Menu slug
+            [$this->controller, 'getConnectorIndex']        // Callback function for the page content
         );
 
         $pluginsPage = add_submenu_page(
-            'rrze-updater',                       // Parent menu slug
-            __('Plugins', 'rrze-updater'),        // Page title
-            __('Plugins', 'rrze-updater'),        // Menu title
-            'manage_options',                     // Capability required to access
+            'rrze-updater',                      // Parent menu slug
+            __('Plugins', 'rrze-updater'),                  // Page title
+            __('Plugins', 'rrze-updater'),                  // Menu title
+            'manage_options',                      // Capability required to access
             'rrze-updater-plugins',                // Menu slug
-            [$this->controller, 'getPluginIndex'] // Callback function for the page content
+            [$this->controller, 'getPluginIndex']           // Callback function for the page content
         );
 
         $themesPage = add_submenu_page(
             'rrze-updater',                      // Parent menu slug
-            __('Themes', 'rrze-updater'),        // Page title
-            __('Themes', 'rrze-updater'),        // Menu title
-            'manage_options',                    // Capability required to access
+            __('Themes', 'rrze-updater'),                   // Page title
+            __('Themes', 'rrze-updater'),                   // Menu title
+            'manage_options',                     // Capability required to access
             'rrze-updater-themes',                // Menu slug
-            [$this->controller, 'getThemeIndex'] // Callback function for the page content
+            [$this->controller, 'getThemeIndex']            // Callback function for the page content
         );
 
         // Set up screen options for each admin page.
@@ -797,6 +786,80 @@ class Main
         }
 
         return $source;
+    }
+
+    public function upgraderPreDownloadFilter($reply, $package, $upgrader, $hookExtra)
+    {
+        if (false !== $reply || !is_string($package)) {
+            return $reply;
+        }
+
+        $extension = $this->getGithubExtensionForUpgrade($upgrader, $hookExtra);
+        if (!$extension) {
+            return false;
+        }
+
+        $refs = array_filter(array_unique([
+            $extension->remoteVersion ?? '',
+            $extension->branch ?? '',
+            'main'
+        ]));
+
+        foreach ($refs as $ref) {
+            if ($package !== $extension->connector->downloadRepoZip($extension->repository, $ref)) {
+                continue;
+            }
+
+            $download = $extension->connector->downloadRepoZipToTempFile($extension->repository, $ref);
+            if (!$download) {
+                return new WP_Error(
+                    'download_failed',
+                    $extension->connector->error ?: __('Download failed.', 'rrze-updater')
+                );
+            }
+
+            return $download;
+        }
+
+        return false;
+    }
+
+    private function getGithubExtensionForUpgrade($upgrader, array $hookExtra)
+    {
+        if (
+            ($upgrader->skin instanceof PluginUpgraderSkin
+                || $upgrader->skin instanceof ThemeUpgraderSkin)
+            && $upgrader->skin->extension->connector instanceof GithubConnector
+        ) {
+            return $upgrader->skin->extension;
+        }
+
+        if (($hookExtra['type'] ?? '') == 'plugin' && !empty($hookExtra['plugin'])) {
+            $pluginFileParts = explode('/', $hookExtra['plugin']);
+            $installationFolder = $pluginFileParts[0];
+
+            foreach ($this->settings->plugins as $extension) {
+                if (
+                    $extension->installationFolder == $installationFolder
+                    && $extension->connector instanceof GithubConnector
+                ) {
+                    return $extension;
+                }
+            }
+        }
+
+        if (($hookExtra['type'] ?? '') == 'theme' && !empty($hookExtra['theme'])) {
+            foreach ($this->settings->themes as $extension) {
+                if (
+                    $extension->installationFolder == $hookExtra['theme']
+                    && $extension->connector instanceof GithubConnector
+                ) {
+                    return $extension;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**

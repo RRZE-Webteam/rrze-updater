@@ -153,54 +153,56 @@ class GithubConnector extends Connector
         return $ret;
     }
 
-    /**
-     * Download a ZIP archive of a specific branch of a GitHub repository
-     * and save it to disk. Return false on failure or rate limit reached.
-     *
-     * @param string $repository The name of the repository.
-     * @param string $branch The branch name.
-     * @return string|boolean Local path to the ZIP file, or false on failure.
-     */
-    public function downloadRepoZip(string $repository, string $branch = 'main'): string|bool
+    public function downloadRepoZip(string $repository, string $branch = 'main'): string
     {
-        $url = sprintf(
-            'https://api.github.com/repos/%1$s/%2$s/zipball/%3$s',
-            $this->owner,
-            $repository,
-            $branch
+        return $this->getRepoZipUrl($repository, $branch);
+    }
+
+    public function downloadRepoZipToTempFile(string $repository, string $branch = 'main'): string|bool
+    {
+        $url = $this->getRepoZipUrl($repository, $branch);
+
+        $response = $this->api(
+            $url,
+            [
+                'headers' => $this->getHeaders()
+            ],
+            [
+                'jsonDecodeBody' => false
+            ]
         );
-
-        $getArgs = [
-            'headers' => $this->getHeaders()
-        ];
-
-        $args = [
-            'jsonDecodeBody' => false
-        ];
-
-        $response = $this->api($url, $getArgs, $args);
 
         if (!$response || $this->isRateLimitReached()) {
             return false;
         }
 
-        $cdHeader = $response['headers']['content-disposition'] ?? '';
-        if (empty($cdHeader)) {
+        if (!function_exists('wp_tempnam')) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+        }
+
+        $dest = wp_tempnam($repository . '.zip');
+        if (!$dest) {
+            $this->error = __('Could not create temporary file.', 'rrze-updater');
             return false;
         }
 
-        preg_match('/filename="?([^"]+)"?/', $cdHeader, $m);
-        $filename = $m[1] ?? '';
-        if (empty($filename)) {
+        if (false === file_put_contents($dest, $response['body'])) {
+            @unlink($dest);
+            $this->error = __('Could not write ZIP archive to temporary file.', 'rrze-updater');
             return false;
         }
-
-        $uploadDir = wp_upload_dir();
-        $dest = trailingslashit($uploadDir['path']) . $filename;
-
-        file_put_contents($dest, $response['body']);
 
         return $dest;
+    }
+
+    private function getRepoZipUrl(string $repository, string $branch = 'main'): string
+    {
+        return sprintf(
+            'https://api.github.com/repos/%1$s/%2$s/zipball/%3$s',
+            $this->owner,
+            $repository,
+            $branch
+        );
     }
 
     /**
