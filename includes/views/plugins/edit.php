@@ -10,7 +10,11 @@ $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' =>
 ?>
 <?php if (($extension->localVersion != $extension->remoteVersion) && ($extension->lastError == "")) : ?>
     <div class="notice notice-info">
-        <p><a href="<?php echo $searchPlugin ?>"><?php _e('A new version is available.', 'rrze-updater'); ?></a></p>
+        <p><a href="<?php echo $searchPlugin ?>"><?php printf(
+            /* translators: %s: Remote extension version */
+            __('A new version is available: %s.', 'rrze-updater'),
+            $extension->getRemoteVersionLabel()
+        ); ?></a></p>
     </div>
 <?php endif; ?>
 <?php if ($extension->lastWarning) : ?>
@@ -47,7 +51,7 @@ $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' =>
 <p><?php printf(
         /* translators: %s: Remote extension version */
         __('Remote Version: %s', 'rrze-updater'),
-        $extension->remoteVersion
+        $extension->getRemoteVersionDetailLabel()
     ); ?>
 </p>
 <p><?php printf(

@@ -35,7 +35,7 @@ class Settings
     /**
      * @var string $optionName The name of the option used to store settings in WordPress.
      */
-    protected $optionName = 'rrze_updater';
+    protected $optionName;
 
     /**
      * Constructor to Initialize Settings
@@ -46,6 +46,8 @@ class Settings
      */
     public function __construct()
     {
+        $this->optionName = (new Config())->getOptionName();
+
         $config = is_multisite()
             ? get_site_option($this->optionName)
             : get_option($this->optionName);

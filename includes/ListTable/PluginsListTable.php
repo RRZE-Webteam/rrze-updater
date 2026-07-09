@@ -5,6 +5,7 @@ namespace RRZE\Updater\ListTable;
 defined('ABSPATH') || exit;
 
 use RRZE\Updater\Controller;
+use RRZE\Updater\Config;
 
 use WP_List_Table;
 
@@ -227,7 +228,7 @@ class PluginsListTable extends WP_List_Table
 
         $this->_column_headers = $this->get_column_info();
 
-        $perPage = $this->get_items_per_page('rrze_updater_per_page', 20);
+        $perPage = $this->get_items_per_page((new Config())->getScreenOptionPerPage(), 20);
         $currentPage = $this->get_pagenum();
         $totalItems = count($this->listData);
 

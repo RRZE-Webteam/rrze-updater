@@ -4,6 +4,7 @@ namespace RRZE\Updater\Core;
 
 defined('ABSPATH') || exit;
 
+use RRZE\Updater\Config;
 use RRZE\Updater\Utility;
 
 /**
@@ -45,7 +46,8 @@ class GithubConnector extends Connector
         } else {
             $connector->id = Utility::uniqid();
         }
-        $connector->display = 'GitHub.com';
+        $settings = (new Config())->getConnectorSettings('github');
+        $connector->display = (string) ($settings['display'] ?? 'GitHub.com');
         $connector->owner = sanitize_text_field($array['owner']);
 
         return $connector;
@@ -87,7 +89,8 @@ class GithubConnector extends Connector
     public function getUrl(string $repository): string
     {
         // Construct and return the URL of the GitHub repository.
-        $ret = 'https://github.com/' . $this->owner . '/'  . $repository;
+        $webHost = (new Config())->getGithubWebHost();
+        $ret = 'https://' . $webHost . '/' . $this->owner . '/'  . $repository;
         return $ret;
     }
 
@@ -104,7 +107,8 @@ class GithubConnector extends Connector
         // Return the SHA or false on failure.
 
         $url = sprintf(
-            'https://api.github.com/repos/%1$s/%2$s/commits?sha=%3$s',
+            'https://%1$s/repos/%2$s/%3$s/commits?sha=%4$s',
+            $this->getApiHost(),
             $this->owner,
             $repository,
             $branch
@@ -135,7 +139,8 @@ class GithubConnector extends Connector
         // Return the tag name or false on failure.
 
         $url = sprintf(
-            'https://api.github.com/repos/%1$s/%2$s/tags',
+            'https://%1$s/repos/%2$s/%3$s/tags',
+            $this->getApiHost(),
             $this->owner,
             $repository
         );
@@ -156,6 +161,40 @@ class GithubConnector extends Connector
     public function downloadRepoZip(string $repository, string $branch = 'main'): string
     {
         return $this->getRepoZipUrl($repository, $branch);
+    }
+
+    public function getRemoteFile(string $repository, string $ref, string $filePath): string|bool
+    {
+        $url = sprintf(
+            'https://%1$s/repos/%2$s/%3$s/contents/%4$s?ref=%5$s',
+            $this->getApiHost(),
+            rawurlencode($this->owner),
+            rawurlencode($repository),
+            $this->encodePath($filePath),
+            rawurlencode($ref)
+        );
+
+        $response = $this->api(
+            $url,
+            [
+                'headers' => $this->getHeaders()
+            ],
+            [
+                'logErrors' => false,
+                'storeError' => false
+            ]
+        );
+
+        if (!is_object($response) || empty($response->content)) {
+            return false;
+        }
+
+        if (($response->encoding ?? '') !== 'base64') {
+            return false;
+        }
+
+        $content = base64_decode(str_replace(["\n", "\r"], '', $response->content), true);
+        return is_string($content) ? $content : false;
     }
 
     public function downloadRepoZipToTempFile(string $repository, string $branch = 'main'): string|bool
@@ -183,12 +222,28 @@ class GithubConnector extends Connector
         $dest = wp_tempnam($repository . '.zip');
         if (!$dest) {
             $this->error = __('Could not create temporary file.', 'rrze-updater');
+            $this->logError(
+                'Could not create temporary ZIP file for {repository}.',
+                [
+                    'repository' => $repository,
+                    'ref' => $branch,
+                    'error' => $this->error
+                ]
+            );
             return false;
         }
 
         if (false === file_put_contents($dest, $response['body'])) {
             @unlink($dest);
             $this->error = __('Could not write ZIP archive to temporary file.', 'rrze-updater');
+            $this->logError(
+                'Could not write ZIP archive for {repository} to temporary file.',
+                [
+                    'repository' => $repository,
+                    'ref' => $branch,
+                    'error' => $this->error
+                ]
+            );
             return false;
         }
 
@@ -198,11 +253,20 @@ class GithubConnector extends Connector
     private function getRepoZipUrl(string $repository, string $branch = 'main'): string
     {
         return sprintf(
-            'https://api.github.com/repos/%1$s/%2$s/zipball/%3$s',
+            'https://%1$s/repos/%2$s/%3$s/zipball/%4$s',
+            $this->getApiHost(),
             $this->owner,
             $repository,
             $branch
         );
+    }
+
+    private function encodePath(string $path): string
+    {
+        $parts = explode('/', trim($path, '/'));
+        $encoded = array_map('rawurlencode', $parts);
+
+        return implode('/', $encoded);
     }
 
     /**
@@ -215,7 +279,8 @@ class GithubConnector extends Connector
         // Construct and return the HTTP headers for GitHub API requests.
         // Include authentication headers if a token is available.
 
-        $headers['Accept'] = 'application/vnd.github.v3.full+json';
+        $settings = $this->getGithubSettings();
+        $headers['Accept'] = (string) ($settings['api_accept_header'] ?? 'application/vnd.github.v3.full+json');
         if ($this->token) {
             $headers['Authorization'] = 'token ' . $this->token;
         }
@@ -236,7 +301,7 @@ class GithubConnector extends Connector
         $getArgs = [
             'headers' => $this->getHeaders()
         ];
-        $response = $this->api('https://api.github.com/rate_limit', $getArgs);
+        $response = $this->api('https://' . $this->getApiHost() . '/rate_limit', $getArgs);
         if (isset($response->resources->core->remaining) && $response->resources->core->remaining > 1) {
             $this->warning = sprintf(
                 /* translators: 1: API rate limit, 2: API rate left, 3: API rate reset */
@@ -266,8 +331,25 @@ class GithubConnector extends Connector
                     )
                 )
             );
+            $this->logError(
+                'GitHub API rate limit reached for {owner}.',
+                [
+                    'owner' => $this->owner,
+                    'error' => $this->error
+                ]
+            );
             return true;
         }
         return false;
+    }
+
+    private function getGithubSettings(): array
+    {
+        return (new Config())->getConnectorSettings('github');
+    }
+
+    private function getApiHost(): string
+    {
+        return (new Config())->getGithubApiHost();
     }
 }

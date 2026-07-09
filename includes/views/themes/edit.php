@@ -10,7 +10,11 @@ $searchTheme = add_query_arg(['s' => $extension->repository], self_admin_url('th
 ?>
 <?php if (($extension->localVersion != $extension->remoteVersion) && ($extension->lastError == "")) : ?>
     <div class="notice notice-info">
-        <p><a href="<?php echo $searchTheme ?>"><?php _e('A new version is available.', 'rrze-updater'); ?></a></p>
+        <p><a href="<?php echo $searchTheme ?>"><?php printf(
+            /* translators: %s: Remote extension version */
+            __('A new version is available: %s.', 'rrze-updater'),
+            $extension->getRemoteVersionLabel()
+        ); ?></a></p>
     </div>
 <?php endif; ?>
 <?php if ($extension->lastWarning) : ?>
@@ -29,7 +33,7 @@ $searchTheme = add_query_arg(['s' => $extension->repository], self_admin_url('th
 </h2>
 
 <p><?php printf(__('Local Version: %s', 'rrze-updater'), $extension->localVersion); ?></p>
-<p><?php printf(__('Remote Version: %s', 'rrze-updater'), $extension->remoteVersion); ?></p>
+<p><?php printf(__('Remote Version: %s', 'rrze-updater'), $extension->getRemoteVersionDetailLabel()); ?></p>
 <p><?php printf(__('Last checked on: %s', 'rrze-updater'), $lastChecked); ?></p>
 
 <form action="?page=rrze-updater-themes&action=edit&id=<?php echo $extension->id ?>" method="POST">

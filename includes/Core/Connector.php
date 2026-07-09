@@ -4,6 +4,8 @@ namespace RRZE\Updater\Core;
 
 defined('ABSPATH') || exit;
 
+use RRZE\Updater\Config;
+
 /**
  * Abstract base class for different repository connectors.
  *
@@ -104,6 +106,17 @@ abstract class Connector
     abstract public function getRemoteTag(string $repository): mixed;
 
     /**
+     * Abstract method to get a file from the repository at a specific ref.
+     *
+     * @abstract
+     * @param string $repository The name of the repository.
+     * @param string $ref        The branch, tag, or commit.
+     * @param string $filePath   The file path inside the repository.
+     * @return string|boolean The file contents or false on failure.
+     */
+    abstract public function getRemoteFile(string $repository, string $ref, string $filePath): string|bool;
+
+    /**
      * Abstract method to get the URL for downloading a ZIP archive of a specific branch of the repository.
      *
      * @abstract
@@ -163,7 +176,9 @@ abstract class Connector
         ];
 
         $defaultArgs = [
-            'jsonDecodeBody' => true
+            'jsonDecodeBody' => true,
+            'logErrors' => true,
+            'storeError' => true
         ];
 
         $getArgs = wp_parse_args($getArgs, $defaultGetArgs);
@@ -175,11 +190,36 @@ abstract class Connector
         $allowedCodes = [200];
 
         if (is_wp_error($response)) {
-            $this->error = $response->get_error_message();
+            $error = $response->get_error_message();
+            if ($args['storeError']) {
+                $this->error = $error;
+            }
+            if ($args['logErrors']) {
+                $this->logError(
+                    'Repository API request failed: {error}',
+                    [
+                        'error' => $error,
+                        'url' => $this->redactLogUrl($url)
+                    ]
+                );
+            }
             return false;
         }
         if (!in_array($code, $allowedCodes, false)) {
-            $this->error = isset($httpErrors[$code]) ? $httpErrors[$code] : 'HTTP error ' . $code;
+            $error = isset($httpErrors[$code]) ? $httpErrors[$code] : 'HTTP error ' . $code;
+            if ($args['storeError']) {
+                $this->error = $error;
+            }
+            if ($args['logErrors']) {
+                $this->logError(
+                    'Repository API request returned HTTP {http-code}: {error}',
+                    [
+                        'error' => $error,
+                        'http-code' => $code,
+                        'url' => $this->redactLogUrl($url)
+                    ]
+                );
+            }
             return false;
         }
 
@@ -188,5 +228,37 @@ abstract class Connector
         }
 
         return $response;
+    }
+
+    /**
+     * Logs an error through the RRZE logging action.
+     *
+     * @param string $message The log message.
+     * @param array  $context Additional log context.
+     */
+    protected function logError(string $message, array $context = [])
+    {
+        $context = wp_parse_args(
+            $context,
+            [
+                'plugin' => (new Config())->getLogPlugin(),
+                'connector' => static::class,
+                'service' => $this->display ?? '',
+                'owner' => $this->owner ?? ''
+            ]
+        );
+
+        do_action('rrze.log.error', $message, $context);
+    }
+
+    /**
+     * Redacts secrets from URLs before logging.
+     *
+     * @param string $url The URL to redact.
+     * @return string The redacted URL.
+     */
+    protected function redactLogUrl(string $url): string
+    {
+        return preg_replace('/([?&]private_token=)[^&]+/', '$1[redacted]', $url);
     }
 }

@@ -4,6 +4,8 @@ namespace RRZE\Updater\Core;
 
 defined('ABSPATH') || exit;
 
+use RRZE\Updater\Config;
+
 /**
  * Class Theme
  *
@@ -27,5 +29,18 @@ class Theme extends Extension
         $theme = new Theme();
         $theme->updateFromArray($array);
         return $theme;
+    }
+
+    protected function getVersionFileCandidates(): array
+    {
+        $config = new Config();
+
+        return array_values(array_unique(array_merge(
+            $config->getReadmeFiles(),
+            [
+                $config->getPackageFile(),
+                $config->getThemeMainFile()
+            ]
+        )));
     }
 }

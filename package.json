@@ -1,0 +1,38 @@
+{
+  "name": "rrze-updater",
+  "title": "RRZE Updater",
+  "version": "2.5.9",
+  "description": "Sync Plugins and Themes with the corresponding GitHub or GitLab repositories.",
+  "main": "rrze-updater.php",
+  "textdomain": "rrze-updater",
+  "textDomain": "rrze-updater",
+  "private": true,
+  "scripts": {
+    "readme": "node scripts/build-readme.js",
+    "version:dev": "node scripts/build-version.js dev",
+    "version:prod": "node scripts/build-version.js prod",
+    "version:release": "node scripts/build-version.js release",
+    "dev": "npm run version:dev && npm run readme",
+    "build": "npm run readme",
+    "prod": "npm run version:prod && npm run readme",
+    "release": "npm run version:release && npm run readme"
+  },
+  "compatibility": {
+    "wprequires": "6.8",
+    "wptestedup": "7.0",
+    "phprequires": "8.2"
+  },
+  "author": {
+    "name": "RRZE Webteam",
+    "url": "https://github.com/RRZE-Webteam"
+  },
+  "homepage": "https://github.com/RRZE-Webteam/rrze-updater",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RRZE-Webteam/rrze-updater.git",
+    "issues": "https://github.com/RRZE-Webteam/rrze-updater/issues"
+  },
+  "license": "GNU General Public License Version 3",
+  "licenseurl": "https://www.gnu.org/licenses/gpl-3.0.html",
+  "tags": "Plugin, WordPress, Updater, GitHub, GitLab, RRZE"
+}

@@ -12,11 +12,6 @@ defined('ABSPATH') || exit;
 class Cron
 {
     /**
-     * The action hook used for scheduling updates.
-     */
-    const ACTION_HOOK = 'rrze_updater_check_for_updates';
-
-    /**
      * @var Settings The settings object for managing extension data.
      */
     private $settings;
@@ -37,12 +32,13 @@ class Cron
     public function __construct(Settings $settings, Controller $controller)
     {
         $blogId = get_current_blog_id();
+        $actionHook = $this->getActionHook();
 
         // Check if this is not the main blog (blogId != 1).
-        if ($blogId != 1) {
+        if ($blogId != $this->getMainBlogId()) {
             // If there is a scheduled hook, clear it for non-main blogs.
-            if (wp_get_schedule(self::ACTION_HOOK) !== false) {
-                wp_clear_scheduled_hook(self::ACTION_HOOK);
+            if (wp_get_schedule($actionHook) !== false) {
+                wp_clear_scheduled_hook($actionHook);
             }
             return;
         }
@@ -52,23 +48,25 @@ class Cron
         $this->controller = $controller;
 
         // Add action hooks to run events and activate scheduled events.
-        add_action(self::ACTION_HOOK, [$this, 'runEvents']);
+        add_action($actionHook, [$this, 'runEvents']);
         add_action('init', [$this, 'activateScheduledEvents']);
     }
 
     /**
      * Activate scheduled events.
      *
-     * Schedule the 'rrze_updater_check_for_updates' event to run twicedaily.
+     * Schedule the configured update check event.
      */
     public function activateScheduledEvents()
     {
-        if (!wp_next_scheduled(self::ACTION_HOOK)) {
-            // Schedule the event to run twicedaily.
+        $actionHook = $this->getActionHook();
+
+        if (!wp_next_scheduled($actionHook)) {
+            // Schedule the event to run on the configured schedule.
             wp_schedule_event(
                 time(),
-                'twicedaily',
-                self::ACTION_HOOK
+                $this->getSchedule(),
+                $actionHook
             );
         }
     }
@@ -89,7 +87,7 @@ class Cron
 
         // Iterate through plugins and themes to check for updates.
         foreach (array_merge($this->settings->plugins, $this->settings->themes) as $extension) {
-            if (!$extension->lastChecked || ($now - $extension->lastChecked) > HOUR_IN_SECONDS) {
+            if (!$extension->lastChecked || ($now - $extension->lastChecked) > $this->getMinimumCheckInterval()) {
                 // Check for updates if last checked more than an hour ago.
                 $extension->checkForUpdates();
             }
@@ -100,10 +98,32 @@ class Cron
     }
 
     /**
-     * Clear all scheduled events for 'rrze_updater_check_for_updates'.
+     * Clear all scheduled update check events.
      */
     public static function clearSchedule()
     {
-        wp_clear_scheduled_hook(self::ACTION_HOOK);
+        $actionHook = (new Config())->getCronActionHook();
+
+        wp_clear_scheduled_hook($actionHook);
+    }
+
+    private function getActionHook(): string
+    {
+        return (new Config())->getCronActionHook();
+    }
+
+    private function getSchedule(): string
+    {
+        return (new Config())->getCronSchedule();
+    }
+
+    private function getMinimumCheckInterval(): int
+    {
+        return (new Config())->getCronMinimumCheckInterval();
+    }
+
+    private function getMainBlogId(): int
+    {
+        return (new Config())->getCronMainBlogId();
     }
 }

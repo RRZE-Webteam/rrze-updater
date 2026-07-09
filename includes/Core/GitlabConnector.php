@@ -4,6 +4,7 @@ namespace RRZE\Updater\Core;
 
 defined('ABSPATH') || exit;
 
+use RRZE\Updater\Config;
 use RRZE\Updater\Utility;
 
 /**
@@ -13,6 +14,20 @@ use RRZE\Updater\Utility;
  */
 class GitlabConnector extends Connector
 {
+    /**
+     * GitLab host name.
+     *
+     * @var string
+     */
+    public $host;
+
+    /**
+     * GitLab projects API URI.
+     *
+     * @var string
+     */
+    public $apiUri;
+
     /**
      * Constructor for the GitlabConnector class.
      */
@@ -45,7 +60,7 @@ class GitlabConnector extends Connector
         } else {
             $connector->id = Utility::uniqid();
         }
-        $connector->display = 'RRZE Gitlab';
+        $connector->updateServerSettings($array);
         $connector->owner = sanitize_text_field($array['owner']);
 
         return $connector;
@@ -64,6 +79,8 @@ class GitlabConnector extends Connector
             'id' => $this->id,
             'display' => $this->display,
             'owner' => $this->owner,
+            'host' => $this->host,
+            'apiUri' => $this->apiUri,
             'token' => $this->token
         ];
     }
@@ -79,6 +96,32 @@ class GitlabConnector extends Connector
     }
 
     /**
+     * Updates configurable GitLab server settings.
+     *
+     * @param array $array An associative array of connector settings.
+     */
+    public function updateServerSettings(array $array)
+    {
+        $rrzeSettings = self::getGitlabRrzeSettings();
+        $customSettings = self::getGitlabCustomSettings();
+        $config = new Config();
+        $defaultHost = $config->getGitlabDefaultHost();
+        $defaultApiUri = $config->getGitlabDefaultApiUri();
+        $defaultDisplay = (string) ($rrzeSettings['default_display'] ?? 'GitLab RRZE');
+        $customDisplayFormat = (string) ($customSettings['custom_display_format'] ?? 'GitLab (%s)');
+
+        $this->host = self::sanitizeHost((string) ($array['host'] ?? $defaultHost));
+        $this->apiUri = self::sanitizeApiUri((string) ($array['apiUri'] ?? $defaultApiUri));
+
+        if ($this->host === $defaultHost && $this->apiUri === $defaultApiUri) {
+            $this->display = $defaultDisplay;
+            return;
+        }
+
+        $this->display = sprintf($customDisplayFormat, $this->host);
+    }
+
+    /**
      * Get the URL of a GitLab repository based on the owner and repository name.
      *
      * @param string $repository The name of the repository.
@@ -87,7 +130,7 @@ class GitlabConnector extends Connector
     public function getUrl(string $repository): string
     {
         // Construct and return the URL of the GitLab repository.
-        return 'https://gitlab.rrze.fau.de/' . $this->owner . '/' . $repository;
+        return $this->getBaseUrl() . '/' . $this->owner . '/' . $repository;
     }
 
     /**
@@ -103,13 +146,14 @@ class GitlabConnector extends Connector
         // Return the ID or false on failure.
 
         $url = sprintf(
-            'https://gitlab.rrze.fau.de/api/v4/projects/%1$s/repository/commits?ref_name=%2$s',
+            '%1$s/%2$s/repository/commits?ref_name=%3$s',
+            $this->getApiBaseUrl(),
             urlencode($this->owner . '/' . $repository),
-            $branch
+            rawurlencode($branch)
         );
 
         if ($this->token) {
-            $url .= "&private_token=" . $this->token;
+            $url = $this->addPrivateToken($url);
         }
 
         $response = $this->api($url);
@@ -133,12 +177,13 @@ class GitlabConnector extends Connector
         // Return the tag name or false on failure.
 
         $url = sprintf(
-            'https://gitlab.rrze.fau.de/api/v4/projects/%s/repository/tags',
+            '%1$s/%2$s/repository/tags',
+            $this->getApiBaseUrl(),
             urlencode($this->owner . '/' . $repository)
         );
 
         if ($this->token) {
-            $url .= "?private_token=" . $this->token;
+            $url = $this->addPrivateToken($url);
         }
 
         $response = $this->api($url);
@@ -162,13 +207,14 @@ class GitlabConnector extends Connector
         // Return false on failure or rate limit reached.
 
         $url = sprintf(
-            'https://gitlab.rrze.fau.de/api/v4/projects/%1$s/repository/archive.zip?sha=%2$s',
+            '%1$s/%2$s/repository/archive.zip?sha=%3$s',
+            $this->getApiBaseUrl(),
             urlencode($this->owner . '/' . $repository),
-            $branch
+            rawurlencode($branch)
         );
 
         if ($this->token) {
-            $url .= "&private_token=" . $this->token;
+            $url = $this->addPrivateToken($url);
         }
 
         $response = $this->api($url, [], ['jsonDecodeBody' => false]);
@@ -177,5 +223,90 @@ class GitlabConnector extends Connector
         }
 
         return $url;
+    }
+
+    public function getRemoteFile(string $repository, string $ref, string $filePath): string|bool
+    {
+        $url = sprintf(
+            '%1$s/%2$s/repository/files/%3$s/raw?ref=%4$s',
+            $this->getApiBaseUrl(),
+            urlencode($this->owner . '/' . $repository),
+            urlencode($filePath),
+            rawurlencode($ref)
+        );
+
+        if ($this->token) {
+            $url = $this->addPrivateToken($url);
+        }
+
+        $response = $this->api(
+            $url,
+            [],
+            [
+                'jsonDecodeBody' => false,
+                'logErrors' => false,
+                'storeError' => false
+            ]
+        );
+
+        if (!$response || !isset($response['body'])) {
+            return false;
+        }
+
+        return is_string($response['body']) ? $response['body'] : false;
+    }
+
+    private static function sanitizeHost(string $host): string
+    {
+        $defaultHost = (new Config())->getGitlabDefaultHost();
+        $host = trim(sanitize_text_field($host));
+        $parsedHost = parse_url($host, PHP_URL_HOST);
+
+        if ($parsedHost) {
+            $host = $parsedHost;
+        }
+
+        $host = trim($host, " \t\n\r\0\x0B/");
+
+        return $host ?: $defaultHost;
+    }
+
+    private static function sanitizeApiUri(string $apiUri): string
+    {
+        $defaultApiUri = (new Config())->getGitlabDefaultApiUri();
+        $apiUri = trim(sanitize_text_field($apiUri));
+
+        if ($apiUri === '') {
+            $apiUri = $defaultApiUri;
+        }
+
+        return '/' . trim($apiUri, '/') . '/';
+    }
+
+    private function getBaseUrl(): string
+    {
+        return 'https://' . $this->host;
+    }
+
+    private function getApiBaseUrl(): string
+    {
+        return rtrim($this->getBaseUrl() . $this->apiUri, '/');
+    }
+
+    private function addPrivateToken(string $url): string
+    {
+        $separator = strpos($url, '?') === false ? '?' : '&';
+
+        return $url . $separator . 'private_token=' . rawurlencode($this->token);
+    }
+
+    private static function getGitlabRrzeSettings(): array
+    {
+        return (new Config())->getConnectorSettings('gitlab-rrze');
+    }
+
+    private static function getGitlabCustomSettings(): array
+    {
+        return (new Config())->getConnectorSettings('gitlab-custom');
     }
 }
