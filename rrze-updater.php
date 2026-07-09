@@ -24,53 +24,32 @@ defined('ABSPATH') || exit;
  * Register a custom autoloader (PSR-4) using spl_autoload_register().
  */
 spl_autoload_register(function ($class) {
-    // Define the namespace prefix for the classes.
     $prefix = __NAMESPACE__;
-
-    // Define the base directory where the class files are located.
     $baseDir = __DIR__ . '/includes/';
+    $lengthOfNamespacePrefix = strlen($prefix);
 
-    // Calculate the length of the namespace prefix.
-    $len = strlen($prefix);
-
-    // Check if the provided class starts with the defined namespace prefix.
-    if (strncmp($prefix, $class, $len) !== 0) {
-        return; // The class does not belong to this namespace, so no action is taken.
+    if (strncmp($prefix, $class, $lengthOfNamespacePrefix) !== 0) {
+        return;
     }
 
-    // Extract the relative class name (without the namespace).
-    $relativeClass = substr($class, $len);
-
-    // Build the file path based on the namespace and relative class name.
+    $relativeClass = substr($class, $lengthOfNamespacePrefix);
     $file = $baseDir . str_replace('\\', '/', $relativeClass) . '.php';
 
-    // Check if the file exists before attempting to include it.
     if (file_exists($file)) {
-        require $file; // Include the class file.
+        require $file;
     }
 });
 
-// Load the plugin's text domain for localization.
+
 add_action('init', fn() => load_plugin_textdomain('rrze-updater', false, dirname(plugin_basename(__FILE__)) . '/languages'));
+add_action('plugins_loaded', __NAMESPACE__ . '\loaded');
 
-// Register activation hook for the plugin
 register_activation_hook(__FILE__, __NAMESPACE__ . '\activation');
-
-// Register deactivation hook for the plugin
 register_deactivation_hook(__FILE__, __NAMESPACE__ . '\deactivation');
 
-/**
- * Add an action hook for the 'plugins_loaded' hook.
- *
- * This code hooks into the 'plugins_loaded' action hook to execute a callback function when
- * WordPress has fully loaded all active plugins and the theme's functions.php file.
- */
-add_action('plugins_loaded', __NAMESPACE__ . '\loaded');
 
 /**
  * Handle the activation of the plugin.
- *
- * This function is called when the plugin is activated.
  */
 function activation($networkWide)
 {
@@ -79,13 +58,9 @@ function activation($networkWide)
 
 /**
  * Handle the deactivation of the plugin.
- *
- * This function is called when the plugin is deactivated.
- * It clears any scheduled cron jobs associated with the plugin.
  */
 function deactivation()
 {
-    // Clear any scheduled cron jobs associated with the plugin.
     Cron::clearSchedule();
 }
 
@@ -98,16 +73,13 @@ function deactivation()
  */
 function plugin()
 {
-    // Declare a static variable to hold the instance.
     static $instance;
 
     // Check if the instance is not already created.
     if (null === $instance) {
-        // Add a new instance of the Plugin class, passing the current file (__FILE__) as a parameter.
         $instance = new Plugin(__FILE__);
     }
 
-    // Return the main instance of the Plugin class.
     return $instance;
 }
 
@@ -121,16 +93,10 @@ function plugin()
  */
 function systemRequirements(): string
 {
-    // Get the global WordPress version.
     global $wp_version;
-
-    // Get the PHP version.
     $phpVersion = phpversion();
-
-    // Initialize an error message string.
     $error = '';
 
-    // Check if the WordPress version is compatible with the plugin's requirement.
     if (!is_wp_version_compatible(plugin()->getRequiresWP())) {
         $error = sprintf(
             /* translators: 1: Server WordPress version number, 2: Required WordPress version number. */
@@ -139,7 +105,6 @@ function systemRequirements(): string
             plugin()->getRequiresWP()
         );
     } elseif (!is_php_version_compatible(plugin()->getRequiresPHP())) {
-        // Check if the PHP version is compatible with the plugin's requirement.
         $error = sprintf(
             /* translators: 1: Server PHP version number, 2: Required PHP version number. */
             __('The server is running PHP version %1$s. The plugin requires at least PHP version %2$s.', 'rrze-updater'),
@@ -147,11 +112,8 @@ function systemRequirements(): string
             plugin()->getRequiresPHP()
         );
     } elseif (is_multisite() && !is_plugin_active_for_network(plugin()->getBaseName())) {
-        // Set an error message indicating that the plugin can only be installed network-wide in a multisite installation.
         $error = __('In a multisite installation, the plugin can only be installed network-wide.', 'rrze-updater');
     }
-
-    // Return the error message string, which will be empty if requirements are satisfied.
     return $error;
 }
 
@@ -163,23 +125,16 @@ function systemRequirements(): string
  */
 function loaded()
 {
-    // Trigger the 'loaded' method of the main plugin instance.
     plugin()->loaded();
 
-    // Check system requirements.
     if (systemRequirements()) {
-        // If there is an error, add an action to display an admin notice with the error message.
         add_action('admin_init', function () {
             $error = systemRequirements();
-            // Check if the current user has the capability to activate plugins.
             if (current_user_can('activate_plugins')) {
-                // Get plugin data to retrieve the plugin's name.
                 $pluginName = plugin()->getName();
 
-                // Determine the admin notice tag based on network-wide activation.
                 $tag = is_plugin_active_for_network(plugin()->getBaseName()) ? 'network_admin_notices' : 'admin_notices';
 
-                // Add an action to display the admin notice.
                 add_action($tag, function () use ($pluginName, $error) {
                     printf(
                         '<div class="notice notice-error"><p>' .
@@ -193,10 +148,8 @@ function loaded()
             }
         });
 
-        // Return to prevent further initialization if there is an error.
         return;
     }
 
-    // If there are no errors, create an instance of the 'Main' class and trigger its 'loaded' method.
     (new Main)->loaded();
 }
