@@ -55,4 +55,4 @@ RRZE Updater automatically checks for new updates. To manually check for new upd
 Errors can be logged as issues in GitLab. Alternatively, issues and inquiries can be sent to webmaster@fau.de with the subject "RRZE Updater Plugin".
 
 ## License
-GNU GENERAL PUBLIC LICENSE Version 2.
+GNU GENERAL PUBLIC LICENSE Version 3.

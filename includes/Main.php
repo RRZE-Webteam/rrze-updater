@@ -11,6 +11,7 @@ require_once ABSPATH . 'wp-admin/includes/plugin.php';
 use RRZE\Updater\Settings;
 use RRZE\Updater\Controller;
 
+use RRZE\Updater\Core\GithubConnector;
 use RRZE\Updater\Core\GitlabConnector;
 use RRZE\Updater\Core\Plugin;
 
@@ -49,27 +50,24 @@ class Main
     public $settings;
 
     /**
+     * The plugin configuration.
+     *
+     * @var Config
+     */
+    protected $config;
+
+    /**
      * The current extension type ('plugin' or 'theme') being operated on.
      *
      * @var string
      */
     public $currentExtension;
 
-    /**
-     * Main constructor.
-     *
-     * Initializes the RRZE Updater plugin by creating instances of the necessary components.
-     * It sets up the plugin for use within WordPress.
-     */
     public function __construct()
     {
-        // Add a new Settings instance for managing plugin settings.
+        $this->config = new Config();
         $this->settings = new Settings();
-
-        // Add a new Controller instance and pass in the settings.
         $this->controller = new Controller($this->settings);
-
-        // Initialize the Cron component for scheduling and running periodic tasks.
         new Cron($this->settings, $this->controller);
     }
 
@@ -82,17 +80,14 @@ class Main
      */
     public function loaded()
     {
-        // Initialize plugin settings.
         $this->initSettings();
 
-        // Set up hooks and actions based on whether it's a multisite or single site.
         if (!is_multisite()) {
-            // Single site setup.
             add_action('admin_menu', [$this, 'adminMenu']);
             add_filter('plugin_action_links', [$this, 'pluginActionLinks'], 10, 2);
         } else {
-            // Multisite network admin setup.
             add_action('network_admin_menu', [$this, 'adminMenu']);
+            add_action('admin_bar_menu', [$this, 'adminBarMenu'], 100);
             add_filter('network_admin_plugin_action_links', [$this, 'pluginActionLinks'], 10, 2);
         }
 
@@ -101,6 +96,9 @@ class Main
         add_filter('site_transient_update_themes', [$this, 'siteTransientUpdateThemes']);
         add_filter('pre_set_site_transient_update_plugins', [$this, 'preSetSiteTransientUpdatePlugins']);
         add_filter('pre_set_site_transient_update_themes', [$this, 'preSetSiteTransientUpdateThemes']);
+
+        // Download authenticated GitHub packages only when the upgrader actually needs them.
+        add_filter('upgrader_pre_download', [$this, 'upgraderPreDownloadFilter'], 10, 4);
 
         // Set up a filter for modifying the source selection during plugin/theme updates.
         add_filter('upgrader_source_selection', [$this, 'upgraderSourceSelectionFilter'], 10, 4);
@@ -117,6 +115,27 @@ class Main
     }
 
     /**
+     * Adds a repositories link to the network administration admin bar menu.
+     *
+     * @param WP_Admin_Bar $wpAdminBar The WordPress admin bar instance.
+     */
+    public function adminBarMenu($wpAdminBar)
+    {
+        if (!is_multisite() || !current_user_can('manage_network')) {
+            return;
+        }
+
+        $menuSettings = $this->config->getMenuSettings();
+
+        $wpAdminBar->add_node([
+            'id' => $menuSettings['admin_bar_repositories_id'] ?? 'rrze-updater-network-repositories',
+            'parent' => $menuSettings['admin_bar_network_parent'] ?? 'network-admin',
+            'title' => __('Repositories', 'rrze-updater'),
+            'href' => network_admin_url('admin.php?page=' . ($menuSettings['repositories_slug'] ?? 'rrze-updater'))
+        ]);
+    }
+
+    /**
      * Initializes the RRZE Updater plugin's admin menu.
      *
      * This method is responsible for creating the plugin's menu and submenu pages in the WordPress admin interface.
@@ -125,42 +144,49 @@ class Main
      */
     public function adminMenu()
     {
+        $menuSettings = $this->config->getMenuSettings();
+        $capability = $menuSettings['capability'] ?? 'manage_options';
+        $repositoriesSlug = $menuSettings['repositories_slug'] ?? 'rrze-updater';
+        $connectorsSlug = $menuSettings['connectors_slug'] ?? 'rrze-updater-connectors';
+        $pluginsSlug = $menuSettings['plugins_slug'] ?? 'rrze-updater-plugins';
+        $themesSlug = $menuSettings['themes_slug'] ?? 'rrze-updater-themes';
+
         // Add the main "Repositories" menu page.
         $repoPage = add_menu_page(
-            __('Repositories', 'rrze-updater'),  // Page title
-            __('Repositories', 'rrze-updater'),  // Menu title
-            'manage_options',                    // Capability required to access
-            'rrze-updater',                      // Menu slug
-            [$this->controller, 'getRepoIndex'], // Callback function for the page content
-            'dashicons-update'                   // Dashicon icon
+            __('Repositories', 'rrze-updater'),             // Page title
+            __('Repositories', 'rrze-updater'),             // Menu title
+            $capability,                      // Capability required to access
+            $repositoriesSlug,                       // Menu slug
+            [$this->controller, 'getRepoIndex'],            // Callback function for the page content
+            'dashicons-update'                      // Dashicon icon
         );
 
         // Add submenu pages for "Services," "Plugins," and "Themes."
         $connPage = add_submenu_page(
-            'rrze-updater',                          // Parent menu slug
-            __('Services', 'rrze-updater'),          // Page title
-            __('Services', 'rrze-updater'),          // Menu title
-            'manage_options',                        // Capability required to access
-            'rrze-updater-connectors',               // Menu slug
-            [$this->controller, 'getConnectorIndex'] // Callback function for the page content
+            $repositoriesSlug,                      // Parent menu slug
+            __('Services', 'rrze-updater'),                 // Page title
+            __('Services', 'rrze-updater'),                 // Menu title
+            $capability,                      // Capability required to access
+            $connectorsSlug,            // Menu slug
+            [$this->controller, 'getConnectorIndex']        // Callback function for the page content
         );
 
         $pluginsPage = add_submenu_page(
-            'rrze-updater',                       // Parent menu slug
-            __('Plugins', 'rrze-updater'),        // Page title
-            __('Plugins', 'rrze-updater'),        // Menu title
-            'manage_options',                     // Capability required to access
-            'rrze-updater-plugins',                // Menu slug
-            [$this->controller, 'getPluginIndex'] // Callback function for the page content
+            $repositoriesSlug,                      // Parent menu slug
+            __('Plugins', 'rrze-updater'),                  // Page title
+            __('Plugins', 'rrze-updater'),                  // Menu title
+            $capability,                      // Capability required to access
+            $pluginsSlug,                // Menu slug
+            [$this->controller, 'getPluginIndex']           // Callback function for the page content
         );
 
         $themesPage = add_submenu_page(
-            'rrze-updater',                      // Parent menu slug
-            __('Themes', 'rrze-updater'),        // Page title
-            __('Themes', 'rrze-updater'),        // Menu title
-            'manage_options',                    // Capability required to access
-            'rrze-updater-themes',                // Menu slug
-            [$this->controller, 'getThemeIndex'] // Callback function for the page content
+            $repositoriesSlug,                      // Parent menu slug
+            __('Themes', 'rrze-updater'),                   // Page title
+            __('Themes', 'rrze-updater'),                   // Menu title
+            $capability,                     // Capability required to access
+            $themesSlug,                // Menu slug
+            [$this->controller, 'getThemeIndex']            // Callback function for the page content
         );
 
         // Set up screen options for each admin page.
@@ -174,7 +200,7 @@ class Main
      * Adjusts screen options for RRZE Updater plugin pages.
      *
      * This method is a callback used to modify screen options for RRZE Updater plugin pages.
-     * It specifically targets the 'rrze_updater_per_page' option and returns the provided value.
+     * It specifically targets the configured per-page option and returns the provided value.
      * By doing so, it allows users to configure the number of items displayed per page on RRZE Updater pages.
      *
      * @param mixed $status The current status of the option.
@@ -185,7 +211,7 @@ class Main
      */
     public function setScreenOption($status, $option, $value)
     {
-        if ('rrze_updater_per_page' == $option) {
+        if ($this->config->getScreenOptionPerPage() == $option) {
             return $value;
         }
         return $status;
@@ -329,7 +355,7 @@ class Main
                         $response->id = $pluginFile;
                         $response->slug = $extension->installationFolder;
                         $response->plugin = $pluginFile;
-                        $response->new_version = substr($extension->remoteVersion, 0, 6) . '&hellip; (commit)';
+                        $response->new_version = $extension->getRemoteVersionLabel();
                         $response->url = $extension->connector->getUrl($extension->repository);
                         $response->package = $extension->connector->downloadRepoZip($extension->repository, $extension->remoteVersion);
                         $response->icons = [];
@@ -384,7 +410,7 @@ class Main
                     ) {
                         $response = [];
                         $response['theme'] = $themeFolder;
-                        $response['new_version'] = substr($extension->remoteVersion, 0, 6) . '&hellip; (commit)';
+                        $response['new_version'] = $extension->getRemoteVersionLabel();
                         $response['url'] = $extension->connector->getUrl($extension->repository);
                         $response['package'] = $extension->connector->downloadRepoZip($extension->repository, $extension->remoteVersion);
                         $response['requires'] = '';
@@ -456,21 +482,24 @@ class Main
 
             if (!current_user_can('update_plugins')) {
                 printf(
-                    /* translators: %s: Extension name */
-                    __('There is a new version of %s available.', 'rrze-updater'),
-                    $plugin_name
+                    /* translators: 1: Extension name, 2: Version number */
+                    __('There is a new version of %1$s available: %2$s.', 'rrze-updater'),
+                    $plugin_name,
+                    $response->new_version
                 );
             } elseif (empty($response->package)) {
                 printf(
-                    /* translators: %s: Extension name */
-                    __('There is a new version of %s available. <em>Automatic update is unavailable for this plugin.</em>', 'rrze-updater'),
-                    $plugin_name
+                    /* translators: 1: Extension name, 2: Version number */
+                    __('There is a new version of %1$s available: %2$s. <em>Automatic update is unavailable for this plugin.</em>', 'rrze-updater'),
+                    $plugin_name,
+                    $response->new_version
                 );
             } else {
                 printf(
-                    /* translators: 1: Extension name, 2: Update URL, 3: Additional link attributes */
-                    __('There is a new version of %1$s available. <a href="%2$s" %3$s>Update now</a>.'),
+                    /* translators: 1: Extension name, 2: Version number, 3: Update URL, 4: Additional link attributes */
+                    __('There is a new version of %1$s available: %2$s. <a href="%3$s" %4$s>Update now</a>.', 'rrze-updater'),
                     $plugin_name,
+                    $response->new_version,
                     wp_nonce_url(self_admin_url('update.php?action=upgrade-plugin&plugin=') . $file, 'upgrade-plugin_' . $file),
                     sprintf(
                         'class="update-link" aria-label="%s"',
@@ -546,21 +575,24 @@ class Main
         echo '<tr class="plugin-update-tr' . $activeClass . '" id="' . esc_attr($theme->get_stylesheet() . '-update') . '" data-slug="' . esc_attr($theme->get_stylesheet()) . '"><td colspan="' . $wpListTable->get_column_count() . '" class="plugin-update colspanchange"><div class="update-message notice inline notice-warning notice-alt"><p>';
         if (!current_user_can('update_themes')) {
             printf(
-                /* translators: %s: Extension name */
-                __('There is a new version of %s available.', 'rrze-updater'),
-                $theme['Name']
+                /* translators: 1: Extension name, 2: Version number */
+                __('There is a new version of %1$s available: %2$s.', 'rrze-updater'),
+                $theme['Name'],
+                $response['new_version']
             );
         } elseif (empty($response['package'])) {
             printf(
-                /* translators: %s: Extension name */
-                __('There is a new version of %s available. <em>Automatic update is unavailable for this theme.</em>', 'rrze-updater'),
-                $theme['Name']
+                /* translators: 1: Extension name, 2: Version number */
+                __('There is a new version of %1$s available: %2$s. <em>Automatic update is unavailable for this theme.</em>', 'rrze-updater'),
+                $theme['Name'],
+                $response['new_version']
             );
         } else {
             printf(
-                /* translators: 1: Extension name, 2: Update URL, 3: Additional link attributes */
-                __('There is a new version of %1$s available. <a href="%2$s" %3$s>Update now</a>.', 'rrze-updater'),
+                /* translators: 1: Extension name, 2: Version number, 3: Update URL, 4: Additional link attributes */
+                __('There is a new version of %1$s available: %2$s. <a href="%3$s" %4$s>Update now</a>.', 'rrze-updater'),
                 $theme['Name'],
+                $response['new_version'],
                 wp_nonce_url(self_admin_url('update.php?action=upgrade-theme&theme=') . $theme_key, 'upgrade-theme_' . $theme_key),
                 sprintf(
                     'class="update-link" aria-label="%s"',
@@ -799,6 +831,150 @@ class Main
         return $source;
     }
 
+    public function upgraderPreDownloadFilter($reply, $package, $upgrader, $hookExtra)
+    {
+        if (false !== $reply || !is_string($package)) {
+            return $reply;
+        }
+
+        $pluginExtension = $this->getPluginExtensionForUpgrade($upgrader, $hookExtra);
+        if ($pluginExtension) {
+            $validation = $this->validatePluginRepositoryForUpgrade($pluginExtension);
+            if (is_wp_error($validation)) {
+                return $validation;
+            }
+        }
+
+        $extension = $this->getGithubExtensionForUpgrade($upgrader, $hookExtra);
+        if (!$extension) {
+            return false;
+        }
+
+        $refs = array_filter(array_unique([
+            $extension->remoteVersion ?? '',
+            $extension->branch ?? '',
+            'main'
+        ]));
+
+        foreach ($refs as $ref) {
+            if ($package !== $extension->connector->downloadRepoZip($extension->repository, $ref)) {
+                continue;
+            }
+
+            $download = $extension->connector->downloadRepoZipToTempFile($extension->repository, $ref);
+            if (!$download) {
+                do_action(
+                    'rrze.log.error',
+                    'Download failed for {repository} at ref {ref}.',
+                    [
+                        'plugin' => $this->config->getLogPlugin(),
+                        'repository' => $extension->repository,
+                        'ref' => $ref,
+                        'service' => $extension->connector->display ?? '',
+                        'error' => $extension->connector->error ?: __('Download failed.', 'rrze-updater')
+                    ]
+                );
+
+                return new WP_Error(
+                    'download_failed',
+                    $extension->connector->error ?: __('Download failed.', 'rrze-updater')
+                );
+            }
+
+            return $download;
+        }
+
+        return false;
+    }
+
+    private function validatePluginRepositoryForUpgrade(Plugin $extension): bool|WP_Error
+    {
+        $ref = $extension->remoteVersion ?: ($extension->branch ?: 'main');
+        $validation = $extension->validateRemotePluginRepository($ref);
+        if (!is_wp_error($validation)) {
+            return true;
+        }
+
+        do_action(
+            'rrze.log.error',
+            'Plugin update failed for {repository}: {error}',
+            [
+                'plugin' => $this->config->getLogPlugin(),
+                'repository' => $extension->repository,
+                'installation-folder' => $extension->installationFolder,
+                'ref' => $ref,
+                'service' => $extension->connector->display ?? '',
+                'error' => $validation->get_error_message()
+            ]
+        );
+
+        return $validation;
+    }
+
+    private function getPluginExtensionForUpgrade($upgrader, array $hookExtra): Plugin|bool
+    {
+        if (
+            $upgrader->skin instanceof PluginUpgraderSkin
+            && $upgrader->skin->extension instanceof Plugin
+        ) {
+            return $upgrader->skin->extension;
+        }
+
+        if (($hookExtra['type'] ?? '') == 'plugin' && !empty($hookExtra['plugin'])) {
+            $pluginFileParts = explode('/', $hookExtra['plugin']);
+            $installationFolder = $pluginFileParts[0];
+
+            foreach ($this->settings->plugins as $extension) {
+                if (
+                    $extension instanceof Plugin
+                    && $extension->installationFolder == $installationFolder
+                ) {
+                    return $extension;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function getGithubExtensionForUpgrade($upgrader, array $hookExtra)
+    {
+        if (
+            ($upgrader->skin instanceof PluginUpgraderSkin
+                || $upgrader->skin instanceof ThemeUpgraderSkin)
+            && $upgrader->skin->extension->connector instanceof GithubConnector
+        ) {
+            return $upgrader->skin->extension;
+        }
+
+        if (($hookExtra['type'] ?? '') == 'plugin' && !empty($hookExtra['plugin'])) {
+            $pluginFileParts = explode('/', $hookExtra['plugin']);
+            $installationFolder = $pluginFileParts[0];
+
+            foreach ($this->settings->plugins as $extension) {
+                if (
+                    $extension->installationFolder == $installationFolder
+                    && $extension->connector instanceof GithubConnector
+                ) {
+                    return $extension;
+                }
+            }
+        }
+
+        if (($hookExtra['type'] ?? '') == 'theme' && !empty($hookExtra['theme'])) {
+            foreach ($this->settings->themes as $extension) {
+                if (
+                    $extension->installationFolder == $hookExtra['theme']
+                    && $extension->connector instanceof GithubConnector
+                ) {
+                    return $extension;
+                }
+            }
+        }
+
+        return false;
+    }
+
     /**
      * Add a filter for the upgrader_post_install hook.
      *
@@ -823,6 +999,7 @@ class Main
                         // Update the local version of the plugin in settings.
                         $this->settings->plugins[$key]->localVersion = $this->settings->plugins[$key]->remoteVersion;
                         $this->settings->save();
+                        $this->logSuccessfulUpdate('plugin', $plugin);
                         break;
                     }
                 }
@@ -836,6 +1013,7 @@ class Main
                         // Update the local version of the theme in settings.
                         $this->settings->themes[$key]->localVersion = $this->settings->themes[$key]->remoteVersion;
                         $this->settings->save();
+                        $this->logSuccessfulUpdate('theme', $theme);
                         break;
                     }
                 }
@@ -843,6 +1021,67 @@ class Main
         }
 
         return $result;
+    }
+
+    /**
+     * Logs a successful repository update.
+     *
+     * @param string $type The extension type.
+     * @param object $extension The updated extension.
+     */
+    private function logSuccessfulUpdate(string $type, object $extension)
+    {
+        $admin = $this->getCurrentAdminContext();
+        $context = [
+            'plugin' => $this->config->getLogPlugin(),
+            'extension-type' => $type,
+            'repository' => $extension->repository ?? '',
+            'installation-folder' => $extension->installationFolder ?? '',
+            'version' => method_exists($extension, 'getReadableRemoteVersion') ? $extension->getReadableRemoteVersion() : ($extension->remoteVersion ?? ''),
+            'git-version' => $extension->remoteVersion ?? '',
+            'branch' => $extension->branch ?? '',
+            'service' => isset($extension->connector) ? $extension->connector->display : '',
+            'admin-id' => $admin['id'],
+            'admin-login' => $admin['login'],
+            'admin-email' => $admin['email']
+        ];
+
+        do_action(
+            'rrze.log.info',
+            'Updated {extension-type} {repository} to {version}. Git ref: {git-version}. Admin: {admin-login}',
+            $context
+        );
+    }
+
+    /**
+     * Returns context for the current admin user.
+     *
+     * @return array Admin context.
+     */
+    private function getCurrentAdminContext(): array
+    {
+        if (!function_exists('wp_get_current_user')) {
+            return [
+                'id' => 0,
+                'login' => 'unknown',
+                'email' => ''
+            ];
+        }
+
+        $user = wp_get_current_user();
+        if (!$user || empty($user->ID)) {
+            return [
+                'id' => 0,
+                'login' => 'system',
+                'email' => ''
+            ];
+        }
+
+        return [
+            'id' => $user->ID,
+            'login' => $user->user_login,
+            'email' => $user->user_email
+        ];
     }
 
     /**
@@ -858,10 +1097,13 @@ class Main
             return; // If not empty, no need to initialize settings.
         }
 
+        $defaultRepository = $this->config->getDefaultRepository();
+
         // Add a GitlabConnector with default configuration.
         $connector = GitlabConnector::createFromArray(
             [
-                'owner' => 'rrze-webteam',
+                'owner' => $defaultRepository['owner'] ?? 'rrze-webteam',
+                'type' => $defaultRepository['connector_type'] ?? 'gitlab',
                 'token' => '' // Replace with a valid GitLab token if needed.
             ]
         );
@@ -873,10 +1115,10 @@ class Main
         $plugin = Plugin::createFromArray(
             [
                 'connectorId' => $connector->id, // Use the ID of the created connector.
-                'repository' => 'rrze-updater', // Replace with the desired repository name.
-                'branch' => 'master', // Specify the branch to track.
+                'repository' => $defaultRepository['repository'] ?? 'rrze-updater', // Replace with the desired repository name.
+                'branch' => $defaultRepository['branch'] ?? 'master', // Specify the branch to track.
                 'installationFolder' => dirname(plugin()->getBaseName()), // Default installation folder.
-                'updates' => 'commits' // Specify how updates are tracked (e.g., 'commits', 'tags').
+                'updates' => $defaultRepository['updates'] ?? 'commits' // Specify how updates are tracked (e.g., 'commits', 'tags').
             ]
         );
 

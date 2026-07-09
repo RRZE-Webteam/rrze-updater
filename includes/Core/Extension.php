@@ -4,6 +4,7 @@ namespace RRZE\Updater\Core;
 
 defined('ABSPATH') || exit;
 
+use RRZE\Updater\Config;
 use RRZE\Updater\Utility;
 
 /**
@@ -70,6 +71,13 @@ class Extension
     public $remoteVersion;
 
     /**
+     * Human-readable remote version read from readme.txt or extension headers.
+     *
+     * @var string
+     */
+    public $remoteReadableVersion;
+
+    /**
      * Type of updates to check ('tags' or 'commits').
      *
      * @var string
@@ -115,6 +123,7 @@ class Extension
         $this->installationFolder = !empty($array['installationFolder']) ? sanitize_text_field($array['installationFolder']) : '';
         $this->localVersion = $array['localVersion'] ?? '';
         $this->remoteVersion = $array['remoteVersion'] ?? '';
+        $this->remoteReadableVersion = $array['remoteReadableVersion'] ?? '';
         $this->updates = $array['updates'] ?? '';
         $this->lastChecked = $array['lastChecked'] ?? 0;
         $this->lastWarning = isset($array['lastWarning']) ? unserialize($array['lastWarning']) : '';
@@ -139,6 +148,7 @@ class Extension
             'installationFolder' => $this->installationFolder,
             'localVersion' => $this->localVersion,
             'remoteVersion' => $this->remoteVersion,
+            'remoteReadableVersion' => $this->remoteReadableVersion,
             'updates' => $this->updates,
             'lastChecked' => $this->lastChecked,
             'lastWarning' => serialize($this->lastWarning),
@@ -181,5 +191,103 @@ class Extension
         }
 
         $this->remoteVersion = $remoteVersion;
+        $this->remoteReadableVersion = '';
+
+        if ($remoteVersion) {
+            $this->remoteReadableVersion = $this->getRemoteReadableVersion((string) $remoteVersion);
+        }
+    }
+
+    public function getReadableRemoteVersion(): string
+    {
+        return (string) ($this->remoteReadableVersion ?: $this->remoteVersion);
+    }
+
+    public function getRemoteVersionLabel(): string
+    {
+        $readableVersion = trim((string) $this->remoteReadableVersion);
+        if ($readableVersion !== '') {
+            return $readableVersion;
+        }
+
+        if (!$this->remoteVersion) {
+            return '';
+        }
+
+        if ($this->updates == 'commits') {
+            return substr((string) $this->remoteVersion, 0, 6) . '&hellip; (commit)';
+        }
+
+        return (string) $this->remoteVersion;
+    }
+
+    public function getRemoteVersionDetailLabel(): string
+    {
+        $versionLabel = $this->getRemoteVersionLabel();
+        if (!$this->remoteReadableVersion || !$this->remoteVersion) {
+            return $versionLabel;
+        }
+
+        $gitRef = $this->updates == 'commits' ? substr((string) $this->remoteVersion, 0, 6) . '&hellip;' : (string) $this->remoteVersion;
+
+        return sprintf('%1$s (%2$s)', $versionLabel, $gitRef);
+    }
+
+    protected function getRemoteReadableVersion(string $ref): string
+    {
+        if (!$this->connector) {
+            return '';
+        }
+
+        foreach ($this->getVersionFileCandidates() as $filePath) {
+            $content = $this->connector->getRemoteFile($this->repository, $ref, $filePath);
+            if (!is_string($content)) {
+                continue;
+            }
+
+            $version = $this->extractReadableVersion($content, $filePath);
+            if ($version !== '') {
+                return $version;
+            }
+        }
+
+        return '';
+    }
+
+    protected function getVersionFileCandidates(): array
+    {
+        $config = new Config();
+
+        return array_merge(
+            $config->getReadmeFiles(),
+            [
+                $config->getPackageFile()
+            ]
+        );
+    }
+
+    protected function extractReadableVersion(string $content, string $filePath = ''): string
+    {
+        $content = str_replace("\xc2\xa0", ' ', $content);
+
+        if (basename($filePath) == 'package.json') {
+            $package = json_decode($content, true);
+            if (is_array($package) && !empty($package['version']) && is_string($package['version'])) {
+                return sanitize_text_field(trim($package['version']));
+            }
+        }
+
+        if (preg_match('/^[\s\/\*#@]*Version\s*:\s*(.+)$/mi', $content, $matches)) {
+            return sanitize_text_field(trim($matches[1]));
+        }
+
+        if (preg_match('/^[\s\/\*#@]*Stable tag\s*:\s*(.+)$/mi', $content, $matches)) {
+            $version = sanitize_text_field(trim($matches[1]));
+            if ($version !== '' && strtolower($version) !== 'trunk') {
+                return $version;
+            }
+        }
+
+        return '';
     }
 }

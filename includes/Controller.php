@@ -39,6 +39,13 @@ class Controller
     protected $settings;
 
     /**
+     * Plugin configuration.
+     *
+     * @var Config
+     */
+    protected $config;
+
+    /**
      * An array to store messages or errors.
      *
      * @var array
@@ -53,6 +60,7 @@ class Controller
     public function __construct(Settings $settings)
     {
         $this->settings = $settings;
+        $this->config = new Config();
     }
 
     /**
@@ -160,7 +168,7 @@ class Controller
         $args = [
             'label'   => __('Number of items per page:', 'rrze-updater'), // Label displayed next to the option.
             'default' => 20, // Default number of items to display per page.
-            'option'  => 'rrze_updater_per_page', // The option name to store the value.
+            'option'  => $this->getScreenOptionPerPage(), // The option name to store the value.
         ];
 
         // Register the screen option with WordPress using 'add_screen_option'.
@@ -313,7 +321,7 @@ class Controller
         $args = [
             'label' => __('Number of items per page:', 'rrze-updater'),
             'default' => 20,
-            'option' => 'rrze_updater_per_page'
+            'option' => $this->getScreenOptionPerPage()
         ];
 
         // Register the 'per_page' screen option using 'add_screen_option'.
@@ -476,6 +484,17 @@ class Controller
             return;
         }
 
+        $service = sanitize_text_field($request['type'] ?? 'github');
+        if ($service == 'gitlab-rrze') {
+            $request['type'] = 'gitlab';
+            $request['host'] = $this->config->getGitlabDefaultHost();
+            $request['apiUri'] = $this->config->getGitlabDefaultApiUri();
+        } elseif ($service == 'gitlab-custom') {
+            $request['type'] = 'gitlab';
+        } else {
+            $request['type'] = 'github';
+        }
+
         // Create a new Connector instance from the request data.
         if (!$connector = Connector::createFromArray($request)) {
             return;
@@ -485,13 +504,11 @@ class Controller
         $this->settings->connectors[] = $connector;
         $this->settings->save();
 
-        // Prepare the data for rendering.
-        $data = [
-            'connector' => $connector
-        ];
+        $menuSettings = $this->config->getMenuSettings();
+        $connectorsSlug = $menuSettings['connectors_slug'] ?? 'rrze-updater-connectors';
 
-        // Display the connector edit form.
-        $this->display('connectors/edit', $data);
+        wp_safe_redirect(self_admin_url('admin.php?page=' . $connectorsSlug));
+        exit;
     }
 
     /**
@@ -527,6 +544,10 @@ class Controller
         // Update the connector's token field with the sanitized token from the request.
         $connectorToken = $request['token'] ?? '';
         $connector->token = sanitize_text_field($connectorToken);
+
+        if (method_exists($connector, 'updateServerSettings')) {
+            $connector->updateServerSettings($request);
+        }
 
         // Save the updated settings.
         $this->settings->save();
@@ -621,7 +642,7 @@ class Controller
         $args = [
             'label'   => __('Number of items per page:', 'rrze-updater'),
             'default' => 20,
-            'option'  => 'rrze_updater_per_page',
+            'option'  => $this->getScreenOptionPerPage(),
         ];
 
         // Add screen options with the specified arguments.
@@ -898,6 +919,29 @@ class Controller
         // If updates are configured for tags or commits, check if updates are available
         $extension->checkForUpdates();
 
+        $validation = $extension->validateRemotePluginRepository($extension->remoteVersion ?: $extension->branch);
+        if (is_wp_error($validation)) {
+            $this->messages[] = $validation;
+            do_action(
+                'rrze.log.error',
+                'Plugin installation failed for {repository}: {error}',
+                [
+                    'plugin' => $this->config->getLogPlugin(),
+                    'repository' => $extension->repository,
+                    'branch' => $extension->branch,
+                    'ref' => $extension->remoteVersion ?: $extension->branch,
+                    'service' => $extension->connector->display ?? '',
+                    'error' => $validation->get_error_message()
+                ]
+            );
+
+            $data = [
+                'connectors' => $this->settings->connectors
+            ];
+            $this->display('plugins/add', $data);
+            return;
+        }
+
         // Install the plugin
         $repoZip = $extension->connector->downloadRepoZip($request['repository'], $request['branch']);
         if ($extension->remoteVersion) {
@@ -908,6 +952,17 @@ class Controller
         if ($extension->connector->error) {
             // Handle connector error with an error message.
             $this->messages[] = new WP_Error('error', $extension->connector->error);
+            do_action(
+                'rrze.log.error',
+                'Plugin installation failed for {repository}: {error}',
+                [
+                    'plugin' => $this->config->getLogPlugin(),
+                    'repository' => $extension->repository,
+                    'branch' => $extension->branch,
+                    'service' => $extension->connector->display ?? '',
+                    'error' => $extension->connector->error
+                ]
+            );
         }
 
         if ($repoZip) {
@@ -1075,7 +1130,7 @@ class Controller
         $args = [
             'label' => __('Number of items per page:', 'rrze-updater'),
             'default' => 20, // Default number of items per page
-            'option' => 'rrze_updater_per_page'
+            'option' => $this->getScreenOptionPerPage()
         ];
 
         // Add the screen options for the number of items per page
@@ -1357,6 +1412,17 @@ class Controller
         if ($extension->connector->error) {
             // Handle connector error with an error message.
             $this->messages[] = new WP_Error('error', $extension->connector->error);
+            do_action(
+                'rrze.log.error',
+                'Theme installation failed for {repository}: {error}',
+                [
+                    'plugin' => $this->config->getLogPlugin(),
+                    'repository' => $extension->repository,
+                    'branch' => $extension->branch,
+                    'service' => $extension->connector->display ?? '',
+                    'error' => $extension->connector->error
+                ]
+            );
         }
 
         if ($repoZip) {
@@ -1621,5 +1687,12 @@ class Controller
         }
 
         return false;
+    }
+
+    private function getScreenOptionPerPage(): string
+    {
+        $constants = $this->config->getConstants();
+
+        return $this->config->getScreenOptionPerPage();
     }
 }
