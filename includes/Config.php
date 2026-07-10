@@ -17,9 +17,17 @@ class Config {
             ],
             'cron' => [
                 'action_hook' => 'rrze_updater_check_for_updates',
+                'email_action_hook' => 'rrze_updater_send_update_email',
                 'schedule' => 'twicedaily',
                 'minimum_check_interval' => HOUR_IN_SECONDS,
                 'main_blog_id' => 1,
+            ],
+            'settings' => [
+                'update_check_schedule' => 'twicedaily',
+                'email_updates_enabled' => false,
+                'email_address' => '',
+                'email_subject_prefix' => '[RRZE-Updater]',
+                'email_schedule' => 'rrze_updater_monthly',
             ],
             'menu' => [
                 'capability' => 'manage_options',
@@ -27,6 +35,7 @@ class Config {
                 'connectors_slug' => 'rrze-updater-connectors',
                 'plugins_slug' => 'rrze-updater-plugins',
                 'themes_slug' => 'rrze-updater-themes',
+                'settings_slug' => 'rrze-updater-settings',
                 'admin_bar_repositories_id' => 'rrze-updater-network-repositories',
                 'admin_bar_network_parent' => 'network-admin',
             ],
@@ -84,6 +93,16 @@ class Config {
                     'commits',
                     'tags',
                 ],
+                'cron_schedules' => [
+                    'hourly' => 'hourly',
+                    'twicedaily' => 'twicedaily',
+                    'daily' => 'daily',
+                ],
+                'email_schedules' => [
+                    'daily' => '1x pro Tag',
+                    'rrze_updater_weekly' => '1x pro Woche',
+                    'rrze_updater_monthly' => '1x pro Monat',
+                ],
             ],
         ];
     }
@@ -121,6 +140,15 @@ class Config {
 
     public function getMenuSettings(): array {
         return $this->get('menu', []);
+    }
+
+    public function getDefaultSettings(): array {
+        $settings = $this->get('settings', []);
+        if (empty($settings['email_address'])) {
+            $settings['email_address'] = $this->getDefaultEmailAddress();
+        }
+
+        return $settings;
     }
 
     public function getConnectorSettings(string $type): array {
@@ -171,6 +199,10 @@ class Config {
         return (string) $this->get('cron.schedule');
     }
 
+    public function getCronEmailActionHook(): string {
+        return (string) $this->get('cron.email_action_hook');
+    }
+
     public function getCronMinimumCheckInterval(): int {
         return (int) $this->get('cron.minimum_check_interval');
     }
@@ -201,5 +233,13 @@ class Config {
 
     public function getGithubApiHost(): string {
         return (string) $this->get('connectors.github.api_host');
+    }
+
+    public function getDefaultEmailAddress(): string {
+        if (is_multisite()) {
+            return (string) get_site_option('admin_email', get_option('admin_email'));
+        }
+
+        return (string) get_option('admin_email');
     }
 }

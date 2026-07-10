@@ -4,8 +4,22 @@ namespace RRZE\Updater;
 
 defined('ABSPATH') || exit;
 ?>
+<style>
+    .wp-list-table tr.rrze-updater-has-update {
+        background: #fff8e5;
+    }
+
+    .wp-list-table tr.rrze-updater-has-update th,
+    .wp-list-table tr.rrze-updater-has-update td {
+        border-left-color: #dba617;
+    }
+
+    .wp-list-table .rrze-updater-update-link {
+        font-weight: 600;
+    }
+</style>
 <h2>
-    <?php _e('Repositories', 'rrze-updater'); ?>
+    <?php _e('Updater', 'rrze-updater'); ?>
 </h2>
 
 <form method="get">

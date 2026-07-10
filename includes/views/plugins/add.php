@@ -27,7 +27,7 @@ defined('ABSPATH') || exit;
                         }
                         ?>
                     </select>
-                    <p class="description"><a href="admin.php?page=rrze-updater-connectors&action=add"><?php _e('Add a New Service', 'rrze-updater'); ?></a></p>
+                    <p class="description"><a href="admin.php?page=rrze-updater-settings&tab=services&action=add"><?php _e('Add a New Service', 'rrze-updater'); ?></a></p>
                 </td>
             </tr>
             <tr>

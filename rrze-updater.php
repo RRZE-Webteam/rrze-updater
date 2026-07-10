@@ -3,7 +3,7 @@
 /*
 Plugin Name:        RRZE Updater
 Plugin URI:         https://github.com/RRZE-Webteam/rrze-updater
-Version:            2.5.9
+Version:            2.5.10
 Description:        Sync Plugins and Themes with the corresponding GitHub or GitLab repositories.
 Author:             RRZE Webteam
 Author URI:         https://github.com/RRZE-Webteam
@@ -23,7 +23,14 @@ defined('ABSPATH') || exit;
 /**
  * Register a custom autoloader (PSR-4) using spl_autoload_register().
  */
-spl_autoload_register(function ($class) {
+spl_autoload_register(__NAMESPACE__ . '\autoload');
+
+/**
+ * Autoload plugin classes.
+ *
+ * @param string $class Fully qualified class name.
+ */
+function autoload($class) {
     $prefix = __NAMESPACE__;
     $baseDir = __DIR__ . '/includes/';
     $lengthOfNamespacePrefix = strlen($prefix);
@@ -38,10 +45,10 @@ spl_autoload_register(function ($class) {
     if (file_exists($file)) {
         require $file;
     }
-});
+}
 
 
-add_action('init', fn() => load_plugin_textdomain('rrze-updater', false, dirname(plugin_basename(__FILE__)) . '/languages'));
+add_action('init', __NAMESPACE__ . '\loadTextdomain');
 add_action('plugins_loaded', __NAMESPACE__ . '\loaded');
 
 register_activation_hook(__FILE__, __NAMESPACE__ . '\activation');
@@ -51,17 +58,23 @@ register_deactivation_hook(__FILE__, __NAMESPACE__ . '\deactivation');
 /**
  * Handle the activation of the plugin.
  */
-function activation($networkWide)
-{
+function activation($networkWide) {
     //
 }
 
 /**
  * Handle the deactivation of the plugin.
  */
-function deactivation()
-{
+function deactivation() {
     Cron::clearSchedule();
+    Cron::clearEmailSchedule();
+}
+
+/**
+ * Load plugin translations.
+ */
+function loadTextdomain() {
+    load_plugin_textdomain('rrze-updater', false, dirname(plugin_basename(__FILE__)) . '/languages');
 }
 
 /**
@@ -71,8 +84,7 @@ function deactivation()
  *
  * @return Plugin The main instance of the Plugin class.
  */
-function plugin()
-{
+function plugin() {
     static $instance;
 
     // Check if the instance is not already created.
@@ -91,8 +103,7 @@ function plugin()
  *
  * @return string An error message string if requirements are not met, or an empty string if requirements are satisfied.
  */
-function systemRequirements(): string
-{
+function systemRequirements(): string {
     global $wp_version;
     $phpVersion = phpversion();
     $error = '';
@@ -123,8 +134,7 @@ function systemRequirements(): string
  * This function is responsible for initializing the plugin, loading text domains for localization,
  * checking system requirements, and displaying error notices if necessary.
  */
-function loaded()
-{
+function loaded() {
     plugin()->loaded();
 
     if (systemRequirements()) {

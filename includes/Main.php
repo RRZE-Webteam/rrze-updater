@@ -130,7 +130,7 @@ class Main
         $wpAdminBar->add_node([
             'id' => $menuSettings['admin_bar_repositories_id'] ?? 'rrze-updater-network-repositories',
             'parent' => $menuSettings['admin_bar_network_parent'] ?? 'network-admin',
-            'title' => __('Repositories', 'rrze-updater'),
+            'title' => __('Updater', 'rrze-updater'),
             'href' => network_admin_url('admin.php?page=' . ($menuSettings['repositories_slug'] ?? 'rrze-updater'))
         ]);
     }
@@ -147,28 +147,20 @@ class Main
         $menuSettings = $this->config->getMenuSettings();
         $capability = $menuSettings['capability'] ?? 'manage_options';
         $repositoriesSlug = $menuSettings['repositories_slug'] ?? 'rrze-updater';
-        $connectorsSlug = $menuSettings['connectors_slug'] ?? 'rrze-updater-connectors';
         $pluginsSlug = $menuSettings['plugins_slug'] ?? 'rrze-updater-plugins';
         $themesSlug = $menuSettings['themes_slug'] ?? 'rrze-updater-themes';
+        $settingsSlug = $menuSettings['settings_slug'] ?? 'rrze-updater-settings';
 
-        // Add the main "Repositories" menu page.
+        $repositoriesMenuTitle = __('Updater', 'rrze-updater') . $this->getRepositoryUpdatesBadge();
+
+        // Add the main "Updater" menu page.
         $repoPage = add_menu_page(
-            __('Repositories', 'rrze-updater'),             // Page title
-            __('Repositories', 'rrze-updater'),             // Menu title
+            __('Updater', 'rrze-updater'),             // Page title
+            $repositoriesMenuTitle,             // Menu title
             $capability,                      // Capability required to access
             $repositoriesSlug,                       // Menu slug
             [$this->controller, 'getRepoIndex'],            // Callback function for the page content
             'dashicons-update'                      // Dashicon icon
-        );
-
-        // Add submenu pages for "Services," "Plugins," and "Themes."
-        $connPage = add_submenu_page(
-            $repositoriesSlug,                      // Parent menu slug
-            __('Services', 'rrze-updater'),                 // Page title
-            __('Services', 'rrze-updater'),                 // Menu title
-            $capability,                      // Capability required to access
-            $connectorsSlug,            // Menu slug
-            [$this->controller, 'getConnectorIndex']        // Callback function for the page content
         );
 
         $pluginsPage = add_submenu_page(
@@ -189,11 +181,47 @@ class Main
             [$this->controller, 'getThemeIndex']            // Callback function for the page content
         );
 
+        $settingsPage = add_submenu_page(
+            $repositoriesSlug,
+            __('Einstellungen', 'rrze-updater'),
+            __('Einstellungen', 'rrze-updater'),
+            $capability,
+            $settingsSlug,
+            [$this->controller, 'getSettingsIndex']
+        );
+
         // Set up screen options for each admin page.
         add_action("load-$repoPage", [$this->controller, 'repoListScreenOptions']);
-        add_action("load-$connPage", [$this->controller, 'connListScreenOptions']);
         add_action("load-$pluginsPage", [$this->controller, 'pluginsListScreenOptions']);
         add_action("load-$themesPage", [$this->controller, 'themesListScreenOptions']);
+        add_action("load-$settingsPage", [$this->controller, 'settingsScreenOptions']);
+    }
+
+    private function getRepositoryUpdatesBadge(): string
+    {
+        $count = 0;
+
+        foreach (array_merge($this->settings->plugins, $this->settings->themes) as $extension) {
+            if ($this->extensionHasUpdate($extension)) {
+                $count++;
+            }
+        }
+
+        if ($count <= 0) {
+            return '';
+        }
+
+        return sprintf(
+            ' <span class="update-plugins count-%1$d"><span class="plugin-count">%1$d</span></span>',
+            $count
+        );
+    }
+
+    private function extensionHasUpdate(object $extension): bool
+    {
+        return !empty($extension->remoteVersion)
+            && $extension->remoteVersion != $extension->localVersion
+            && empty($extension->lastError);
     }
 
     /**

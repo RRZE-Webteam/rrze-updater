@@ -165,6 +165,31 @@ class GitlabConnector extends Connector
         return $ret;
     }
 
+    public function remoteBranchExists(string $repository, string $branch): bool
+    {
+        $url = sprintf(
+            '%1$s/%2$s/repository/branches/%3$s',
+            $this->getApiBaseUrl(),
+            urlencode($this->owner . '/' . $repository),
+            rawurlencode($branch)
+        );
+
+        if ($this->token) {
+            $url = $this->addPrivateToken($url);
+        }
+
+        $response = $this->api(
+            $url,
+            [],
+            [
+                'logErrors' => false,
+                'storeError' => false
+            ]
+        );
+
+        return is_object($response) && isset($response->name);
+    }
+
     /**
      * Get the latest remote tag of a GitLab repository.
      *

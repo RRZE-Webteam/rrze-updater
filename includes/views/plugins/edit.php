@@ -6,6 +6,8 @@ defined('ABSPATH') || exit;
 
 $extension = $data['plugin'];
 $lastChecked = $data['lastChecked'];
+$installedVersion = $data['installedVersion'] ?? '&mdash;';
+$repositoryUrl = $data['repositoryUrl'] ?? '';
 $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' => 'all'], self_admin_url('plugins.php'));
 ?>
 <?php if (($extension->localVersion != $extension->remoteVersion) && ($extension->lastError == "")) : ?>
@@ -43,15 +45,17 @@ $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' =>
 </h2>
 
 <p><?php printf(
-        /* translators: %s: Local version of the repository */
-        __('Local Version: %s', 'rrze-updater'),
-        $extension->localVersion
+        /* translators: 1: Installed plugin version, 2: Local git reference */
+        __('Local Version: <code>%1$s</code> (Git Version: <code>%2$s</code>)', 'rrze-updater'),
+        wp_kses_post($installedVersion),
+        $extension->localVersion ? esc_html($extension->localVersion) : '&mdash;'
     ); ?>
 </p>
 <p><?php printf(
-        /* translators: %s: Remote extension version */
-        __('Remote Version: %s', 'rrze-updater'),
-        $extension->getRemoteVersionDetailLabel()
+        /* translators: 1: Remote extension version, 2: Remote git reference */
+        __('Remote Version: <code>%1$s</code> (Git Version: <code>%2$s</code>)', 'rrze-updater'),
+        wp_kses_post($extension->getRemoteVersionLabel() ?: '&mdash;'),
+        $extension->remoteVersion ? esc_html($extension->remoteVersion) : '&mdash;'
     ); ?>
 </p>
 <p><?php printf(
@@ -60,6 +64,18 @@ $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' =>
         $lastChecked
     ); ?>
 </p>
+<?php if ($repositoryUrl) : ?>
+    <p><?php printf(
+            /* translators: %s: Repository URL */
+            __('Repository: %s', 'rrze-updater'),
+            sprintf(
+                '<a href="%1$s" target="_blank" rel="noopener noreferrer">%2$s</a>',
+                esc_url($repositoryUrl),
+                esc_html($repositoryUrl)
+            )
+        ); ?>
+    </p>
+<?php endif; ?>
 
 <form action="?page=rrze-updater-plugins&action=edit&id=<?php echo $extension->id ?>" method="POST">
     <?php wp_nonce_field('rrze-updater-plugin-edit', 'rrze-updater-nonce'); ?>

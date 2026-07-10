@@ -18,6 +18,13 @@ $isCustomGitlab = $isGitlab
     );
 ?>
 
+<h2><?php _e('Einstellungen', 'rrze-updater'); ?></h2>
+
+<nav class="nav-tab-wrapper">
+    <a class="nav-tab" href="<?php echo esc_url(self_admin_url('admin.php?page=rrze-updater-settings')); ?>"><?php _e('Allgemein', 'rrze-updater'); ?></a>
+    <a class="nav-tab nav-tab-active" href="<?php echo esc_url(self_admin_url('admin.php?page=rrze-updater-settings&tab=services')); ?>"><?php _e('Dienste', 'rrze-updater'); ?></a>
+</nav>
+
 <h2><?php _e('Edit Service', 'rrze-updater'); ?></h2>
 
 <form action="" method="POST">

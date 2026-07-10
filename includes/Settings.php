@@ -33,6 +33,11 @@ class Settings
     public $themes;
 
     /**
+     * @var array General plugin options.
+     */
+    public $options;
+
+    /**
      * @var string $optionName The name of the option used to store settings in WordPress.
      */
     protected $optionName;
@@ -51,6 +56,10 @@ class Settings
         $config = is_multisite()
             ? get_site_option($this->optionName)
             : get_option($this->optionName);
+
+        $config = is_array($config) ? $config : [];
+
+        $this->options = wp_parse_args($config['options'] ?? [], (new Config())->getDefaultSettings());
 
         // Retrieve and initialize connectors.
         $connectors = $config['connectors'] ?? [];
@@ -106,6 +115,7 @@ class Settings
         foreach ($this->themes as $theme) {
             $array['themes'][] = $theme->asArray();
         }
+        $array['options'] = $this->options;
 
         return $array;
     }

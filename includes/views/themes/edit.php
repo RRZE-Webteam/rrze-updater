@@ -6,6 +6,8 @@ defined('ABSPATH') || exit;
 
 $extension = $data['theme'];
 $lastChecked = $data['lastChecked'];
+$installedVersion = $data['installedVersion'] ?? '&mdash;';
+$repositoryUrl = $data['repositoryUrl'] ?? '';
 $searchTheme = add_query_arg(['s' => $extension->repository], self_admin_url('themes.php'));
 ?>
 <?php if (($extension->localVersion != $extension->remoteVersion) && ($extension->lastError == "")) : ?>
@@ -32,9 +34,31 @@ $searchTheme = add_query_arg(['s' => $extension->repository], self_admin_url('th
     <a href="?page=rrze-updater-themes&action=check-updates&id=<?php echo $extension->id ?>" class="add-new-h2"><?php _e('Check for updates', 'rrze-updater'); ?></a>
 </h2>
 
-<p><?php printf(__('Local Version: %s', 'rrze-updater'), $extension->localVersion); ?></p>
-<p><?php printf(__('Remote Version: %s', 'rrze-updater'), $extension->getRemoteVersionDetailLabel()); ?></p>
+<p><?php printf(
+        /* translators: 1: Installed theme version, 2: Local git reference */
+        __('Local Version: <code>%1$s</code> (Git Version: <code>%2$s</code>)', 'rrze-updater'),
+        wp_kses_post($installedVersion),
+        $extension->localVersion ? esc_html($extension->localVersion) : '&mdash;'
+    ); ?></p>
+<p><?php printf(
+        /* translators: 1: Remote theme version, 2: Remote git reference */
+        __('Remote Version: <code>%1$s</code> (Git Version: <code>%2$s</code>)', 'rrze-updater'),
+        wp_kses_post($extension->getRemoteVersionLabel() ?: '&mdash;'),
+        $extension->remoteVersion ? esc_html($extension->remoteVersion) : '&mdash;'
+    ); ?></p>
 <p><?php printf(__('Last checked on: %s', 'rrze-updater'), $lastChecked); ?></p>
+<?php if ($repositoryUrl) : ?>
+    <p><?php printf(
+            /* translators: %s: Repository URL */
+            __('Repository: %s', 'rrze-updater'),
+            sprintf(
+                '<a href="%1$s" target="_blank" rel="noopener noreferrer">%2$s</a>',
+                esc_url($repositoryUrl),
+                esc_html($repositoryUrl)
+            )
+        ); ?>
+    </p>
+<?php endif; ?>
 
 <form action="?page=rrze-updater-themes&action=edit&id=<?php echo $extension->id ?>" method="POST">
     <?php wp_nonce_field('rrze-updater-theme-edit', 'rrze-updater-nonce'); ?>

@@ -69,6 +69,7 @@ class ConnListTable extends WP_List_Table
     public function column_display($item)
     {
         $page = $_REQUEST['page'] ?? '';
+        $tab = $_REQUEST['tab'] ?? 'services';
         $id = $item['id'];
 
         $actions = [
@@ -77,6 +78,7 @@ class ConnListTable extends WP_List_Table
                 add_query_arg(
                     [
                         'page' => $page,
+                        'tab' => $tab,
                         'action' => 'edit',
                         'id' => $id
                     ],
@@ -95,6 +97,7 @@ class ConnListTable extends WP_List_Table
                         add_query_arg(
                             [
                                 'page' => $page,
+                                'tab' => $tab,
                                 'action' => 'delete',
                                 'id' => $id,
                                 'rrze-updater-nonce' => wp_create_nonce('rrze-updater-connector-delete')

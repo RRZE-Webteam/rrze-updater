@@ -85,6 +85,11 @@ class PluginsListTable extends WP_List_Table
         $id = $item['id'];
 
         $actions = [
+            'repository' => !empty($item['repositoryUrl']) ? sprintf(
+                '<a href="%1$s" target="_blank" rel="noopener noreferrer">%2$s</a>',
+                esc_url($item['repositoryUrl']),
+                __('Repository', 'rrze-updater')
+            ) : '',
             'edit' => sprintf(
                 '<a href="%1$s">%2$s</a>',
                 add_query_arg(
@@ -111,10 +116,11 @@ class PluginsListTable extends WP_List_Table
                 __('Delete', 'rrze-updater')
             ),
         ];
+        $actions = array_filter($actions);
 
         return sprintf(
             '%1$s %2$s',
-            $item['plugin'],
+            esc_html($item['plugin']),
             $this->row_actions($actions)
         );
     }
@@ -134,6 +140,35 @@ class PluginsListTable extends WP_List_Table
             $this->_args['plural'],
             $item['id']
         );
+    }
+
+    public function column_version($item)
+    {
+        $version = !empty($item['version']) ? $item['version'] : '';
+
+        if (empty($item['hasUpdate']) || empty($item['updateUrl']) || empty($item['updateVersion'])) {
+            return $version;
+        }
+
+        return sprintf(
+            '%1$s <span class="rrze-updater-update-link">(<a href="%2$s">%3$s</a>)</span>',
+            $version,
+            esc_url($item['updateUrl']),
+            sprintf(
+                /* translators: %s: New extension version */
+                esc_html__('Update auf %s', 'rrze-updater'),
+                esc_html($item['updateVersion'])
+            )
+        );
+    }
+
+    public function single_row($item)
+    {
+        $class = !empty($item['hasUpdate']) ? ' class="rrze-updater-has-update"' : '';
+
+        echo '<tr' . $class . '>';
+        $this->single_row_columns($item);
+        echo '</tr>';
     }
 
     /**
@@ -170,6 +205,11 @@ class PluginsListTable extends WP_List_Table
             'plugin' => ['plugin', false],
             'installationFolder' => ['installationFolder', false]
         ];
+    }
+
+    protected function get_primary_column_name()
+    {
+        return 'plugin';
     }
 
     /**
