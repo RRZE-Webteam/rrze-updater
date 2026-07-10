@@ -37,9 +37,9 @@ class Plugin extends Extension
 
         return array_values(array_unique(array_merge(
             [
-                $config->getPackageFile(),
                 sprintf($config->getPluginMainFilePattern(), $this->installationFolder),
-                sprintf($config->getPluginMainFilePattern(), $this->repository)
+                sprintf($config->getPluginMainFilePattern(), $this->repository),
+                $config->getPackageFile()
             ],
             $config->getReadmeFiles()
         )));

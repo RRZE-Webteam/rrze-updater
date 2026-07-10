@@ -265,6 +265,8 @@ class Settings
                 $repos[$key]['id'] = $extension->id;
                 $repos[$key]['display'] = $extension->connector->display;
                 $repos[$key]['branch'] = $extension->branch;
+                $repos[$key]['updates'] = $extension->updates;
+                $repos[$key]['remoteVersion'] = $extension->remoteVersion;
                 $key++;
             }
         }
@@ -278,6 +280,8 @@ class Settings
                 $repos[$key]['id'] = $extension->id;
                 $repos[$key]['display'] = $extension->connector->display;
                 $repos[$key]['branch'] = $extension->branch;
+                $repos[$key]['updates'] = $extension->updates;
+                $repos[$key]['remoteVersion'] = $extension->remoteVersion;
                 $key++;
             }
         }

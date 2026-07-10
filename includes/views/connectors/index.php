@@ -4,8 +4,8 @@ namespace RRZE\Updater;
 defined('ABSPATH') || exit;
 ?>
 <h2>
-    <?php _e('Dienste', 'rrze-updater'); ?>
-    <a href="?page=<?php echo esc_attr($_REQUEST['page']); ?>&tab=services&action=add" class="add-new-h2"><?php _e('Add new', 'rrze-updater'); ?></a>
+    <?php esc_html_e('Dienste', 'rrze-updater'); ?>
+    <a href="?page=<?php echo esc_attr($_REQUEST['page']); ?>&tab=services&action=add" class="add-new-h2"><?php esc_html_e('Add new', 'rrze-updater'); ?></a>
 </h2>
 
 <form method="get">

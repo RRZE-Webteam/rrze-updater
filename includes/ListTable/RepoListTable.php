@@ -57,9 +57,8 @@ class RepoListTable extends WP_List_Table
     public function column_default($item, $columnName)
     {
         switch ($columnName) {
-            case 'branch':
-            case 'display':
-            case 'owner':
+            case 'ref':
+            case 'serviceOwner':
                 $item[$columnName] = !empty($item[$columnName]) ? wp_trim_words($item[$columnName], 10) : '';
                 break;
             default:
@@ -168,9 +167,9 @@ class RepoListTable extends WP_List_Table
 
     public function single_row($item)
     {
-        $class = !empty($item['hasUpdate']) ? ' class="rrze-updater-has-update"' : '';
+        $class = !empty($item['hasUpdate']) ? 'rrze-updater-has-update' : '';
 
-        echo '<tr' . $class . '>';
+        echo $class ? '<tr class="' . esc_attr($class) . '">' : '<tr>';
         $this->single_row_columns($item);
         echo '</tr>';
     }
@@ -186,12 +185,11 @@ class RepoListTable extends WP_List_Table
     {
         return [
             'cb' => '<input type="checkbox">',
-            'repository' => __('Repository', 'rrze-updater'),
-            'branch' => __('Branch', 'rrze-updater'),
-            'display' => __('Service', 'rrze-updater'),
-            'owner' => __('User/Group', 'rrze-updater'),
+            'repository' => __('Name', 'rrze-updater'),
+            'version' => __('Version', 'rrze-updater'),
             'type' => __('Type', 'rrze-updater'),
-            'version' => __('Version', 'rrze-updater')
+            'serviceOwner' => __('Service / User/Group', 'rrze-updater'),
+            'ref' => __('Branch / Release tag', 'rrze-updater')
         ];
     }
 
@@ -206,8 +204,10 @@ class RepoListTable extends WP_List_Table
     {
         return [
             'repository' => ['repository', false],
-            'display' => ['display', false],
-            'type' => ['type', false]
+            'version' => ['version', false],
+            'type' => ['type', false],
+            'serviceOwner' => ['serviceOwner', false],
+            'ref' => ['ref', false]
         ];
     }
 
@@ -235,6 +235,10 @@ class RepoListTable extends WP_List_Table
         if ('delete' === $this->current_action()) {
             $repos = $_GET['repositories'] ?? '';
             if (!empty($repos) && is_array($repos)) {
+                if (($_GET['rrze-updater-bulk-delete-confirmed'] ?? '') !== '1') {
+                    return;
+                }
+
                 foreach ($repos as $id) {
                     foreach ($this->listData as $key => $subary) {
                         if ($subary['id'] == $id) {

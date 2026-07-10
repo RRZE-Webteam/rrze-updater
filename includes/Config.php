@@ -73,6 +73,9 @@ class Config {
                 'package_file' => 'package.json',
                 'plugin_main_file_pattern' => '%s.php',
                 'theme_main_file' => 'style.css',
+                'theme_functions_file' => 'functions.php',
+                'theme_classic_index_file' => 'index.php',
+                'theme_block_index_file' => 'templates/index.html',
             ],
             'fields' => [
                 'connector_types' => [
@@ -181,6 +184,18 @@ class Config {
 
     public function getThemeMainFile(): string {
         return (string) $this->get('version_detection.theme_main_file', 'style.css');
+    }
+
+    public function getThemeFunctionsFile(): string {
+        return (string) $this->get('version_detection.theme_functions_file', 'functions.php');
+    }
+
+    public function getThemeClassicIndexFile(): string {
+        return (string) $this->get('version_detection.theme_classic_index_file', 'index.php');
+    }
+
+    public function getThemeBlockIndexFile(): string {
+        return (string) $this->get('version_detection.theme_block_index_file', 'templates/index.html');
     }
 
     public function getLogPlugin(): string {

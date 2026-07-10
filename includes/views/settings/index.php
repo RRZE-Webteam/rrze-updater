@@ -10,11 +10,11 @@ $cronSchedules = $data['cronSchedules'] ?? [];
 $emailSchedules = $data['emailSchedules'] ?? [];
 $settingsPage = 'rrze-updater-settings';
 ?>
-<h2><?php _e('Einstellungen', 'rrze-updater'); ?></h2>
+<h2><?php esc_html_e('Einstellungen', 'rrze-updater'); ?></h2>
 
 <nav class="nav-tab-wrapper">
-    <a class="nav-tab <?php echo $tab == 'general' ? 'nav-tab-active' : ''; ?>" href="<?php echo esc_url(self_admin_url('admin.php?page=' . $settingsPage)); ?>"><?php _e('Allgemein', 'rrze-updater'); ?></a>
-    <a class="nav-tab <?php echo $tab == 'services' ? 'nav-tab-active' : ''; ?>" href="<?php echo esc_url(self_admin_url('admin.php?page=' . $settingsPage . '&tab=services')); ?>"><?php _e('Dienste', 'rrze-updater'); ?></a>
+    <a class="nav-tab <?php echo esc_attr($tab == 'general' ? 'nav-tab-active' : ''); ?>" href="<?php echo esc_url(self_admin_url('admin.php?page=' . $settingsPage)); ?>"><?php esc_html_e('Allgemein', 'rrze-updater'); ?></a>
+    <a class="nav-tab <?php echo esc_attr($tab == 'services' ? 'nav-tab-active' : ''); ?>" href="<?php echo esc_url(self_admin_url('admin.php?page=' . $settingsPage . '&tab=services')); ?>"><?php esc_html_e('Dienste', 'rrze-updater'); ?></a>
 </nav>
 
 <?php if ($tab == 'services') : ?>
@@ -24,12 +24,12 @@ $settingsPage = 'rrze-updater-settings';
         <?php wp_nonce_field('rrze-updater-settings', 'rrze-updater-nonce'); ?>
         <input type="hidden" name="rrze-updater[action]" value="save-settings">
 
-        <h3><?php _e('Scheduler', 'rrze-updater'); ?></h3>
+        <h3><?php esc_html_e('Scheduler', 'rrze-updater'); ?></h3>
         <table class="form-table">
             <tbody>
                 <tr>
                     <th scope="row">
-                        <label for="rrze-updater-update-check-schedule"><?php _e('Abfragehäufigkeit', 'rrze-updater'); ?></label>
+                        <label for="rrze-updater-update-check-schedule"><?php esc_html_e('Abfragehäufigkeit', 'rrze-updater'); ?></label>
                     </th>
                     <td>
                         <select id="rrze-updater-update-check-schedule" name="rrze-updater[update_check_schedule]">
@@ -42,21 +42,21 @@ $settingsPage = 'rrze-updater-settings';
             </tbody>
         </table>
 
-        <h3><?php _e('Update-Hinweise per E-Mail', 'rrze-updater'); ?></h3>
+        <h3><?php esc_html_e('Update-Hinweise per E-Mail', 'rrze-updater'); ?></h3>
         <table class="form-table">
             <tbody>
                 <tr>
-                    <th scope="row"><?php _e('E-Mail-Hinweise', 'rrze-updater'); ?></th>
+                    <th scope="row"><?php esc_html_e('E-Mail-Hinweise', 'rrze-updater'); ?></th>
                     <td>
                         <label>
                             <input type="checkbox" name="rrze-updater[email_updates_enabled]" value="1" <?php checked(!empty($settings['email_updates_enabled'])); ?>>
-                            <?php _e('E-Mail-Hinweise aktivieren', 'rrze-updater'); ?>
+                            <?php esc_html_e('E-Mail-Hinweise aktivieren', 'rrze-updater'); ?>
                         </label>
                     </td>
                 </tr>
                 <tr>
                     <th scope="row">
-                        <label for="rrze-updater-email-address"><?php _e('E-Mail-Adresse', 'rrze-updater'); ?></label>
+                        <label for="rrze-updater-email-address"><?php esc_html_e('E-Mail-Adresse', 'rrze-updater'); ?></label>
                     </th>
                     <td>
                         <input id="rrze-updater-email-address" name="rrze-updater[email_address]" type="email" class="regular-text" value="<?php echo esc_attr($settings['email_address'] ?? ''); ?>">
@@ -64,7 +64,7 @@ $settingsPage = 'rrze-updater-settings';
                 </tr>
                 <tr>
                     <th scope="row">
-                        <label for="rrze-updater-email-subject-prefix"><?php _e('E-Mail-Betreff-Prefix', 'rrze-updater'); ?></label>
+                        <label for="rrze-updater-email-subject-prefix"><?php esc_html_e('E-Mail-Betreff-Prefix', 'rrze-updater'); ?></label>
                     </th>
                     <td>
                         <input id="rrze-updater-email-subject-prefix" name="rrze-updater[email_subject_prefix]" type="text" class="regular-text" value="<?php echo esc_attr($settings['email_subject_prefix'] ?? ''); ?>">
@@ -72,7 +72,7 @@ $settingsPage = 'rrze-updater-settings';
                 </tr>
                 <tr>
                     <th scope="row">
-                        <label for="rrze-updater-email-schedule"><?php _e('Sendehäufigkeit', 'rrze-updater'); ?></label>
+                        <label for="rrze-updater-email-schedule"><?php esc_html_e('Sendehäufigkeit', 'rrze-updater'); ?></label>
                     </th>
                     <td>
                         <select id="rrze-updater-email-schedule" name="rrze-updater[email_schedule]">

@@ -19,17 +19,23 @@ defined('ABSPATH') || exit;
     }
 </style>
 <h2>
-    <?php _e('Updater', 'rrze-updater'); ?>
+    <?php esc_html_e('Updater', 'rrze-updater'); ?>
 </h2>
 
 <form method="get">
-    <input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>">
+    <input type="hidden" name="page" value="<?php echo esc_attr($_REQUEST['page']); ?>">
     <?php
     $data['listTable']->search_box(__('Search', 'rrze-updater'), 's');
     ?>
 </form>
 
-<form method="get">
-    <input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>" />
+<form method="get" class="rrze-updater-bulk-action-form">
+    <input type="hidden" name="page" value="<?php echo esc_attr($_REQUEST['page']); ?>" />
     <?php $data['listTable']->display(); ?>
 </form>
+<?php
+$bulkDeleteConfirmTitle = __('Delete selected repositories?', 'rrze-updater');
+$bulkDeleteConfirmMessage = __('This action deletes the selected repository definitions from RRZE Updater. Installed plugins or themes are not removed by this bulk action.', 'rrze-updater');
+$bulkDeleteConfirmCheckboxLabel = __('I understand that the selected repository definitions will be deleted.', 'rrze-updater');
+require __DIR__ . '/../partials/bulk-delete-confirm.php';
+?>
