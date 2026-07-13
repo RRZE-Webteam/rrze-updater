@@ -17,9 +17,17 @@ class Config {
             ],
             'cron' => [
                 'action_hook' => 'rrze_updater_check_for_updates',
+                'email_action_hook' => 'rrze_updater_send_update_email',
                 'schedule' => 'twicedaily',
                 'minimum_check_interval' => HOUR_IN_SECONDS,
                 'main_blog_id' => 1,
+            ],
+            'settings' => [
+                'update_check_schedule' => 'twicedaily',
+                'email_updates_enabled' => false,
+                'email_address' => '',
+                'email_subject_prefix' => '[RRZE-Updater]',
+                'email_schedule' => 'rrze_updater_monthly',
             ],
             'menu' => [
                 'capability' => 'manage_options',
@@ -27,6 +35,7 @@ class Config {
                 'connectors_slug' => 'rrze-updater-connectors',
                 'plugins_slug' => 'rrze-updater-plugins',
                 'themes_slug' => 'rrze-updater-themes',
+                'settings_slug' => 'rrze-updater-settings',
                 'admin_bar_repositories_id' => 'rrze-updater-network-repositories',
                 'admin_bar_network_parent' => 'network-admin',
             ],
@@ -64,6 +73,9 @@ class Config {
                 'package_file' => 'package.json',
                 'plugin_main_file_pattern' => '%s.php',
                 'theme_main_file' => 'style.css',
+                'theme_functions_file' => 'functions.php',
+                'theme_classic_index_file' => 'index.php',
+                'theme_block_index_file' => 'templates/index.html',
             ],
             'fields' => [
                 'connector_types' => [
@@ -83,6 +95,16 @@ class Config {
                 'update_modes' => [
                     'commits',
                     'tags',
+                ],
+                'cron_schedules' => [
+                    'hourly' => 'hourly',
+                    'twicedaily' => 'twicedaily',
+                    'daily' => 'daily',
+                ],
+                'email_schedules' => [
+                    'daily' => '1x pro Tag',
+                    'rrze_updater_weekly' => '1x pro Woche',
+                    'rrze_updater_monthly' => '1x pro Monat',
                 ],
             ],
         ];
@@ -123,6 +145,15 @@ class Config {
         return $this->get('menu', []);
     }
 
+    public function getDefaultSettings(): array {
+        $settings = $this->get('settings', []);
+        if (empty($settings['email_address'])) {
+            $settings['email_address'] = $this->getDefaultEmailAddress();
+        }
+
+        return $settings;
+    }
+
     public function getConnectorSettings(string $type): array {
         return $this->get('connectors.' . $type, []);
     }
@@ -155,6 +186,18 @@ class Config {
         return (string) $this->get('version_detection.theme_main_file', 'style.css');
     }
 
+    public function getThemeFunctionsFile(): string {
+        return (string) $this->get('version_detection.theme_functions_file', 'functions.php');
+    }
+
+    public function getThemeClassicIndexFile(): string {
+        return (string) $this->get('version_detection.theme_classic_index_file', 'index.php');
+    }
+
+    public function getThemeBlockIndexFile(): string {
+        return (string) $this->get('version_detection.theme_block_index_file', 'templates/index.html');
+    }
+
     public function getLogPlugin(): string {
         return (string) $this->get('constants.log_plugin', 'rrze-updater');
     }
@@ -169,6 +212,10 @@ class Config {
 
     public function getCronSchedule(): string {
         return (string) $this->get('cron.schedule');
+    }
+
+    public function getCronEmailActionHook(): string {
+        return (string) $this->get('cron.email_action_hook');
     }
 
     public function getCronMinimumCheckInterval(): int {
@@ -201,5 +248,13 @@ class Config {
 
     public function getGithubApiHost(): string {
         return (string) $this->get('connectors.github.api_host');
+    }
+
+    public function getDefaultEmailAddress(): string {
+        if (is_multisite()) {
+            return (string) get_site_option('admin_email', get_option('admin_email'));
+        }
+
+        return (string) get_option('admin_email');
     }
 }

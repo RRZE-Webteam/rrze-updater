@@ -61,6 +61,8 @@ class Controller
     {
         $this->settings = $settings;
         $this->config = new Config();
+
+        add_action('admin_post_rrze_updater_theme_check', [$this, 'postThemeCheckRedirect']);
     }
 
     /**
@@ -113,23 +115,39 @@ class Controller
 
         // Filter and modify the repositories based on the search query and repository type.
         foreach ($repos as $key => $value) {
-            if ($search && empty(preg_grep('/' . $search . '/i', $value))) {
+            if ($search && empty(preg_grep('/' . preg_quote($search, '/') . '/i', $value))) {
                 // If a search query is provided and doesn't match, remove the repository.
                 unset($repos[$key]);
                 continue;
             }
             if (isset($value['plugin'])) {
                 // If it's a plugin repository, set type and version information.
+                $extension = $this->settings->getPluginById($value['id']);
                 $value['type'] = __('Plugin', 'rrze-updater');
                 $value['version'] = $this->pluginVersion($value['installationFolder'], $value['repository']);
+                $value['serviceOwner'] = $this->getServiceOwnerLabel($value);
+                $value['ref'] = $this->getRepositoryRefLabel($value, $extension);
+                $value['repositoryUrl'] = $this->getExtensionRepositoryUrl($extension);
+                $value = $this->addRepoUpdateData($value, $extension, 'plugin');
             } elseif (isset($value['theme'])) {
                 // If it's a theme repository, set type and version information.
+                $extension = $this->settings->getThemeById($value['id']);
                 $value['type'] = __('Theme', 'rrze-updater');
                 $value['version'] = $this->themeVersion($value['installationFolder']);
+                $value['serviceOwner'] = $this->getServiceOwnerLabel($value);
+                $value['ref'] = $this->getRepositoryRefLabel($value, $extension);
+                $value['repositoryUrl'] = $this->getExtensionRepositoryUrl($extension);
+                $value = $this->addRepoUpdateData($value, $extension, 'theme');
             } else {
                 // For other types, set type and version as placeholders.
                 $value['type'] = '&mdash;';
                 $value['version'] = '&mdash;';
+                $value['serviceOwner'] = '&mdash;';
+                $value['ref'] = $value['branch'] ?? '&mdash;';
+                $value['repositoryUrl'] = '';
+                $value['hasUpdate'] = false;
+                $value['updateVersion'] = '';
+                $value['updateUrl'] = '';
             }
             $repos[$key] = $value;
         }
@@ -145,6 +163,500 @@ class Controller
 
         // Display the repository list.
         $this->display('repositories/index', $data);
+    }
+
+    public function getSettingsIndex()
+    {
+        $tab = $this->getSettingsTab();
+
+        if ($tab == 'services') {
+            $this->addSettingsServicesMessages();
+
+            if ($action = $this->getAction()) {
+                $this->getConnectorAction($action);
+                if ($action != 'delete') {
+                    return;
+                }
+            }
+
+            $data = [
+                'tab' => $tab,
+                'listTable' => $this->getConnectorListTable()
+            ];
+
+            $this->display('settings/index', $data);
+            return;
+        }
+
+        if ($this->isSettingsSaveRequest()) {
+            $this->postSettingsSave();
+            if ($this->isSettingsSendNowRequest()) {
+                $this->sendUpdateEmailNow();
+            }
+        }
+
+        $data = [
+            'tab' => 'general',
+            'settings' => $this->settings->options,
+            'cronSchedules' => $this->config->get('fields.cron_schedules', []),
+            'emailSchedules' => $this->config->get('fields.email_schedules', [])
+        ];
+
+        $this->display('settings/index', $data);
+    }
+
+    private function addSettingsServicesMessages(): void {
+        $notice = isset($_GET['rrze-updater-notice']) ? sanitize_key((string) $_GET['rrze-updater-notice']) : '';
+
+        if ($notice == 'connector-added') {
+            $this->messages[] = __('Service created.', 'rrze-updater');
+        }
+    }
+
+    private function displaySettingsServicesIndex(): void {
+        $data = [
+            'tab' => 'services',
+            'listTable' => $this->getConnectorListTable()
+        ];
+
+        $this->display('settings/index', $data);
+    }
+
+    public function settingsScreenOptions()
+    {
+        if ($this->getSettingsTab() != 'services') {
+            return;
+        }
+
+        $this->connListScreenOptions();
+    }
+
+    private function getSettingsTab(): string
+    {
+        $tab = sanitize_key($_GET['tab'] ?? 'general');
+        $allowedTabs = [
+            'general',
+            'services'
+        ];
+
+        return in_array($tab, $allowedTabs, true) ? $tab : 'general';
+    }
+
+    private function isSettingsSaveRequest(): bool
+    {
+        $request = $_POST['rrze-updater'] ?? '';
+
+        return is_array($request)
+            && ($request['action'] ?? '') == 'save-settings'
+            && wp_verify_nonce($_POST['rrze-updater-nonce'] ?? '', 'rrze-updater-settings');
+    }
+
+    private function isSettingsSendNowRequest(): bool
+    {
+        return isset($_POST['rrze-updater-send-now']);
+    }
+
+    private function postSettingsSave()
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
+        }
+
+        $request = $_POST['rrze-updater'] ?? [];
+        $defaults = $this->config->getDefaultSettings();
+        $cronSchedules = array_keys($this->config->get('fields.cron_schedules', []));
+        $emailSchedules = array_keys($this->config->get('fields.email_schedules', []));
+        $updateCheckSchedule = sanitize_key($request['update_check_schedule'] ?? $defaults['update_check_schedule']);
+        $emailSchedule = sanitize_key($request['email_schedule'] ?? $defaults['email_schedule']);
+
+        if (!in_array($updateCheckSchedule, $cronSchedules, true)) {
+            $updateCheckSchedule = $defaults['update_check_schedule'];
+        }
+
+        if (!in_array($emailSchedule, $emailSchedules, true)) {
+            $emailSchedule = $defaults['email_schedule'];
+        }
+
+        $this->settings->options = [
+            'update_check_schedule' => $updateCheckSchedule,
+            'email_updates_enabled' => !empty($request['email_updates_enabled']),
+            'email_address' => sanitize_email($request['email_address'] ?? $defaults['email_address']),
+            'email_subject_prefix' => sanitize_text_field($request['email_subject_prefix'] ?? $defaults['email_subject_prefix']),
+            'email_schedule' => $emailSchedule
+        ];
+
+        if (!$this->settings->options['email_address']) {
+            $this->settings->options['email_address'] = $defaults['email_address'];
+        }
+
+        if (!$this->settings->options['email_subject_prefix']) {
+            $this->settings->options['email_subject_prefix'] = $defaults['email_subject_prefix'];
+        }
+
+        $this->settings->save();
+        Cron::clearSchedule();
+        Cron::clearEmailSchedule();
+        wp_schedule_event(time(), $this->settings->options['update_check_schedule'], $this->config->getCronActionHook());
+
+        if ($this->settings->options['email_updates_enabled']) {
+            wp_schedule_event(time(), $this->settings->options['email_schedule'], $this->config->getCronEmailActionHook());
+        }
+
+        $this->messages[] = __('Settings saved.', 'rrze-updater');
+    }
+
+    private function sendUpdateEmailNow()
+    {
+        $result = Cron::sendUpdateEmailForSettings($this->settings, true);
+
+        switch ($result) {
+            case 'sent':
+                $this->messages[] = __('Update notice email sent.', 'rrze-updater');
+                break;
+            case 'no_updates':
+                $this->messages[] = __('Es liegen keine Updates vor, über die berichtet werden kann.', 'rrze-updater');
+                break;
+            case 'invalid_recipient':
+                $this->messages[] = new WP_Error('error', __('No valid email address is configured.', 'rrze-updater'));
+                break;
+            case 'failed':
+                $this->messages[] = new WP_Error('error', __('The update notice email could not be sent.', 'rrze-updater'));
+                break;
+            default:
+                $this->messages[] = new WP_Error('error', __('The update notice email is disabled.', 'rrze-updater'));
+                break;
+        }
+    }
+
+    private function getConnectorListTable(): ConnListTable
+    {
+        $config = $this->settings->asArray();
+        $connectors = $config['connectors'] ?? [];
+
+        foreach ($connectors as $key => $connector) {
+            $repos = $this->settings->getConnectorRepos($connector['id']);
+            $connectors[$key]['repocount'] = count($repos);
+        }
+
+        $search = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
+        foreach ($connectors as $key => $value) {
+            if ($search && empty(preg_grep('/' . preg_quote($search, '/') . '/i', $value))) {
+                unset($connectors[$key]);
+                continue;
+            }
+        }
+
+        $listTable = new ConnListTable($connectors);
+        $listTable->prepare_items();
+
+        return $listTable;
+    }
+
+    private function addRepoUpdateData(array $repo, $extension, string $type): array
+    {
+        $repo['hasUpdate'] = false;
+        $repo['updateVersion'] = '';
+        $repo['updateUrl'] = '';
+
+        if (!$extension || !$this->extensionHasUpdate($extension)) {
+            return $repo;
+        }
+
+        $repo['hasUpdate'] = true;
+        $repo['updateVersion'] = method_exists($extension, 'getRemoteVersionLabel') ? $extension->getRemoteVersionLabel() : $extension->remoteVersion;
+        $repo['updateUrl'] = $type == 'plugin'
+            ? $this->getPluginUpdateUrl($extension)
+            : $this->getThemeUpdateUrl($extension);
+
+        return $repo;
+    }
+
+    private function getExtensionRepositoryUrl($extension): string
+    {
+        if (!$extension || empty($extension->repository)) {
+            return '';
+        }
+
+        $connector = $extension->connector ?? false;
+        if (!$connector && !empty($extension->connectorId)) {
+            $connector = $this->settings->getConnectorById($extension->connectorId);
+        }
+
+        if (!$connector || !method_exists($connector, 'getUrl')) {
+            return '';
+        }
+
+        return (string) $connector->getUrl($extension->repository);
+    }
+
+    private function getServiceOwnerLabel(array $repo): string {
+        $service = trim((string) ($repo['display'] ?? ''));
+        $owner = trim((string) ($repo['owner'] ?? ''));
+
+        if ($service === '' && $owner === '') {
+            return '&mdash;';
+        }
+
+        if ($service === '') {
+            return $owner;
+        }
+
+        if ($owner === '') {
+            return $service;
+        }
+
+        return sprintf('%1$s / %2$s', $service, $owner);
+    }
+
+    private function getRepositoryRefLabel(array $repo, $extension): string {
+        if ($extension && ($extension->updates ?? '') == 'tags') {
+            return (string) (($extension->remoteVersion ?? '') ?: __('Release tag not checked yet', 'rrze-updater'));
+        }
+
+        return (string) ($repo['branch'] ?? '');
+    }
+
+    private function extensionHasUpdate(object $extension): bool
+    {
+        return !empty($extension->remoteVersion)
+            && $extension->remoteVersion != $extension->localVersion
+            && empty($extension->lastError);
+    }
+
+    private function getPluginUpdateUrl(Plugin $extension): string
+    {
+        $pluginFile = $this->getPluginFile($extension->installationFolder, $extension->repository);
+
+        return wp_nonce_url(
+            self_admin_url('update.php?action=upgrade-plugin&plugin=') . $pluginFile,
+            'upgrade-plugin_' . $pluginFile
+        );
+    }
+
+    private function getPluginCheckUrl(Plugin $extension): string {
+        if (!$this->isPluginCheckAvailable()) {
+            return '';
+        }
+
+        $pluginFile = $this->getPluginFile($extension->installationFolder, $extension->repository);
+        if (!$pluginFile) {
+            return '';
+        }
+
+        return (string) add_query_arg(
+            [
+                'page' => 'plugin-check',
+                'plugin' => $pluginFile
+            ],
+            admin_url('tools.php')
+        );
+    }
+
+    private function isPluginCheckAvailable(): bool {
+        if (!defined('WP_PLUGIN_DIR') || !is_file(WP_PLUGIN_DIR . '/plugin-check/plugin.php')) {
+            return false;
+        }
+
+        if (!function_exists('is_plugin_active')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        return is_plugin_active('plugin-check/plugin.php')
+            || is_plugin_active_for_network('plugin-check/plugin.php');
+    }
+
+    private function getMultisiteManagerPluginsUrl(): string {
+        $pluginFile = 'rrze-multisite-manager/rrze-multisite-manager.php';
+
+        if (!defined('WP_PLUGIN_DIR') || !is_file(WP_PLUGIN_DIR . '/' . $pluginFile)) {
+            return '';
+        }
+
+        if (!function_exists('is_plugin_active')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        if (!is_plugin_active($pluginFile) && !is_plugin_active_for_network($pluginFile)) {
+            return '';
+        }
+
+        return (string) add_query_arg(
+            [
+                'page' => 'rrze-multisite-manager-plugin-overview'
+            ],
+            admin_url('admin.php')
+        );
+    }
+
+    private function getMultisiteManagerPluginDetailsUrl(Plugin $extension): string {
+        if ($this->getMultisiteManagerPluginsUrl() === '') {
+            return '';
+        }
+
+        $pluginFile = $this->getPluginFile($extension->installationFolder, $extension->repository);
+        if (!$pluginFile) {
+            return '';
+        }
+
+        return (string) add_query_arg(
+            [
+                'page' => 'rrze-multisite-manager-plugin-details',
+                'plugin' => $pluginFile
+            ],
+            admin_url('admin.php')
+        );
+    }
+
+    private function getMultisiteManagerThemesUrl(): string {
+        $pluginFile = 'rrze-multisite-manager/rrze-multisite-manager.php';
+
+        if (!defined('WP_PLUGIN_DIR') || !is_file(WP_PLUGIN_DIR . '/' . $pluginFile)) {
+            return '';
+        }
+
+        if (!function_exists('is_plugin_active')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        if (!is_plugin_active($pluginFile) && !is_plugin_active_for_network($pluginFile)) {
+            return '';
+        }
+
+        return (string) add_query_arg(
+            [
+                'page' => 'rrze-multisite-manager-theme-overview'
+            ],
+            admin_url('admin.php')
+        );
+    }
+
+    private function getMultisiteManagerThemeDetailsUrl(Theme $extension): string {
+        if ($this->getMultisiteManagerThemesUrl() === '') {
+            return '';
+        }
+
+        $stylesheet = trim((string) $extension->installationFolder);
+        if ($stylesheet === '') {
+            return '';
+        }
+
+        return (string) add_query_arg(
+            [
+                'page' => 'rrze-multisite-manager-theme-details',
+                'theme' => $stylesheet
+            ],
+            admin_url('admin.php')
+        );
+    }
+
+    private function getThemeCheckUrl(Theme $extension): string {
+        if (!$this->isThemeCheckAvailable()) {
+            return '';
+        }
+
+        $stylesheet = trim((string) $extension->installationFolder);
+        if ($stylesheet === '') {
+            return '';
+        }
+
+        return wp_nonce_url(
+            add_query_arg(
+                [
+                    'action' => 'rrze_updater_theme_check',
+                    'theme' => $stylesheet
+                ],
+                admin_url('admin-post.php')
+            ),
+            'rrze-updater-theme-check_' . $stylesheet
+        );
+    }
+
+    private function isThemeCheckAvailable(): bool {
+        $pluginFile = 'theme-check/theme-check.php';
+
+        if (!defined('WP_PLUGIN_DIR') || !is_file(WP_PLUGIN_DIR . '/' . $pluginFile)) {
+            return false;
+        }
+
+        if (!function_exists('is_plugin_active')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        return is_plugin_active($pluginFile)
+            || is_plugin_active_for_network($pluginFile);
+    }
+
+    public function postThemeCheckRedirect(): void {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
+        }
+
+        $stylesheet = isset($_GET['theme']) ? sanitize_text_field((string) wp_unslash($_GET['theme'])) : '';
+        if ($stylesheet === '') {
+            wp_die(esc_html__('An error occurred. Please try again.', 'rrze-updater'));
+        }
+
+        check_admin_referer('rrze-updater-theme-check_' . $stylesheet);
+
+        if (!$this->isThemeCheckAvailable()) {
+            wp_die(esc_html__('Theme Check is not available.', 'rrze-updater'));
+        }
+
+        $theme = wp_get_theme($stylesheet);
+        if (!$theme->exists()) {
+            wp_die(esc_html__('The selected theme does not exist.', 'rrze-updater'));
+        }
+
+        $themeCheckUrl = admin_url('themes.php?page=themecheck');
+        $themeCheckNonce = wp_create_nonce('themecheck-nonce');
+        ?>
+        <!doctype html>
+        <html>
+        <head>
+            <meta charset="<?php bloginfo('charset'); ?>">
+            <title><?php esc_html_e('Theme Check', 'rrze-updater'); ?></title>
+        </head>
+        <body>
+            <form id="rrze-updater-theme-check-form" action="<?php echo esc_url($themeCheckUrl); ?>" method="post">
+                <input type="hidden" name="themename" value="<?php echo esc_attr($stylesheet); ?>">
+                <input type="hidden" name="_wpnonce" value="<?php echo esc_attr($themeCheckNonce); ?>">
+                <input type="hidden" name="_wp_http_referer" value="<?php echo esc_attr(admin_url('themes.php?page=themecheck')); ?>">
+                <noscript>
+                    <p><?php esc_html_e('Theme Check requires a form submission. Continue with the button below.', 'rrze-updater'); ?></p>
+                    <button type="submit"><?php esc_html_e('Theme Check', 'rrze-updater'); ?></button>
+                </noscript>
+            </form>
+            <script>
+                document.getElementById('rrze-updater-theme-check-form').submit();
+            </script>
+        </body>
+        </html>
+        <?php
+        exit;
+    }
+
+    private function getThemeUpdateUrl(Theme $extension): string
+    {
+        return wp_nonce_url(
+            self_admin_url('update.php?action=upgrade-theme&theme=') . $extension->installationFolder,
+            'upgrade-theme_' . $extension->installationFolder
+        );
+    }
+
+    private function getPluginFile(string $installationFolder, string $repository): string
+    {
+        $candidates = array_values(array_unique([
+            $installationFolder . '/' . $repository . '.php',
+            $installationFolder . '/' . $installationFolder . '.php'
+        ]));
+
+        foreach ($candidates as $candidate) {
+            if (file_exists(WP_PLUGIN_DIR . '/' . $candidate)) {
+                return $candidate;
+            }
+        }
+
+        return $candidates[0];
     }
 
     /**
@@ -282,9 +794,9 @@ class Controller
         }
 
         // Perform a search operation if a search query is provided.
-        $search = isset($_GET['s']) ? $_GET['s'] : '';
+        $search = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
         foreach ($connectors as $key => $value) {
-            if ($search && empty(preg_grep('/' . $search . '/i', $value))) {
+            if ($search && empty(preg_grep('/' . preg_quote($search, '/') . '/i', $value))) {
                 unset($connectors[$key]);
                 continue;
             }
@@ -505,10 +1017,22 @@ class Controller
         $this->settings->save();
 
         $menuSettings = $this->config->getMenuSettings();
-        $connectorsSlug = $menuSettings['connectors_slug'] ?? 'rrze-updater-connectors';
+        $settingsSlug = $menuSettings['settings_slug'] ?? 'rrze-updater-settings';
+        $redirectUrl = add_query_arg(
+            [
+                'page' => $settingsSlug,
+                'tab' => 'services',
+                'rrze-updater-notice' => 'connector-added'
+            ],
+            self_admin_url('admin.php')
+        );
 
-        wp_safe_redirect(self_admin_url('admin.php?page=' . $connectorsSlug));
-        exit;
+        if (!headers_sent() && wp_safe_redirect($redirectUrl)) {
+            exit;
+        }
+
+        $this->messages[] = __('Service created.', 'rrze-updater');
+        $this->displaySettingsServicesIndex();
     }
 
     /**
@@ -523,7 +1047,7 @@ class Controller
     {
         // Check user permissions before proceeding with editing a connector.
         if (!current_user_can('manage_options')) {
-            wp_die(__('You need a higher level of permission.', 'rrze-updater'));
+            wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
         }
 
         // Retrieve and validate the POST request data.
@@ -584,40 +1108,54 @@ class Controller
         // Synchronize plugin settings with the currently installed plugins.
         $this->synchronizeSettings();
 
-        // Retrieve the list of plugins from settings.
-        $plugins = $this->settings->plugins;
         $data = [];
+        $pluginCheckAvailable = $this->isPluginCheckAvailable();
+        $multisiteManagerPluginsUrl = $this->getMultisiteManagerPluginsUrl();
+        $pluginCheckOverviewUrl = $pluginCheckAvailable
+            ? (string) add_query_arg(['page' => 'plugin-check'], admin_url('tools.php'))
+            : '';
 
-        // Iterate through each plugin and prepare data for display.
-        foreach ($plugins as $key => $value) {
-            $data[$key]['plugin'] = $value->repository;
-            $data[$key]['repository'] = $value->repository;
-            $data[$key]['id'] = $value->id;
-            $data[$key]['connector'] = $value->connector->display;
-            $data[$key]['branch'] = $value->branch;
-            $data[$key]['installationFolder'] = $value->installationFolder;
-            $data[$key]['lastChecked'] = $this->lastChecked($value->lastChecked);
-            $data[$key]['version'] = $this->pluginVersion($value->installationFolder, $value->repository);
+        foreach ($this->settings->connectors as $connector) {
+            foreach ($this->settings->getConnectorRepos($connector->id) as $repo) {
+                if (empty($repo['plugin'])) {
+                    continue;
+                }
+
+                $extension = $this->settings->getPluginById($repo['id']);
+                if (!$extension) {
+                    continue;
+                }
+
+                $repo['connector'] = $repo['display'] ?? '';
+                $repo['lastChecked'] = $this->lastChecked($extension->lastChecked);
+                $repo['version'] = $this->pluginVersion($repo['installationFolder'], $repo['repository']);
+                $repo['repositoryUrl'] = $this->getExtensionRepositoryUrl($extension);
+                $repo['pluginCheckUrl'] = $pluginCheckAvailable ? $this->getPluginCheckUrl($extension) : '';
+                $repo['multisiteManagerPluginsUrl'] = $this->getMultisiteManagerPluginDetailsUrl($extension);
+                $data[] = $this->addRepoUpdateData($repo, $extension, 'plugin');
+            }
         }
 
         // Retrieve the search criteria from the request.
-        $search = isset($_GET['s']) ? $_GET['s'] : '';
+        $search = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
 
         // Filter the data based on the search criteria.
         foreach ($data as $key => $value) {
-            if ($search && empty(preg_grep('/' . $search . '/i', $value))) {
+            if ($search && empty(preg_grep('/' . preg_quote($search, '/') . '/i', $value))) {
                 unset($data[$key]);
                 continue;
             }
         }
 
         // Create a 'PluginsListTable' instance and prepare items for display.
-        $listTable = new PluginsListTable($this, $data);
+        $listTable = new PluginsListTable($this, $data, $pluginCheckAvailable || $multisiteManagerPluginsUrl !== '');
         $listTable->prepare_items();
 
         // Prepare the data for rendering.
         $data = [
-            'listTable' => $listTable
+            'listTable' => $listTable,
+            'pluginCheckOverviewUrl' => $pluginCheckOverviewUrl,
+            'multisiteManagerPluginsUrl' => $multisiteManagerPluginsUrl
         ];
 
         // Display the plugin list.
@@ -739,7 +1277,11 @@ class Controller
             $data = [
                 'connectors' => $this->settings->connectors,
                 'plugin' => $plugin,
-                'lastChecked' => $this->lastChecked($plugin->lastChecked)
+                'lastChecked' => $this->lastChecked($plugin->lastChecked),
+                'installedVersion' => $this->pluginVersion($plugin->installationFolder, $plugin->repository),
+                'repositoryUrl' => $this->getExtensionRepositoryUrl($plugin),
+                'pluginCheckUrl' => $this->getPluginCheckUrl($plugin),
+                'multisiteManagerPluginsUrl' => $this->getMultisiteManagerPluginsUrl()
             ];
 
             // Display the plugin edit form.
@@ -782,7 +1324,11 @@ class Controller
             $data = [
                 'connectors' => $this->settings->connectors,
                 'plugin' => $plugin,
-                'lastChecked' => $this->lastChecked($plugin->lastChecked)
+                'lastChecked' => $this->lastChecked($plugin->lastChecked),
+                'installedVersion' => $this->pluginVersion($plugin->installationFolder, $plugin->repository),
+                'repositoryUrl' => $this->getExtensionRepositoryUrl($plugin),
+                'pluginCheckUrl' => $this->getPluginCheckUrl($plugin),
+                'multisiteManagerPluginsUrl' => $this->getMultisiteManagerPluginsUrl()
             ];
 
             // Display the plugin edit form.
@@ -916,6 +1462,28 @@ class Controller
         // Add the new plugin definition to the settings
         $this->settings->plugins[] = $extension;
 
+        $branchValidation = $extension->validateRemotePluginBranch($extension->branch);
+        if (is_wp_error($branchValidation)) {
+            $this->messages[] = $branchValidation;
+            do_action(
+                'rrze.log.error',
+                'Plugin installation failed for {repository}: {error}',
+                [
+                    'plugin' => $this->config->getLogPlugin(),
+                    'repository' => $extension->repository,
+                    'branch' => $extension->branch,
+                    'service' => $extension->connector->display ?? '',
+                    'error' => $branchValidation->get_error_message()
+                ]
+            );
+
+            $data = [
+                'connectors' => $this->settings->connectors
+            ];
+            $this->display('plugins/add', $data);
+            return;
+        }
+
         // If updates are configured for tags or commits, check if updates are available
         $extension->checkForUpdates();
 
@@ -1021,7 +1589,11 @@ class Controller
             $data = [
                 'connectors' => $this->settings->connectors,
                 'plugin' => $extension,
-                'lastChecked' => $this->lastChecked($extension->lastChecked)
+                'lastChecked' => $this->lastChecked($extension->lastChecked),
+                'installedVersion' => $this->pluginVersion($extension->installationFolder, $extension->repository),
+                'repositoryUrl' => $this->getExtensionRepositoryUrl($extension),
+                'pluginCheckUrl' => $this->getPluginCheckUrl($extension),
+                'multisiteManagerPluginsUrl' => $this->getMultisiteManagerPluginsUrl()
             ];
             $this->display('plugins/edit', $data);
             return;
@@ -1046,7 +1618,11 @@ class Controller
         $data = [
             'connectors' => $this->settings->connectors,
             'plugin' => $extension,
-            'lastChecked' => $this->lastChecked($extension->lastChecked)
+            'lastChecked' => $this->lastChecked($extension->lastChecked),
+            'installedVersion' => $this->pluginVersion($extension->installationFolder, $extension->repository),
+            'repositoryUrl' => $this->getExtensionRepositoryUrl($extension),
+            'pluginCheckUrl' => $this->getPluginCheckUrl($extension),
+            'multisiteManagerPluginsUrl' => $this->getMultisiteManagerPluginsUrl()
         ];
 
         // Display the plugin edit form.
@@ -1077,25 +1653,37 @@ class Controller
 
         // Synchronize settings to ensure accurate theme data
         $this->synchronizeSettings();
-        $themes = $this->settings->themes;
         $data = [];
+        $multisiteManagerThemesUrl = $this->getMultisiteManagerThemesUrl();
+        $themeCheckAvailable = $this->isThemeCheckAvailable();
 
-        // Prepare theme data for display, including repository, last checked timestamps, and versions
-        foreach ($themes as $key => $value) {
-            $data[$key]['theme'] = $value->repository;
-            $data[$key]['repository'] = $value->repository;
-            $data[$key]['id'] = $value->id;
-            $data[$key]['connector'] = $value->connector->display;
-            $data[$key]['branch'] = $value->branch;
-            $data[$key]['installationFolder'] = $value->installationFolder;
-            $data[$key]['lastChecked'] = $this->lastChecked($value->lastChecked);
-            $data[$key]['version'] = $this->themeVersion($value->installationFolder);
+        foreach ($this->settings->connectors as $connector) {
+            foreach ($this->settings->getConnectorRepos($connector->id) as $repo) {
+                if (empty($repo['theme'])) {
+                    continue;
+                }
+
+                $extension = $this->settings->getThemeById($repo['id']);
+                if (!$extension) {
+                    continue;
+                }
+
+                $repo['connector'] = $repo['display'] ?? '';
+                $repo['lastChecked'] = $this->lastChecked($extension->lastChecked);
+                $repo['version'] = $this->themeVersion($repo['installationFolder']);
+                $repo['repositoryUrl'] = $this->getExtensionRepositoryUrl($extension);
+                $repo['multisiteManagerThemesUrl'] = $multisiteManagerThemesUrl !== ''
+                    ? $this->getMultisiteManagerThemeDetailsUrl($extension)
+                    : '';
+                $repo['themeCheckUrl'] = $themeCheckAvailable ? $this->getThemeCheckUrl($extension) : '';
+                $data[] = $this->addRepoUpdateData($repo, $extension, 'theme');
+            }
         }
 
         // Handle theme searching and filtering
-        $search = isset($_GET['s']) ? $_GET['s'] : '';
+        $search = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
         foreach ($data as $key => $value) {
-            if ($search && empty(preg_grep('/' . $search . '/i', $value))) {
+            if ($search && empty(preg_grep('/' . preg_quote($search, '/') . '/i', $value))) {
                 unset($data[$key]);
                 continue;
             }
@@ -1222,7 +1810,11 @@ class Controller
             $data = [
                 'connectors' => $this->settings->connectors,
                 'theme' => $theme,
-                'lastChecked' => $this->lastChecked($theme->lastChecked)
+                'lastChecked' => $this->lastChecked($theme->lastChecked),
+                'installedVersion' => $this->themeVersion($theme->installationFolder),
+                'repositoryUrl' => $this->getExtensionRepositoryUrl($theme),
+                'multisiteManagerThemesUrl' => $this->getMultisiteManagerThemeDetailsUrl($theme),
+                'themeCheckUrl' => $this->getThemeCheckUrl($theme)
             ];
 
             // Display the theme edit form.
@@ -1262,7 +1854,11 @@ class Controller
             $data = [
                 'connectors' => $this->settings->connectors,
                 'theme' => $theme,
-                'lastChecked' => $this->lastChecked($theme->lastChecked)
+                'lastChecked' => $this->lastChecked($theme->lastChecked),
+                'installedVersion' => $this->themeVersion($theme->installationFolder),
+                'repositoryUrl' => $this->getExtensionRepositoryUrl($theme),
+                'multisiteManagerThemesUrl' => $this->getMultisiteManagerThemeDetailsUrl($theme),
+                'themeCheckUrl' => $this->getThemeCheckUrl($theme)
             ];
 
             // Display the theme edit form.
@@ -1399,8 +1995,53 @@ class Controller
         // Add the new theme definition to the settings
         $this->settings->themes[] = $extension;
 
+        $branchValidation = $extension->validateRemoteThemeBranch($extension->branch);
+        if (is_wp_error($branchValidation)) {
+            $this->messages[] = $branchValidation;
+            do_action(
+                'rrze.log.error',
+                'Theme installation failed for {repository}: {error}',
+                [
+                    'plugin' => $this->config->getLogPlugin(),
+                    'repository' => $extension->repository,
+                    'branch' => $extension->branch,
+                    'service' => $extension->connector->display ?? '',
+                    'error' => $branchValidation->get_error_message()
+                ]
+            );
+
+            $data = [
+                'connectors' => $this->settings->connectors
+            ];
+            $this->display('themes/add', $data);
+            return;
+        }
+
         // If update on tags or commits, check if there is a tag or commit available
         $extension->checkForUpdates();
+
+        $validation = $extension->validateRemoteThemeRepository($extension->remoteVersion ?: $extension->branch);
+        if (is_wp_error($validation)) {
+            $this->messages[] = $validation;
+            do_action(
+                'rrze.log.error',
+                'Theme installation failed for {repository}: {error}',
+                [
+                    'plugin' => $this->config->getLogPlugin(),
+                    'repository' => $extension->repository,
+                    'branch' => $extension->branch,
+                    'ref' => $extension->remoteVersion ?: $extension->branch,
+                    'service' => $extension->connector->display ?? '',
+                    'error' => $validation->get_error_message()
+                ]
+            );
+
+            $data = [
+                'connectors' => $this->settings->connectors
+            ];
+            $this->display('themes/add', $data);
+            return;
+        }
 
         // Install the theme
         $repoZip = $extension->connector->downloadRepoZip($request['repository'], $request['branch']);
@@ -1481,7 +2122,11 @@ class Controller
             $data = [
                 'connectors' => $this->settings->connectors,
                 'theme' => $extension,
-                'lastChecked' => $this->lastChecked($extension->lastChecked)
+                'lastChecked' => $this->lastChecked($extension->lastChecked),
+                'installedVersion' => $this->themeVersion($extension->installationFolder),
+                'repositoryUrl' => $this->getExtensionRepositoryUrl($extension),
+                'multisiteManagerThemesUrl' => $this->getMultisiteManagerThemeDetailsUrl($extension),
+                'themeCheckUrl' => $this->getThemeCheckUrl($extension)
             ];
             $this->display('themes/edit', $data);
             return;
@@ -1505,7 +2150,12 @@ class Controller
         // Prepare the data for rendering.
         $data = [
             'connectors' => $this->settings->connectors,
-            'theme' => $extension
+            'theme' => $extension,
+            'lastChecked' => $this->lastChecked($extension->lastChecked),
+            'installedVersion' => $this->themeVersion($extension->installationFolder),
+            'repositoryUrl' => $this->getExtensionRepositoryUrl($extension),
+            'multisiteManagerThemesUrl' => $this->getMultisiteManagerThemeDetailsUrl($extension),
+            'themeCheckUrl' => $this->getThemeCheckUrl($extension)
         ];
 
         // Display the theme edit form.
@@ -1524,13 +2174,7 @@ class Controller
      */
     protected function pluginVersion($installationFolder, $repository)
     {
-        // Construct the full path to the plugin file.
-        $pluginFile = sprintf(
-            '%1$s/%2$s/%3$s.php',
-            WP_PLUGIN_DIR,
-            $installationFolder,
-            $repository
-        );
+        $pluginFile = WP_PLUGIN_DIR . '/' . $this->getPluginFile($installationFolder, $repository);
 
         // Retrieve plugin data using 'get_plugin_data'.
         $pluginData = get_plugin_data($pluginFile);
@@ -1575,7 +2219,7 @@ class Controller
         $localLastCheckedTimestamp = strtotime(get_date_from_gmt(date('Y-m-d H:i:s', $timestamp)));
 
         // Format the local timestamp with a specific date and time format.
-        $localLastCheckedDateTime = date(__('Y/m/d') . ' H:i:s', $localLastCheckedTimestamp);
+        $localLastCheckedDateTime = date(esc_html__('Y/m/d', 'rrze-updater') . ' H:i:s', $localLastCheckedTimestamp);
 
         // Calculate the time difference between the last checked time and the current time.
         $timeDiff = time() - $timestamp;
@@ -1583,14 +2227,18 @@ class Controller
         // Check if the last checked time is within the same day.
         if ($timeDiff >= 0 && $timeDiff < DAY_IN_SECONDS) {
             // Format the time difference in a human-readable format.
-            $lastChecked = sprintf(__('%s ago'), human_time_diff($timestamp));
+            $lastChecked = sprintf(
+                /* translators: %s: Human-readable time difference */
+                esc_html__('%s ago', 'rrze-updater'),
+                human_time_diff($timestamp)
+            );
         } else {
             // Format the date using a different format for dates older than a day.
-            $lastChecked = date(__('Y/m/d'), $localLastCheckedTimestamp);
+            $lastChecked = date(esc_html__('Y/m/d', 'rrze-updater'), $localLastCheckedTimestamp);
         }
 
         // Create an abbreviation with a tooltip showing the full date and time.
-        return '<abbr title="' . $localLastCheckedDateTime . '">' . $lastChecked;
+        return '<abbr title="' . esc_attr($localLastCheckedDateTime) . '">' . esc_html($lastChecked) . '</abbr>';
     }
 
     /**

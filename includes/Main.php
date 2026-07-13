@@ -130,7 +130,7 @@ class Main
         $wpAdminBar->add_node([
             'id' => $menuSettings['admin_bar_repositories_id'] ?? 'rrze-updater-network-repositories',
             'parent' => $menuSettings['admin_bar_network_parent'] ?? 'network-admin',
-            'title' => __('Repositories', 'rrze-updater'),
+            'title' => __('Updater', 'rrze-updater'),
             'href' => network_admin_url('admin.php?page=' . ($menuSettings['repositories_slug'] ?? 'rrze-updater'))
         ]);
     }
@@ -147,28 +147,20 @@ class Main
         $menuSettings = $this->config->getMenuSettings();
         $capability = $menuSettings['capability'] ?? 'manage_options';
         $repositoriesSlug = $menuSettings['repositories_slug'] ?? 'rrze-updater';
-        $connectorsSlug = $menuSettings['connectors_slug'] ?? 'rrze-updater-connectors';
         $pluginsSlug = $menuSettings['plugins_slug'] ?? 'rrze-updater-plugins';
         $themesSlug = $menuSettings['themes_slug'] ?? 'rrze-updater-themes';
+        $settingsSlug = $menuSettings['settings_slug'] ?? 'rrze-updater-settings';
 
-        // Add the main "Repositories" menu page.
+        $repositoriesMenuTitle = __('Updater', 'rrze-updater') . $this->getRepositoryUpdatesBadge();
+
+        // Add the main "Updater" menu page.
         $repoPage = add_menu_page(
-            __('Repositories', 'rrze-updater'),             // Page title
-            __('Repositories', 'rrze-updater'),             // Menu title
+            __('Updater', 'rrze-updater'),             // Page title
+            $repositoriesMenuTitle,             // Menu title
             $capability,                      // Capability required to access
             $repositoriesSlug,                       // Menu slug
             [$this->controller, 'getRepoIndex'],            // Callback function for the page content
             'dashicons-update'                      // Dashicon icon
-        );
-
-        // Add submenu pages for "Services," "Plugins," and "Themes."
-        $connPage = add_submenu_page(
-            $repositoriesSlug,                      // Parent menu slug
-            __('Services', 'rrze-updater'),                 // Page title
-            __('Services', 'rrze-updater'),                 // Menu title
-            $capability,                      // Capability required to access
-            $connectorsSlug,            // Menu slug
-            [$this->controller, 'getConnectorIndex']        // Callback function for the page content
         );
 
         $pluginsPage = add_submenu_page(
@@ -189,11 +181,47 @@ class Main
             [$this->controller, 'getThemeIndex']            // Callback function for the page content
         );
 
+        $settingsPage = add_submenu_page(
+            $repositoriesSlug,
+            __('Einstellungen', 'rrze-updater'),
+            __('Einstellungen', 'rrze-updater'),
+            $capability,
+            $settingsSlug,
+            [$this->controller, 'getSettingsIndex']
+        );
+
         // Set up screen options for each admin page.
         add_action("load-$repoPage", [$this->controller, 'repoListScreenOptions']);
-        add_action("load-$connPage", [$this->controller, 'connListScreenOptions']);
         add_action("load-$pluginsPage", [$this->controller, 'pluginsListScreenOptions']);
         add_action("load-$themesPage", [$this->controller, 'themesListScreenOptions']);
+        add_action("load-$settingsPage", [$this->controller, 'settingsScreenOptions']);
+    }
+
+    private function getRepositoryUpdatesBadge(): string
+    {
+        $count = 0;
+
+        foreach (array_merge($this->settings->plugins, $this->settings->themes) as $extension) {
+            if ($this->extensionHasUpdate($extension)) {
+                $count++;
+            }
+        }
+
+        if ($count <= 0) {
+            return '';
+        }
+
+        return sprintf(
+            ' <span class="update-plugins count-%1$d"><span class="plugin-count">%1$d</span></span>',
+            $count
+        );
+    }
+
+    private function extensionHasUpdate(object $extension): bool
+    {
+        return !empty($extension->remoteVersion)
+            && $extension->remoteVersion != $extension->localVersion
+            && empty($extension->lastError);
     }
 
     /**
@@ -478,35 +506,35 @@ class Main
                 $activeClass = is_plugin_active($file) ? ' active' : '';
             }
 
-            echo '<tr class="plugin-update-tr' . $activeClass . '" id="' . esc_attr($response->slug . '-update') . '" data-slug="' . esc_attr($response->slug) . '" data-plugin="' . esc_attr($file) . '"><td colspan="' . esc_attr($wpListTable->get_column_count()) . '" class="plugin-update colspanchange"><div class="update-message notice inline notice-warning notice-alt"><p>';
+            echo '<tr class="plugin-update-tr' . esc_attr($activeClass) . '" id="' . esc_attr($response->slug . '-update') . '" data-slug="' . esc_attr($response->slug) . '" data-plugin="' . esc_attr($file) . '"><td colspan="' . esc_attr($wpListTable->get_column_count()) . '" class="plugin-update colspanchange"><div class="update-message notice inline notice-warning notice-alt"><p>';
 
             if (!current_user_can('update_plugins')) {
                 printf(
                     /* translators: 1: Extension name, 2: Version number */
-                    __('There is a new version of %1$s available: %2$s.', 'rrze-updater'),
-                    $plugin_name,
-                    $response->new_version
+                    esc_html__('There is a new version of %1$s available: %2$s.', 'rrze-updater'),
+                    wp_kses_post($plugin_name),
+                    esc_html($response->new_version)
                 );
             } elseif (empty($response->package)) {
                 printf(
                     /* translators: 1: Extension name, 2: Version number */
-                    __('There is a new version of %1$s available: %2$s. <em>Automatic update is unavailable for this plugin.</em>', 'rrze-updater'),
-                    $plugin_name,
-                    $response->new_version
+                    wp_kses_post(__('There is a new version of %1$s available: %2$s. <em>Automatic update is unavailable for this plugin.</em>', 'rrze-updater')),
+                    wp_kses_post($plugin_name),
+                    esc_html($response->new_version)
                 );
             } else {
                 printf(
                     /* translators: 1: Extension name, 2: Version number, 3: Update URL, 4: Additional link attributes */
-                    __('There is a new version of %1$s available: %2$s. <a href="%3$s" %4$s>Update now</a>.', 'rrze-updater'),
-                    $plugin_name,
-                    $response->new_version,
-                    wp_nonce_url(self_admin_url('update.php?action=upgrade-plugin&plugin=') . $file, 'upgrade-plugin_' . $file),
+                    wp_kses_post(__('There is a new version of %1$s available: %2$s. <a href="%3$s" %4$s>Update now</a>.', 'rrze-updater')),
+                    wp_kses_post($plugin_name),
+                    esc_html($response->new_version),
+                    esc_url(wp_nonce_url(self_admin_url('update.php?action=upgrade-plugin&plugin=') . $file, 'upgrade-plugin_' . $file)),
                     sprintf(
                         'class="update-link" aria-label="%s"',
                         sprintf(
                             /* translators: %s: Extension name */
                             esc_attr__('Update %s now', 'rrze-updater'),
-                            $plugin_name
+                            esc_attr(wp_strip_all_tags($plugin_name))
                         )
                     )
                 );
@@ -572,35 +600,35 @@ class Main
 
         $activeClass = $theme->is_allowed('network') ? ' active' : '';
 
-        echo '<tr class="plugin-update-tr' . $activeClass . '" id="' . esc_attr($theme->get_stylesheet() . '-update') . '" data-slug="' . esc_attr($theme->get_stylesheet()) . '"><td colspan="' . $wpListTable->get_column_count() . '" class="plugin-update colspanchange"><div class="update-message notice inline notice-warning notice-alt"><p>';
+        echo '<tr class="plugin-update-tr' . esc_attr($activeClass) . '" id="' . esc_attr($theme->get_stylesheet() . '-update') . '" data-slug="' . esc_attr($theme->get_stylesheet()) . '"><td colspan="' . esc_attr($wpListTable->get_column_count()) . '" class="plugin-update colspanchange"><div class="update-message notice inline notice-warning notice-alt"><p>';
         if (!current_user_can('update_themes')) {
             printf(
                 /* translators: 1: Extension name, 2: Version number */
-                __('There is a new version of %1$s available: %2$s.', 'rrze-updater'),
-                $theme['Name'],
-                $response['new_version']
+                esc_html__('There is a new version of %1$s available: %2$s.', 'rrze-updater'),
+                esc_html($theme['Name']),
+                esc_html($response['new_version'])
             );
         } elseif (empty($response['package'])) {
             printf(
                 /* translators: 1: Extension name, 2: Version number */
-                __('There is a new version of %1$s available: %2$s. <em>Automatic update is unavailable for this theme.</em>', 'rrze-updater'),
-                $theme['Name'],
-                $response['new_version']
+                wp_kses_post(__('There is a new version of %1$s available: %2$s. <em>Automatic update is unavailable for this theme.</em>', 'rrze-updater')),
+                esc_html($theme['Name']),
+                esc_html($response['new_version'])
             );
         } else {
             printf(
                 /* translators: 1: Extension name, 2: Version number, 3: Update URL, 4: Additional link attributes */
-                __('There is a new version of %1$s available: %2$s. <a href="%3$s" %4$s>Update now</a>.', 'rrze-updater'),
-                $theme['Name'],
-                $response['new_version'],
-                wp_nonce_url(self_admin_url('update.php?action=upgrade-theme&theme=') . $theme_key, 'upgrade-theme_' . $theme_key),
+                wp_kses_post(__('There is a new version of %1$s available: %2$s. <a href="%3$s" %4$s>Update now</a>.', 'rrze-updater')),
+                esc_html($theme['Name']),
+                esc_html($response['new_version']),
+                esc_url(wp_nonce_url(self_admin_url('update.php?action=upgrade-theme&theme=') . $theme_key, 'upgrade-theme_' . $theme_key)),
                 sprintf(
                     'class="update-link" aria-label="%s"',
                     esc_attr(
                         sprintf(
                             /* translators: %s: Extension name */
                             __('Update %s now', 'rrze-updater'),
-                            $theme['Name']
+                            esc_html($theme['Name'])
                         )
                     )
                 )
@@ -650,25 +678,25 @@ class Main
                 $pluginMeta[] = $version;
                 $pluginMeta[] = sprintf(
                     /* translators: %s: Repository branch name */
-                    __('Branch %s', 'rrze-updater'),
-                    mb_strimwidth($extension->branch, 0, 20, '...')
+                    esc_html__('Branch %s', 'rrze-updater'),
+                    esc_html(mb_strimwidth($extension->branch, 0, 20, '...'))
                 );
                 $pluginMeta[] = sprintf(
                     '%s <a href="%s" aria-label="%s">%s</a>',
-                    __('Repository', 'rrze-updater'),
-                    sprintf(
+                    esc_html__('Repository', 'rrze-updater'),
+                    esc_url(sprintf(
                         /* translators: 1: Repository url, 2: Repository local version */
                         '%1$s/tree/%2$s',
                         $extension->connector->getUrl($extension->repository),
                         $extension->localVersion
-                    ),
+                    )),
                     esc_attr(__('Repository', 'rrze-updater')),
-                    preg_replace("#^[^:/.]*[:/]+#i", "", $extension->connector->getUrl($extension->repository))
+                    esc_html(preg_replace("#^[^:/.]*[:/]+#i", "", $extension->connector->getUrl($extension->repository)))
                 );
                 $pluginMeta[] = sprintf(
                     /* translators: %s: Installation folder path */
-                    __('Folder %s', 'rrze-updater'),
-                    $extension->installationFolder
+                    esc_html__('Folder %s', 'rrze-updater'),
+                    esc_html($extension->installationFolder)
                 );
             }
         }
@@ -692,15 +720,23 @@ class Main
                 $version = $themeMeta[0];
                 unset($themeMeta);
                 $themeMeta[] = $version;
-                $themeMeta[] = sprintf(__('Branch %s', 'rrze-updater'), mb_strimwidth($extension->branch, 0, 20, '...'));
+                $themeMeta[] = sprintf(
+                    /* translators: %s: Branch name */
+                    esc_html__('Branch %s', 'rrze-updater'),
+                    esc_html(mb_strimwidth($extension->branch, 0, 20, '...'))
+                );
                 $themeMeta[] = sprintf(
                     '%s <a href="%s" aria-label="%s">%s</a>',
-                    __('Repository', 'rrze-updater'),
-                    sprintf('%s/tree/%s', $extension->connector->getUrl($extension->repository), $extension->localVersion),
+                    esc_html__('Repository', 'rrze-updater'),
+                    esc_url(sprintf('%s/tree/%s', $extension->connector->getUrl($extension->repository), $extension->localVersion)),
                     esc_attr(__('Repository', 'rrze-updater')),
-                    preg_replace("#^[^:/.]*[:/]+#i", "", $extension->connector->getUrl($extension->repository))
+                    esc_html(preg_replace("#^[^:/.]*[:/]+#i", "", $extension->connector->getUrl($extension->repository)))
                 );
-                $themeMeta[] = sprintf(__('Folder %s', 'rrze-updater'), $extension->installationFolder);
+                $themeMeta[] = sprintf(
+                    /* translators: %s: Theme folder name */
+                    esc_html__('Folder %s', 'rrze-updater'),
+                    esc_html($extension->installationFolder)
+                );
             }
         }
         return $themeMeta;

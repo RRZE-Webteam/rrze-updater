@@ -36,12 +36,12 @@ class Plugin extends Extension
         $config = new Config();
 
         return array_values(array_unique(array_merge(
-            $config->getReadmeFiles(),
             [
-                $config->getPackageFile(),
                 sprintf($config->getPluginMainFilePattern(), $this->installationFolder),
-                sprintf($config->getPluginMainFilePattern(), $this->repository)
-            ]
+                sprintf($config->getPluginMainFilePattern(), $this->repository),
+                $config->getPackageFile()
+            ],
+            $config->getReadmeFiles()
         )));
     }
 
@@ -54,38 +54,86 @@ class Plugin extends Extension
             );
         }
 
-        $mainFile = $this->getRemotePluginMainFile($ref);
-        if ($mainFile === false) {
-            return new \WP_Error(
-                'rrze_updater_missing_plugin_main_file',
-                __('The repository does not contain a valid WordPress plugin main file.', 'rrze-updater')
-            );
+        $mainFileValidation = $this->validateRemotePluginMainFile($ref);
+        if (is_wp_error($mainFileValidation)) {
+            return $mainFileValidation;
         }
 
         if (!$this->hasRemoteReadmeFile($ref)) {
+            $config = new Config();
             return new \WP_Error(
                 'rrze_updater_missing_plugin_readme',
-                __('The repository does not contain a readme.txt or README.md file.', 'rrze-updater')
+                sprintf(
+                    /* translators: %s: Comma-separated list of checked readme files */
+                    __('The repository is not recognized as a WordPress plugin. Missing readme file. Checked: %s.', 'rrze-updater'),
+                    implode(', ', $config->getReadmeFiles())
+                )
             );
         }
 
         return true;
     }
 
-    private function getRemotePluginMainFile(string $ref): string|bool
+    public function validateRemotePluginBranch(string $branch): bool|\WP_Error
     {
-        foreach ($this->getPluginMainFileCandidates() as $filePath) {
+        if (!$this->connector) {
+            return new \WP_Error(
+                'rrze_updater_missing_connector',
+                __('No repository service is configured for this plugin.', 'rrze-updater')
+            );
+        }
+
+        if ($this->connector->remoteBranchExists($this->repository, $branch)) {
+            return true;
+        }
+
+        return new \WP_Error(
+            'rrze_updater_missing_branch',
+            sprintf(
+                /* translators: 1: Branch name, 2: Repository name */
+                __('The repository branch "%1$s" could not be found for "%2$s". Check the branch name before the plugin contents are validated.', 'rrze-updater'),
+                $branch,
+                $this->repository
+            )
+        );
+    }
+
+    private function validateRemotePluginMainFile(string $ref): bool|\WP_Error
+    {
+        $foundFiles = [];
+        $checkedFiles = $this->getPluginMainFileCandidates();
+
+        foreach ($checkedFiles as $filePath) {
             $content = $this->connector->getRemoteFile($this->repository, $ref, $filePath);
             if (!is_string($content)) {
                 continue;
             }
 
+            $foundFiles[] = $filePath;
             if (preg_match('/^[\s\/\*#@]*Plugin Name\s*:\s*(.+)$/mi', $content)) {
-                return $filePath;
+                return true;
             }
         }
 
-        return false;
+        if (empty($foundFiles)) {
+            return new \WP_Error(
+                'rrze_updater_missing_plugin_main_file',
+                sprintf(
+                    /* translators: %s: Comma-separated list of checked plugin main file candidates */
+                    __('The repository is not recognized as a WordPress plugin. Missing plugin main file. Checked: %s.', 'rrze-updater'),
+                    implode(', ', $checkedFiles)
+                )
+            );
+        }
+
+        return new \WP_Error(
+            'rrze_updater_missing_plugin_name_header',
+            sprintf(
+                /* translators: %s: Comma-separated list of plugin main file candidates found without Plugin Name header */
+                __('The repository is not recognized as a WordPress plugin. Found plugin main file candidate, but the required "Plugin Name:" header is missing. Checked: %s.', 'rrze-updater'),
+                implode(', ', $foundFiles)
+            )
+        );
     }
 
     private function hasRemoteReadmeFile(string $ref): bool

@@ -97,6 +97,16 @@ abstract class Connector
     abstract public function getRemoteCommit(string $repository, string $branch): mixed;
 
     /**
+     * Abstract method to check whether a branch exists in the repository.
+     *
+     * @abstract
+     * @param string $repository The name of the repository.
+     * @param string $branch     The branch name.
+     * @return bool True if the branch exists, false otherwise.
+     */
+    abstract public function remoteBranchExists(string $repository, string $branch): bool;
+
+    /**
      * Abstract method to get the remote tag for the repository.
      *
      * @abstract

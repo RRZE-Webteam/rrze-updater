@@ -3,10 +3,7 @@ name: Publish
 on:
   push:
     branches:
-      - dev
-  pull_request:
-    branches:
-      - dev
+      - main
 
 jobs:
   publish:
@@ -54,54 +51,7 @@ jobs:
             echo "readme.txt not found, skipping plugin data update in readme.txt"
           fi
 
-      - name: Commit version changes to dev
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git add .
-          git commit -m "Publish" || echo "No changes to commit"
-          git push origin dev || { echo "Error: Push to dev branch failed"; exit 1; }
-
-      - name: Check if tag or release exists
-        env:
-          version: ${{ env.version }}
-        run: |
-          if git rev-parse "${{ env.version }}" >/dev/null 2>&1; then
-            echo "Tag ${{ env.version }} already exists. Skipping release."
-            exit 1
-          fi
-
-      - name: Check out the main branch
-        run: |
-          git fetch origin
-          git checkout main
-          git pull origin main
-
-      - name: Merge dev into main
-        run: |
-          git merge origin/dev --no-ff -m "Merging from dev to main" || { echo "Error: Merge failed"; exit 1; }
-
-      - name: Push changes to main branch
-        run: |
-          git push origin main || { echo "Error: Push to main branch failed"; exit 1; }
-
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          version: ${{ env.version }}
-        with:
-          tag_name: "${{ env.version }}"
-          release_name: "v${{ env.version }}"
-          draft: false
-          prerelease: false
-
-      - name: Check if Release was Created
-        if: steps.create_release.outputs.id == ''
-        run: |
-          echo "Release creation failed"
-          exit 1
+     
           
       - name: Send Matrix notification
         env:

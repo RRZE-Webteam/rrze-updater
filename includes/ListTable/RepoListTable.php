@@ -57,9 +57,8 @@ class RepoListTable extends WP_List_Table
     public function column_default($item, $columnName)
     {
         switch ($columnName) {
-            case 'branch':
-            case 'display':
-            case 'owner':
+            case 'ref':
+            case 'serviceOwner':
                 $item[$columnName] = !empty($item[$columnName]) ? wp_trim_words($item[$columnName], 10) : '';
                 break;
             default:
@@ -84,6 +83,11 @@ class RepoListTable extends WP_List_Table
         $id = $item['id'];
 
         $actions = [
+            'repository' => !empty($item['repositoryUrl']) ? sprintf(
+                '<a href="%1$s" target="_blank" rel="noopener noreferrer">%2$s</a>',
+                esc_url($item['repositoryUrl']),
+                __('Repository', 'rrze-updater')
+            ) : '',
             'edit' => sprintf(
                 '<a href="%1$s">%2$s</a>',
                 add_query_arg(
@@ -115,10 +119,11 @@ class RepoListTable extends WP_List_Table
                 __('Delete', 'rrze-updater')
             ),
         ];
+        $actions = array_filter($actions);
 
         return sprintf(
             '%1$s %2$s',
-            $item['repository'],
+            esc_html($item['repository']),
             $this->row_actions($actions)
         );
     }
@@ -140,6 +145,35 @@ class RepoListTable extends WP_List_Table
         );
     }
 
+    public function column_version($item)
+    {
+        $version = !empty($item['version']) ? $item['version'] : '';
+
+        if (empty($item['hasUpdate']) || empty($item['updateUrl']) || empty($item['updateVersion'])) {
+            return $version;
+        }
+
+        return sprintf(
+            '%1$s <span class="rrze-updater-update-link">(<a href="%2$s">%3$s</a>)</span>',
+            $version,
+            esc_url($item['updateUrl']),
+            sprintf(
+                /* translators: %s: New extension version */
+                esc_html__('Update auf %s', 'rrze-updater'),
+                esc_html($item['updateVersion'])
+            )
+        );
+    }
+
+    public function single_row($item)
+    {
+        $class = !empty($item['hasUpdate']) ? 'rrze-updater-has-update' : '';
+
+        echo $class ? '<tr class="' . esc_attr($class) . '">' : '<tr>';
+        $this->single_row_columns($item);
+        echo '</tr>';
+    }
+
     /**
      * Get Column Definitions
      *
@@ -151,12 +185,11 @@ class RepoListTable extends WP_List_Table
     {
         return [
             'cb' => '<input type="checkbox">',
-            'repository' => __('Repository', 'rrze-updater'),
-            'branch' => __('Branch', 'rrze-updater'),
-            'display' => __('Service', 'rrze-updater'),
-            'owner' => __('User/Group', 'rrze-updater'),
+            'repository' => __('Name', 'rrze-updater'),
+            'version' => __('Version', 'rrze-updater'),
             'type' => __('Type', 'rrze-updater'),
-            'version' => __('Version', 'rrze-updater')
+            'serviceOwner' => __('Service / User/Group', 'rrze-updater'),
+            'ref' => __('Branch / Release tag', 'rrze-updater')
         ];
     }
 
@@ -171,8 +204,10 @@ class RepoListTable extends WP_List_Table
     {
         return [
             'repository' => ['repository', false],
-            'display' => ['display', false],
-            'type' => ['type', false]
+            'version' => ['version', false],
+            'type' => ['type', false],
+            'serviceOwner' => ['serviceOwner', false],
+            'ref' => ['ref', false]
         ];
     }
 
@@ -200,6 +235,10 @@ class RepoListTable extends WP_List_Table
         if ('delete' === $this->current_action()) {
             $repos = $_GET['repositories'] ?? '';
             if (!empty($repos) && is_array($repos)) {
+                if (($_GET['rrze-updater-bulk-delete-confirmed'] ?? '') !== '1') {
+                    return;
+                }
+
                 foreach ($repos as $id) {
                     foreach ($this->listData as $key => $subary) {
                         if ($subary['id'] == $id) {

@@ -127,6 +127,30 @@ class GithubConnector extends Connector
         return $ret;
     }
 
+    public function remoteBranchExists(string $repository, string $branch): bool
+    {
+        $url = sprintf(
+            'https://%1$s/repos/%2$s/%3$s/branches/%4$s',
+            $this->getApiHost(),
+            rawurlencode($this->owner),
+            rawurlencode($repository),
+            rawurlencode($branch)
+        );
+
+        $response = $this->api(
+            $url,
+            [
+                'headers' => $this->getHeaders()
+            ],
+            [
+                'logErrors' => false,
+                'storeError' => false
+            ]
+        );
+
+        return is_object($response) && isset($response->name);
+    }
+
     /**
      * Get the latest remote tag of a GitHub repository.
      *

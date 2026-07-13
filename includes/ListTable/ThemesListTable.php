@@ -61,9 +61,11 @@ class ThemesListTable extends WP_List_Table
             case 'connector':
             case 'version':
             case 'installationFolder':
+            case 'serviceRepository':
             case 'repository':
             case 'branch':
             case 'lastChecked':
+            case 'tools':
             default:
                 $item[$columnName] = !empty($item[$columnName]) ? $item[$columnName] : '';
         }
@@ -85,6 +87,11 @@ class ThemesListTable extends WP_List_Table
         $id = $item['id'];
 
         $actions = [
+            'repository' => !empty($item['repositoryUrl']) ? sprintf(
+                '<a href="%1$s" target="_blank" rel="noopener noreferrer">%2$s</a>',
+                esc_url($item['repositoryUrl']),
+                __('Repository', 'rrze-updater')
+            ) : '',
             'edit' => sprintf(
                 '<a href="%1$s">%2$s</a>',
                 add_query_arg(
@@ -111,10 +118,11 @@ class ThemesListTable extends WP_List_Table
                 __('Delete', 'rrze-updater')
             ),
         ];
+        $actions = array_filter($actions);
 
         return sprintf(
             '%1$s %2$s',
-            $item['theme'],
+            esc_html($item['theme']),
             $this->row_actions($actions)
         );
     }
@@ -136,6 +144,72 @@ class ThemesListTable extends WP_List_Table
         );
     }
 
+    public function column_version($item)
+    {
+        $version = !empty($item['version']) ? $item['version'] : '';
+
+        if (empty($item['hasUpdate']) || empty($item['updateUrl']) || empty($item['updateVersion'])) {
+            return $version;
+        }
+
+        return sprintf(
+            '%1$s <span class="rrze-updater-update-link">(<a href="%2$s">%3$s</a>)</span>',
+            $version,
+            esc_url($item['updateUrl']),
+            sprintf(
+                /* translators: %s: New extension version */
+                esc_html__('Update auf %s', 'rrze-updater'),
+                esc_html($item['updateVersion'])
+            )
+        );
+    }
+
+    public function single_row($item)
+    {
+        $class = !empty($item['hasUpdate']) ? 'rrze-updater-has-update' : '';
+
+        echo $class ? '<tr class="' . esc_attr($class) . '">' : '<tr>';
+        $this->single_row_columns($item);
+        echo '</tr>';
+    }
+
+    public function column_serviceRepository($item) {
+        $service = !empty($item['connector']) ? $item['connector'] : '&mdash;';
+        $repository = !empty($item['repository']) ? $item['repository'] : '&mdash;';
+
+        return sprintf(
+            '%1$s / %2$s',
+            esc_html($service),
+            esc_html($repository)
+        );
+    }
+
+    public function column_tools($item) {
+        $links = [];
+
+        if (!empty($item['themeCheckUrl'])) {
+            $links[] = sprintf(
+                '<a class="button button-small" href="%1$s">%2$s</a>',
+                esc_url($item['themeCheckUrl']),
+                esc_html__('Theme Check', 'rrze-updater')
+            );
+        }
+
+        if (!empty($item['multisiteManagerThemesUrl'])) {
+            $links[] = sprintf(
+                '<a class="button button-small" href="%1$s">%2$s</a>',
+                esc_url($item['multisiteManagerThemesUrl']),
+                esc_html__('Multisite Manager', 'rrze-updater')
+            );
+        }
+
+        if (empty($links)) {
+            return '&mdash;';
+        }
+
+        return implode(' ', $links);
+    }
+
     /**
      * Get Column Definitions
      *
@@ -150,10 +224,10 @@ class ThemesListTable extends WP_List_Table
             'theme' => __('Theme', 'rrze-updater'),
             'version' => __('Version', 'rrze-updater'),
             'installationFolder' => __('Folder', 'rrze-updater'),
-            'connector' => __('Service', 'rrze-updater'),
-            'repository' => __('Repository', 'rrze-updater'),
+            'serviceRepository' => __('Service / Repository', 'rrze-updater'),
             'branch' => __('Branch', 'rrze-updater'),
-            'lastChecked' => __('Last checked')
+            'lastChecked' => __('Last checked', 'rrze-updater'),
+            'tools' => __('Tools', 'rrze-updater')
         ];
     }
 
@@ -170,6 +244,11 @@ class ThemesListTable extends WP_List_Table
             'theme' => ['theme', false],
             'installationFolder' => ['installationFolder', false]
         ];
+    }
+
+    protected function get_primary_column_name()
+    {
+        return 'theme';
     }
 
     /**
@@ -196,6 +275,10 @@ class ThemesListTable extends WP_List_Table
         if ('delete' === $this->current_action()) {
             $themes = $_GET[$this->_args['plural']] ?? '';
             if (!empty($themes) && is_array($themes)) {
+                if (($_GET['rrze-updater-bulk-delete-confirmed'] ?? '') !== '1') {
+                    return;
+                }
+
                 foreach ($themes as $id) {
                     foreach ($this->listData as $key => $subary) {
                         if ($subary['id'] == $id) {

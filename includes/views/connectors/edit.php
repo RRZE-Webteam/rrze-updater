@@ -18,7 +18,14 @@ $isCustomGitlab = $isGitlab
     );
 ?>
 
-<h2><?php _e('Edit Service', 'rrze-updater'); ?></h2>
+<h2><?php esc_html_e('Einstellungen', 'rrze-updater'); ?></h2>
+
+<nav class="nav-tab-wrapper">
+    <a class="nav-tab" href="<?php echo esc_url(self_admin_url('admin.php?page=rrze-updater-settings')); ?>"><?php esc_html_e('Allgemein', 'rrze-updater'); ?></a>
+    <a class="nav-tab nav-tab-active" href="<?php echo esc_url(self_admin_url('admin.php?page=rrze-updater-settings&tab=services')); ?>"><?php esc_html_e('Dienste', 'rrze-updater'); ?></a>
+</nav>
+
+<h2><?php esc_html_e('Edit Service', 'rrze-updater'); ?></h2>
 
 <form action="" method="POST">
     <?php wp_nonce_field('rrze-updater-connector-edit', 'rrze-updater-nonce'); ?>
@@ -28,7 +35,7 @@ $isCustomGitlab = $isGitlab
         <tbody>
             <tr>
                 <th scope="row">
-                    <label><?php _e('Service', 'rrze-updater'); ?></label>
+                    <label><?php esc_html_e('Service', 'rrze-updater'); ?></label>
                 </th>
                 <td>
                     <input readonly="readonly" name="rrze-updater[type]" type="text" autocomplete="off" class="regular-text" value="<?php echo esc_attr($connector->display); ?>">
@@ -37,26 +44,34 @@ $isCustomGitlab = $isGitlab
             <?php if ($isCustomGitlab) : ?>
                 <tr>
                     <th scope="row">
-                        <label><?php _e('GitLab host', 'rrze-updater'); ?></label>
+                        <label><?php esc_html_e('GitLab host', 'rrze-updater'); ?></label>
                     </th>
                     <td>
                         <input name="rrze-updater[host]" type="text" autocomplete="off" class="regular-text" value="<?php echo esc_attr($host); ?>">
-                        <p class="description"><?php printf(esc_html__('Example: %s', 'rrze-updater'), esc_html($hostPlaceholder)); ?></p>
+                        <p class="description"><?php printf(
+                            /* translators: %s: Example GitLab host name */
+                            esc_html__('Example: %s', 'rrze-updater'),
+                            esc_html($hostPlaceholder)
+                        ); ?></p>
                     </td>
                 </tr>
                 <tr>
                     <th scope="row">
-                        <label><?php _e('GitLab API URI', 'rrze-updater'); ?></label>
+                        <label><?php esc_html_e('GitLab API URI', 'rrze-updater'); ?></label>
                     </th>
                     <td>
                         <input name="rrze-updater[apiUri]" type="text" autocomplete="off" class="regular-text" value="<?php echo esc_attr($apiUri); ?>">
-                        <p class="description"><?php printf(esc_html__('Default: %s', 'rrze-updater'), esc_html($config->getGitlabDefaultApiUri())); ?></p>
+                        <p class="description"><?php printf(
+                            /* translators: %s: Default GitLab API URI */
+                            esc_html__('Default: %s', 'rrze-updater'),
+                            esc_html($config->getGitlabDefaultApiUri())
+                        ); ?></p>
                     </td>
                 </tr>
             <?php endif; ?>
             <tr>
                 <th scope="row">
-                    <label><?php _e('User/Group', 'rrze-updater'); ?></label>
+                    <label><?php esc_html_e('User/Group', 'rrze-updater'); ?></label>
                 </th>
                 <td>
                     <input readonly="readonly" name="rrze-updater[owner]" type="text" autocomplete="off" class="regular-text" value="<?php echo esc_attr($connector->owner); ?>">
@@ -64,11 +79,11 @@ $isCustomGitlab = $isGitlab
             </tr>
             <tr>
                 <th scope="row">
-                    <label><?php _e('Token', 'rrze-updater'); ?></label>
+                    <label><?php esc_html_e('Token', 'rrze-updater'); ?></label>
                 </th>
                 <td>
                     <input name="rrze-updater[token]" type="text" autocomplete="off" class="regular-text" value="<?php echo esc_attr((!empty($connector->token)) ? $connector->token : ''); ?>">
-                    <p class="description"><?php _e('Optional.', 'rrze-updater'); ?></p>
+                    <p class="description"><?php esc_html_e('Optional.', 'rrze-updater'); ?></p>
                 </td>
             </tr>
         </tbody>
