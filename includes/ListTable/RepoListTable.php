@@ -83,11 +83,6 @@ class RepoListTable extends WP_List_Table
         $id = $item['id'];
 
         $actions = [
-            'repository' => !empty($item['repositoryUrl']) ? sprintf(
-                '<a href="%1$s" target="_blank" rel="noopener noreferrer">%2$s</a>',
-                esc_url($item['repositoryUrl']),
-                __('Repository', 'rrze-updater')
-            ) : '',
             'edit' => sprintf(
                 '<a href="%1$s">%2$s</a>',
                 add_query_arg(
@@ -123,9 +118,54 @@ class RepoListTable extends WP_List_Table
 
         return sprintf(
             '%1$s %2$s',
-            esc_html($item['repository']),
+            esc_html($item['displayName'] ?? $item['repository']),
             $this->row_actions($actions)
         );
+    }
+
+    public function column_serviceOwner($item) {
+        $parts = $this->getServiceOwnerParts($item);
+
+        if (empty($parts)) {
+            return '&mdash;';
+        }
+
+        $repositoryUrl = !empty($item['repositoryUrl']) ? (string) $item['repositoryUrl'] : '';
+        $output = [];
+
+        foreach ($parts as $part) {
+            if ($repositoryUrl !== '') {
+                $output[] = sprintf(
+                    '<a href="%1$s" target="_blank" rel="noopener noreferrer">%2$s</a>',
+                    esc_url($repositoryUrl),
+                    esc_html($part)
+                );
+                continue;
+            }
+
+            $output[] = esc_html($part);
+        }
+
+        return implode(' / ', $output);
+    }
+
+    private function getServiceOwnerParts(array $item): array {
+        $fields = [
+            'display',
+            'owner',
+            'repository'
+        ];
+        $parts = [];
+
+        foreach ($fields as $field) {
+            $value = trim((string) ($item[$field] ?? ''));
+
+            if ($value !== '') {
+                $parts[] = $value;
+            }
+        }
+
+        return $parts;
     }
 
     /**
@@ -188,7 +228,7 @@ class RepoListTable extends WP_List_Table
             'repository' => __('Name', 'rrze-updater'),
             'version' => __('Version', 'rrze-updater'),
             'type' => __('Type', 'rrze-updater'),
-            'serviceOwner' => __('Service / User/Group', 'rrze-updater'),
+            'serviceOwner' => __('Repository', 'rrze-updater'),
             'ref' => __('Branch / Release tag', 'rrze-updater')
         ];
     }
@@ -260,13 +300,7 @@ class RepoListTable extends WP_List_Table
      */
     public function prepare_items()
     {
-        usort($this->listData, function ($a, $b) {
-            $orderby = (!empty($_REQUEST['orderby'])) ? $_REQUEST['orderby'] : 'repository'; // If no sort, default to repository
-            $orderby = isset($a[$orderby]) || isset($b[$orderby]) ? $orderby : 'repository';
-            $order = (!empty($_REQUEST['order'])) ? $_REQUEST['order'] : 'asc'; // If no order, default to asc
-            $result = strcmp($a[$orderby], $b[$orderby]); // Determine sort order
-            return ($order === 'asc') ? $result : -$result; // Send final sort direction to usort
-        });
+        usort($this->listData, [$this, 'sortItems']);
 
         $this->process_bulk_action();
 
@@ -283,5 +317,42 @@ class RepoListTable extends WP_List_Table
             'per_page' => $perPage, // How many items to show on a page
             'total_pages' => ceil($totalItems / $perPage)   // Total number of pages
         ]);
+    }
+
+    private function sortItems(array $a, array $b): int {
+        $aHasUpdate = !empty($a['hasUpdate']);
+        $bHasUpdate = !empty($b['hasUpdate']);
+
+        if ($aHasUpdate !== $bHasUpdate) {
+            return $aHasUpdate ? -1 : 1;
+        }
+
+        $orderby = (!empty($_REQUEST['orderby']) && is_string($_REQUEST['orderby']))
+            ? sanitize_key($_REQUEST['orderby'])
+            : 'repository';
+        $sortableColumns = array_keys($this->get_sortable_columns());
+
+        if (!in_array($orderby, $sortableColumns, true)) {
+            $orderby = 'repository';
+        }
+
+        $order = (!empty($_REQUEST['order']) && $_REQUEST['order'] === 'desc') ? 'desc' : 'asc';
+        $aValue = $this->getSortValue($a, $orderby);
+        $bValue = $this->getSortValue($b, $orderby);
+        $result = strnatcasecmp($aValue, $bValue);
+
+        if ($result === 0 && $orderby !== 'repository') {
+            $result = strnatcasecmp((string) ($a['repository'] ?? ''), (string) ($b['repository'] ?? ''));
+        }
+
+        return ($order === 'asc') ? $result : -$result;
+    }
+
+    private function getSortValue(array $item, string $orderby): string {
+        if ($orderby == 'repository' && !empty($item['displayName'])) {
+            return wp_strip_all_tags((string) $item['displayName']);
+        }
+
+        return isset($item[$orderby]) ? wp_strip_all_tags((string) $item[$orderby]) : '';
     }
 }

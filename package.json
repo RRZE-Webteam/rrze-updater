@@ -1,7 +1,7 @@
 {
   "name": "rrze-updater",
   "title": "RRZE Updater",
-  "version": "2.5.11",
+  "version": "2.5.12",
   "description": "Sync Plugins and Themes with the corresponding GitHub or GitLab repositories.",
   "main": "rrze-updater.php",
   "textdomain": "rrze-updater",

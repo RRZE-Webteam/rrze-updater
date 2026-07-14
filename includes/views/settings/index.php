@@ -39,6 +39,15 @@ $settingsPage = 'rrze-updater-settings';
                         </select>
                     </td>
                 </tr>
+                <tr>
+                    <th scope="row">
+                        <label for="rrze-updater-update-check-delay"><?php esc_html_e('Delay zwischen Repository-Prüfungen', 'rrze-updater'); ?></label>
+                    </th>
+                    <td>
+                        <input id="rrze-updater-update-check-delay" name="rrze-updater[update_check_delay]" type="number" class="small-text" min="1" step="1" value="<?php echo esc_attr(max(1, absint($settings['update_check_delay'] ?? 1))); ?>">
+                        <?php esc_html_e('Sekunden', 'rrze-updater'); ?>
+                    </td>
+                </tr>
             </tbody>
         </table>
 

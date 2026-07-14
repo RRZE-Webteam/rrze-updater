@@ -24,6 +24,7 @@ class Config {
             ],
             'settings' => [
                 'update_check_schedule' => 'twicedaily',
+                'update_check_delay' => 1,
                 'email_updates_enabled' => false,
                 'email_address' => '',
                 'email_subject_prefix' => '[RRZE-Updater]',

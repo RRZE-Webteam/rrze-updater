@@ -30,4 +30,28 @@ class PluginUpgraderSkin extends Plugin_Upgrader_Skin
         parent::__construct();
         $this->extension = $extension;
     }
+
+    public function after() {
+        add_filter('gettext', [$this, 'translateNetworkActivationLabel'], 10, 3);
+        parent::after();
+        remove_filter('gettext', [$this, 'translateNetworkActivationLabel'], 10);
+    }
+
+    public function translateNetworkActivationLabel($translation, $text, $domain) {
+        if (!is_network_admin()) {
+            return $translation;
+        }
+
+        $activationLabels = [
+            'Activate Plugin',
+            'Network Activate',
+            'Activate'
+        ];
+
+        if (in_array($text, $activationLabels, true)) {
+            return __('Plugin netzwerkweit aktivieren', 'rrze-updater');
+        }
+
+        return $translation;
+    }
 }

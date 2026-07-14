@@ -93,11 +93,6 @@ class PluginsListTable extends WP_List_Table
         $id = $item['id'];
 
         $actions = [
-            'repository' => !empty($item['repositoryUrl']) ? sprintf(
-                '<a href="%1$s" target="_blank" rel="noopener noreferrer">%2$s</a>',
-                esc_url($item['repositoryUrl']),
-                __('Repository', 'rrze-updater')
-            ) : '',
             'edit' => sprintf(
                 '<a href="%1$s">%2$s</a>',
                 add_query_arg(
@@ -128,7 +123,7 @@ class PluginsListTable extends WP_List_Table
 
         return sprintf(
             '%1$s %2$s',
-            esc_html($item['plugin']),
+            esc_html($item['pluginDisplayName'] ?? $item['plugin']),
             $this->row_actions($actions)
         );
     }
@@ -206,14 +201,50 @@ class PluginsListTable extends WP_List_Table
     }
 
     public function column_serviceRepository($item) {
-        $service = !empty($item['connector']) ? $item['connector'] : '&mdash;';
-        $repository = !empty($item['repository']) ? $item['repository'] : '&mdash;';
+        $parts = $this->getRepositoryParts($item);
 
-        return sprintf(
-            '%1$s / %2$s',
-            esc_html($service),
-            esc_html($repository)
-        );
+        if (empty($parts)) {
+            return '&mdash;';
+        }
+
+        $repositoryUrl = !empty($item['repositoryUrl']) ? (string) $item['repositoryUrl'] : '';
+        $output = [];
+
+        foreach ($parts as $part) {
+            if ($repositoryUrl !== '') {
+                $output[] = sprintf(
+                    '<a href="%1$s" target="_blank" rel="noopener noreferrer">%2$s</a>',
+                    esc_url($repositoryUrl),
+                    esc_html($part)
+                );
+                continue;
+            }
+
+            $output[] = esc_html($part);
+        }
+
+        return implode(' / ', $output);
+    }
+
+    private function getRepositoryParts(array $item): array {
+        $service = trim((string) ($item['display'] ?? $item['connector'] ?? ''));
+        $owner = trim((string) ($item['owner'] ?? ''));
+        $repository = trim((string) ($item['repository'] ?? ''));
+        $parts = [];
+
+        if ($service !== '') {
+            $parts[] = $service;
+        }
+
+        if ($owner !== '') {
+            $parts[] = $owner;
+        }
+
+        if ($repository !== '') {
+            $parts[] = $repository;
+        }
+
+        return $parts;
     }
 
     /**
@@ -230,7 +261,7 @@ class PluginsListTable extends WP_List_Table
             'plugin' => __('Plugin', 'rrze-updater'),
             'version' => __('Version', 'rrze-updater'),
             'installationFolder' => __('Folder', 'rrze-updater'),
-            'serviceRepository' => __('Service / Repository', 'rrze-updater'),
+            'serviceRepository' => __('Repository', 'rrze-updater'),
             'branch' => __('Branch', 'rrze-updater'),
             'lastChecked' => __('Last checked', 'rrze-updater')
         ];
@@ -310,13 +341,7 @@ class PluginsListTable extends WP_List_Table
     {
         $this->process_bulk_action();
 
-        usort($this->listData, function ($a, $b) {
-            $orderby = (!empty($_REQUEST['orderby'])) ? $_REQUEST['orderby'] : 'plugin'; // If no sort, default to plugin
-            $orderby = isset($a[$orderby]) || isset($b[$orderby]) ? $orderby : 'plugin';
-            $order = (!empty($_REQUEST['order'])) ? $_REQUEST['order'] : 'asc'; // If no order, default to asc
-            $result = strcmp($a[$orderby], $b[$orderby]); // Determine sort order
-            return ($order === 'asc') ? $result : -$result; // Send final sort direction to usort
-        });
+        usort($this->listData, [$this, 'sortItems']);
 
         $this->_column_headers = $this->get_column_info();
 
@@ -331,5 +356,42 @@ class PluginsListTable extends WP_List_Table
             'per_page' => $perPage, // How many items to show on a page
             'total_pages' => ceil($totalItems / $perPage)   // Total number of pages
         ]);
+    }
+
+    private function sortItems(array $a, array $b): int {
+        $aHasUpdate = !empty($a['hasUpdate']);
+        $bHasUpdate = !empty($b['hasUpdate']);
+
+        if ($aHasUpdate !== $bHasUpdate) {
+            return $aHasUpdate ? -1 : 1;
+        }
+
+        $orderby = (!empty($_REQUEST['orderby']) && is_string($_REQUEST['orderby']))
+            ? sanitize_key($_REQUEST['orderby'])
+            : 'plugin';
+        $sortableColumns = array_keys($this->get_sortable_columns());
+
+        if (!in_array($orderby, $sortableColumns, true)) {
+            $orderby = 'plugin';
+        }
+
+        $order = (!empty($_REQUEST['order']) && $_REQUEST['order'] === 'desc') ? 'desc' : 'asc';
+        $aValue = $this->getSortValue($a, $orderby);
+        $bValue = $this->getSortValue($b, $orderby);
+        $result = strnatcasecmp($aValue, $bValue);
+
+        if ($result === 0 && $orderby !== 'plugin') {
+            $result = strnatcasecmp((string) ($a['plugin'] ?? ''), (string) ($b['plugin'] ?? ''));
+        }
+
+        return ($order === 'asc') ? $result : -$result;
+    }
+
+    private function getSortValue(array $item, string $orderby): string {
+        if ($orderby == 'plugin' && !empty($item['pluginDisplayName'])) {
+            return wp_strip_all_tags((string) $item['pluginDisplayName']);
+        }
+
+        return isset($item[$orderby]) ? wp_strip_all_tags((string) $item[$orderby]) : '';
     }
 }
