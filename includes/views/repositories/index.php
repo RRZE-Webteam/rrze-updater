@@ -187,6 +187,10 @@ require __DIR__ . '/../partials/bulk-delete-confirm.php';
                 return 'error';
             }
 
+            if (response.data && response.data.isError) {
+                return 'error';
+            }
+
             if (response.data && response.data.hasUpdate) {
                 return 'update';
             }

@@ -26,6 +26,7 @@ class Controller
      */
     const AVAILABLE_ACTIONS = [
         'add',
+        'bulk-update',
         'check-updates',
         'edit',
         'delete'
@@ -187,6 +188,16 @@ class Controller
         $extension = $this->getUpdateCheckExtension($type, $id);
 
         if (!$extension) {
+            do_action(
+                'rrze.log.error',
+                'Repository update check failed: resource not found. Type: {extension-type} ID: {extension-id}',
+                [
+                    'plugin' => $this->config->getLogPlugin(),
+                    'extension-type' => $type,
+                    'extension-id' => $id
+                ]
+            );
+
             wp_send_json_error([
                 'message' => __('Repository not found.', 'rrze-updater')
             ], 404);
@@ -204,13 +215,18 @@ class Controller
         $status = $this->extensionHasUpdate($extension)
             ? __('Neues Update vorhanden', 'rrze-updater')
             : __('Aktuell', 'rrze-updater');
+        $isError = !empty($extension->lastError);
 
-        if (!empty($extension->lastError)) {
+        if ($isError) {
             $status = sprintf(
                 /* translators: %s: Update check error */
                 __('Fehler: %s', 'rrze-updater'),
                 $this->formatExtensionMessage($extension->lastError)
             );
+
+            if ($this->isResourceNotFoundError($extension->lastError)) {
+                $this->logResourceNotFoundUpdateCheck($extension, $type);
+            }
         }
 
         wp_send_json_success([
@@ -220,6 +236,7 @@ class Controller
             'repository' => $this->getExtensionRepositoryPath($extension),
             'branch' => $extension->branch,
             'status' => $status,
+            'isError' => $isError,
             'hasUpdate' => $this->extensionHasUpdate($extension),
         ]);
     }
@@ -562,6 +579,30 @@ class Controller
         return sanitize_text_field((string) $message);
     }
 
+    private function isResourceNotFoundError($message): bool {
+        $message = strtolower($this->formatExtensionMessage($message));
+
+        return str_contains($message, 'resource not found')
+            || str_contains($message, 'not found')
+            || str_contains($message, 'nicht gefunden');
+    }
+
+    private function logResourceNotFoundUpdateCheck($extension, string $type): void {
+        do_action(
+            'rrze.log.error',
+            'Repository update check failed: resource not found for {extension-type} {repository} on {branch}.',
+            [
+                'plugin' => $this->config->getLogPlugin(),
+                'extension-type' => $type,
+                'repository' => $extension->repository ?? '',
+                'branch' => $extension->branch ?? '',
+                'service' => $extension->connector->display ?? '',
+                'owner' => $extension->connector->owner ?? '',
+                'error' => $this->formatExtensionMessage($extension->lastError ?? '')
+            ]
+        );
+    }
+
     private function getRepositoryRefLabel(array $repo, $extension): string {
         if ($extension && ($extension->updates ?? '') == 'tags') {
             return (string) (($extension->remoteVersion ?? '') ?: __('Release tag not checked yet', 'rrze-updater'));
@@ -859,6 +900,10 @@ class Controller
                 $this->getRepoDelete();
                 break;
 
+            case 'bulk-update':
+                $this->getRepoBulkUpdate();
+                break;
+
             default:
                 // Nothing to do here.
                 break;
@@ -895,6 +940,100 @@ class Controller
 
         // Delegate the repository deletion to the 'repoDelete' method.
         $this->repoDelete($repoId);
+    }
+
+    public function getRepoBulkUpdate(): void {
+        $nonceField = $_GET['rrze-updater-nonce'] ?? '';
+        if (!$nonceField || !wp_verify_nonce($nonceField, 'rrze-updater-repo-bulk-update')) {
+            wp_die(esc_html__('Unable to submit this form, please refresh and try again.', 'rrze-updater'));
+        }
+
+        $repoIds = $_GET['repositories'] ?? [];
+        if (!is_array($repoIds)) {
+            $repoIds = [];
+        }
+
+        $this->repoBulkUpdate($repoIds);
+    }
+
+    public function repoBulkUpdate(array $repoIds): void {
+        $updates = $this->getRepoBulkUpdateItems($repoIds);
+        $hasPluginUpdates = false;
+        $hasThemeUpdates = false;
+
+        foreach ($updates as $update) {
+            if ($update['type'] == 'plugin') {
+                $hasPluginUpdates = true;
+            }
+
+            if ($update['type'] == 'theme') {
+                $hasThemeUpdates = true;
+            }
+        }
+
+        if (!function_exists('wp_update_plugins') || !function_exists('wp_update_themes')) {
+            require_once ABSPATH . 'wp-admin/includes/update.php';
+        }
+
+        if ($hasPluginUpdates) {
+            delete_site_transient('update_plugins');
+            wp_update_plugins();
+        }
+
+        if ($hasThemeUpdates) {
+            delete_site_transient('update_themes');
+            wp_update_themes();
+        }
+
+        $data = [
+            'updates' => $updates,
+            'returnUrl' => self_admin_url('admin.php?page=rrze-updater')
+        ];
+
+        $this->display('repositories/bulk-update-progress', $data);
+    }
+
+    private function getRepoBulkUpdateItems(array $repoIds): array {
+        $updates = [];
+
+        foreach ($repoIds as $repoId) {
+            $id = sanitize_text_field((string) $repoId);
+            $plugin = $this->settings->getPluginById($id);
+
+            if ($plugin && $this->extensionHasUpdate($plugin)) {
+                if (!current_user_can('update_plugins')) {
+                    wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
+                }
+
+                $pluginFile = $this->getPluginFile($plugin->installationFolder, $plugin->repository);
+                $updates[] = [
+                    'type' => 'plugin',
+                    'name' => $this->pluginName($plugin->installationFolder, $plugin->repository),
+                    'extension' => $plugin,
+                    'upgrader' => new Plugin_Upgrader(new PluginUpgraderSkin($plugin, ['plugin' => $pluginFile])),
+                    'target' => $pluginFile
+                ];
+
+                continue;
+            }
+
+            $theme = $this->settings->getThemeById($id);
+            if ($theme && $this->extensionHasUpdate($theme)) {
+                if (!current_user_can('update_themes')) {
+                    wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
+                }
+
+                $updates[] = [
+                    'type' => 'theme',
+                    'name' => $this->themeName($theme->installationFolder),
+                    'extension' => $theme,
+                    'upgrader' => new Theme_Upgrader(new ThemeUpgraderSkin($theme, ['theme' => $theme->installationFolder])),
+                    'target' => $theme->installationFolder
+                ];
+            }
+        }
+
+        return $updates;
     }
 
     /**

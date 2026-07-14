@@ -261,6 +261,7 @@ class RepoListTable extends WP_List_Table
     public function get_bulk_actions()
     {
         return [
+            'update' => __('Update', 'rrze-updater'),
             'delete' => __('Delete', 'rrze-updater')
         ];
     }
@@ -289,6 +290,16 @@ class RepoListTable extends WP_List_Table
                     $this->controller->themeDelete($id);
                 }
             }
+        }
+
+        if ('update' === $this->current_action()) {
+            $repos = $_GET['repositories'] ?? '';
+            if (empty($repos) || !is_array($repos)) {
+                return;
+            }
+
+            $this->controller->repoBulkUpdate($repos);
+            exit;
         }
     }
 

@@ -1,5 +1,5 @@
 === Plugin Name: RRZE Updater ===
-Version: 2.5.12
+Version: 2.5.13
 Plugin URI: https://github.com/RRZE-Webteam/rrze-updater.git
 GitHub Issue URL: https://github.com/RRZE-Webteam/rrze-updater/issues
 Author: RRZE Webteam

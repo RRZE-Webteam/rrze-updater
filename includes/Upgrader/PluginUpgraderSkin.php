@@ -25,9 +25,8 @@ class PluginUpgraderSkin extends Plugin_Upgrader_Skin
      *
      * @param Extension $extension The extension (plugin) associated with this skin.
      */
-    public function __construct($extension)
-    {
-        parent::__construct();
+    public function __construct($extension, array $args = []) {
+        parent::__construct($args);
         $this->extension = $extension;
     }
 
