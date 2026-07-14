@@ -26,6 +26,7 @@ class Controller
      */
     const AVAILABLE_ACTIONS = [
         'add',
+        'bulk-update',
         'check-updates',
         'edit',
         'delete'
@@ -63,6 +64,7 @@ class Controller
         $this->config = new Config();
 
         add_action('admin_post_rrze_updater_theme_check', [$this, 'postThemeCheckRedirect']);
+        add_action('wp_ajax_rrze_updater_check_repository_update', [$this, 'ajaxCheckRepositoryUpdate']);
     }
 
     /**
@@ -115,15 +117,11 @@ class Controller
 
         // Filter and modify the repositories based on the search query and repository type.
         foreach ($repos as $key => $value) {
-            if ($search && empty(preg_grep('/' . preg_quote($search, '/') . '/i', $value))) {
-                // If a search query is provided and doesn't match, remove the repository.
-                unset($repos[$key]);
-                continue;
-            }
             if (isset($value['plugin'])) {
                 // If it's a plugin repository, set type and version information.
                 $extension = $this->settings->getPluginById($value['id']);
                 $value['type'] = __('Plugin', 'rrze-updater');
+                $value['displayName'] = $this->pluginName($value['installationFolder'], $value['repository']);
                 $value['version'] = $this->pluginVersion($value['installationFolder'], $value['repository']);
                 $value['serviceOwner'] = $this->getServiceOwnerLabel($value);
                 $value['ref'] = $this->getRepositoryRefLabel($value, $extension);
@@ -133,6 +131,7 @@ class Controller
                 // If it's a theme repository, set type and version information.
                 $extension = $this->settings->getThemeById($value['id']);
                 $value['type'] = __('Theme', 'rrze-updater');
+                $value['displayName'] = $this->themeName($value['installationFolder']);
                 $value['version'] = $this->themeVersion($value['installationFolder']);
                 $value['serviceOwner'] = $this->getServiceOwnerLabel($value);
                 $value['ref'] = $this->getRepositoryRefLabel($value, $extension);
@@ -152,6 +151,13 @@ class Controller
             $repos[$key] = $value;
         }
 
+        foreach ($repos as $key => $value) {
+            if ($search && empty(preg_grep('/' . preg_quote($search, '/') . '/i', $value))) {
+                unset($repos[$key]);
+                continue;
+            }
+        }
+
         // Create an instance of the 'RepoListTable' class and prepare the list table data.
         $listTable = new RepoListTable($this, $repos);
         $listTable->prepare_items();
@@ -159,10 +165,80 @@ class Controller
         // Prepare the data for rendering.
         $data = [
             'listTable' => $listTable,
+            'updateCheckItems' => $this->getRepositoryUpdateCheckItems(),
+            'updateCheckDelay' => $this->getUpdateCheckDelay(),
+            'updateCheckNonce' => wp_create_nonce('rrze-updater-check-updates'),
         ];
 
         // Display the repository list.
         $this->display('repositories/index', $data);
+    }
+
+    public function ajaxCheckRepositoryUpdate() {
+        check_ajax_referer('rrze-updater-check-updates', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error([
+                'message' => __('You need a higher level of permission.', 'rrze-updater')
+            ], 403);
+        }
+
+        $id = sanitize_text_field(wp_unslash($_POST['id'] ?? ''));
+        $type = sanitize_key(wp_unslash($_POST['type'] ?? ''));
+        $extension = $this->getUpdateCheckExtension($type, $id);
+
+        if (!$extension) {
+            do_action(
+                'rrze.log.error',
+                'Repository update check failed: resource not found. Type: {extension-type} ID: {extension-id}',
+                [
+                    'plugin' => $this->config->getLogPlugin(),
+                    'extension-type' => $type,
+                    'extension-id' => $id
+                ]
+            );
+
+            wp_send_json_error([
+                'message' => __('Repository not found.', 'rrze-updater')
+            ], 404);
+        }
+
+        $extension->checkForUpdates();
+        $this->settings->save();
+
+        if ($type == 'plugin') {
+            delete_site_transient('update_plugins');
+        } elseif ($type == 'theme') {
+            delete_site_transient('update_themes');
+        }
+
+        $status = $this->extensionHasUpdate($extension)
+            ? __('Neues Update vorhanden', 'rrze-updater')
+            : __('Aktuell', 'rrze-updater');
+        $isError = !empty($extension->lastError);
+
+        if ($isError) {
+            $status = sprintf(
+                /* translators: %s: Update check error */
+                __('Fehler: %s', 'rrze-updater'),
+                $this->formatExtensionMessage($extension->lastError)
+            );
+
+            if ($this->isResourceNotFoundError($extension->lastError)) {
+                $this->logResourceNotFoundUpdateCheck($extension, $type);
+            }
+        }
+
+        wp_send_json_success([
+            'id' => $extension->id,
+            'type' => $type,
+            'name' => $this->getExtensionDisplayName($extension),
+            'repository' => $this->getExtensionRepositoryPath($extension),
+            'branch' => $extension->branch,
+            'status' => $status,
+            'isError' => $isError,
+            'hasUpdate' => $this->extensionHasUpdate($extension),
+        ]);
     }
 
     public function getSettingsIndex()
@@ -267,6 +343,7 @@ class Controller
         $cronSchedules = array_keys($this->config->get('fields.cron_schedules', []));
         $emailSchedules = array_keys($this->config->get('fields.email_schedules', []));
         $updateCheckSchedule = sanitize_key($request['update_check_schedule'] ?? $defaults['update_check_schedule']);
+        $updateCheckDelay = max(1, absint($request['update_check_delay'] ?? $defaults['update_check_delay']));
         $emailSchedule = sanitize_key($request['email_schedule'] ?? $defaults['email_schedule']);
 
         if (!in_array($updateCheckSchedule, $cronSchedules, true)) {
@@ -279,6 +356,7 @@ class Controller
 
         $this->settings->options = [
             'update_check_schedule' => $updateCheckSchedule,
+            'update_check_delay' => $updateCheckDelay,
             'email_updates_enabled' => !empty($request['email_updates_enabled']),
             'email_address' => sanitize_email($request['email_address'] ?? $defaults['email_address']),
             'email_subject_prefix' => sanitize_text_field($request['email_subject_prefix'] ?? $defaults['email_subject_prefix']),
@@ -392,20 +470,137 @@ class Controller
     private function getServiceOwnerLabel(array $repo): string {
         $service = trim((string) ($repo['display'] ?? ''));
         $owner = trim((string) ($repo['owner'] ?? ''));
+        $repository = trim((string) ($repo['repository'] ?? ''));
+        $parts = [];
 
-        if ($service === '' && $owner === '') {
+        if ($service !== '') {
+            $parts[] = $service;
+        }
+
+        if ($owner !== '') {
+            $parts[] = $owner;
+        }
+
+        if ($repository !== '') {
+            $parts[] = $repository;
+        }
+
+        if (empty($parts)) {
             return '&mdash;';
         }
 
-        if ($service === '') {
-            return $owner;
+        return implode(' / ', $parts);
+    }
+
+    private function getRepositoryUpdateCheckItems(): array {
+        $items = [];
+
+        foreach ($this->settings->plugins as $extension) {
+            $items[] = $this->getRepositoryUpdateCheckItem($extension, 'plugin');
         }
 
-        if ($owner === '') {
-            return $service;
+        foreach ($this->settings->themes as $extension) {
+            $items[] = $this->getRepositoryUpdateCheckItem($extension, 'theme');
         }
 
-        return sprintf('%1$s / %2$s', $service, $owner);
+        return $items;
+    }
+
+    private function getRepositoryUpdateCheckItem($extension, string $type): array {
+        return [
+            'id' => $extension->id,
+            'type' => $type,
+            'name' => $this->getExtensionDisplayName($extension),
+            'repository' => $this->getExtensionRepositoryPath($extension),
+            'branch' => $extension->branch,
+        ];
+    }
+
+    private function getUpdateCheckExtension(string $type, string $id) {
+        if ($type == 'plugin') {
+            return $this->settings->getPluginById($id);
+        }
+
+        if ($type == 'theme') {
+            return $this->settings->getThemeById($id);
+        }
+
+        return false;
+    }
+
+    private function getExtensionDisplayName($extension): string {
+        if ($extension instanceof Plugin) {
+            return $this->pluginName($extension->installationFolder, $extension->repository);
+        }
+
+        if ($extension instanceof Theme) {
+            return $this->themeName($extension->installationFolder);
+        }
+
+        return (string) ($extension->repository ?: $extension->installationFolder);
+    }
+
+    private function getExtensionRepositoryPath($extension): string {
+        $parts = [];
+        $service = trim((string) ($extension->connector->display ?? ''));
+        $owner = trim((string) ($extension->connector->owner ?? ''));
+        $repository = trim((string) ($extension->repository ?? ''));
+
+        if ($service !== '') {
+            $parts[] = $service;
+        }
+
+        if ($owner !== '') {
+            $parts[] = $owner;
+        }
+
+        if ($repository !== '') {
+            $parts[] = $repository;
+        }
+
+        return implode('/', $parts);
+    }
+
+    private function getUpdateCheckDelay(): int {
+        $default = (int) $this->config->getDefaultSettings()['update_check_delay'];
+
+        return max(1, absint($this->settings->options['update_check_delay'] ?? $default));
+    }
+
+    private function formatExtensionMessage($message): string {
+        if (is_wp_error($message)) {
+            return $message->get_error_message();
+        }
+
+        if (is_array($message)) {
+            return implode(', ', array_map('sanitize_text_field', $message));
+        }
+
+        return sanitize_text_field((string) $message);
+    }
+
+    private function isResourceNotFoundError($message): bool {
+        $message = strtolower($this->formatExtensionMessage($message));
+
+        return str_contains($message, 'resource not found')
+            || str_contains($message, 'not found')
+            || str_contains($message, 'nicht gefunden');
+    }
+
+    private function logResourceNotFoundUpdateCheck($extension, string $type): void {
+        do_action(
+            'rrze.log.error',
+            'Repository update check failed: resource not found for {extension-type} {repository} on {branch}.',
+            [
+                'plugin' => $this->config->getLogPlugin(),
+                'extension-type' => $type,
+                'repository' => $extension->repository ?? '',
+                'branch' => $extension->branch ?? '',
+                'service' => $extension->connector->display ?? '',
+                'owner' => $extension->connector->owner ?? '',
+                'error' => $this->formatExtensionMessage($extension->lastError ?? '')
+            ]
+        );
     }
 
     private function getRepositoryRefLabel(array $repo, $extension): string {
@@ -705,6 +900,10 @@ class Controller
                 $this->getRepoDelete();
                 break;
 
+            case 'bulk-update':
+                $this->getRepoBulkUpdate();
+                break;
+
             default:
                 // Nothing to do here.
                 break;
@@ -741,6 +940,100 @@ class Controller
 
         // Delegate the repository deletion to the 'repoDelete' method.
         $this->repoDelete($repoId);
+    }
+
+    public function getRepoBulkUpdate(): void {
+        $nonceField = $_GET['rrze-updater-nonce'] ?? '';
+        if (!$nonceField || !wp_verify_nonce($nonceField, 'rrze-updater-repo-bulk-update')) {
+            wp_die(esc_html__('Unable to submit this form, please refresh and try again.', 'rrze-updater'));
+        }
+
+        $repoIds = $_GET['repositories'] ?? [];
+        if (!is_array($repoIds)) {
+            $repoIds = [];
+        }
+
+        $this->repoBulkUpdate($repoIds);
+    }
+
+    public function repoBulkUpdate(array $repoIds): void {
+        $updates = $this->getRepoBulkUpdateItems($repoIds);
+        $hasPluginUpdates = false;
+        $hasThemeUpdates = false;
+
+        foreach ($updates as $update) {
+            if ($update['type'] == 'plugin') {
+                $hasPluginUpdates = true;
+            }
+
+            if ($update['type'] == 'theme') {
+                $hasThemeUpdates = true;
+            }
+        }
+
+        if (!function_exists('wp_update_plugins') || !function_exists('wp_update_themes')) {
+            require_once ABSPATH . 'wp-admin/includes/update.php';
+        }
+
+        if ($hasPluginUpdates) {
+            delete_site_transient('update_plugins');
+            wp_update_plugins();
+        }
+
+        if ($hasThemeUpdates) {
+            delete_site_transient('update_themes');
+            wp_update_themes();
+        }
+
+        $data = [
+            'updates' => $updates,
+            'returnUrl' => self_admin_url('admin.php?page=rrze-updater')
+        ];
+
+        $this->display('repositories/bulk-update-progress', $data);
+    }
+
+    private function getRepoBulkUpdateItems(array $repoIds): array {
+        $updates = [];
+
+        foreach ($repoIds as $repoId) {
+            $id = sanitize_text_field((string) $repoId);
+            $plugin = $this->settings->getPluginById($id);
+
+            if ($plugin && $this->extensionHasUpdate($plugin)) {
+                if (!current_user_can('update_plugins')) {
+                    wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
+                }
+
+                $pluginFile = $this->getPluginFile($plugin->installationFolder, $plugin->repository);
+                $updates[] = [
+                    'type' => 'plugin',
+                    'name' => $this->pluginName($plugin->installationFolder, $plugin->repository),
+                    'extension' => $plugin,
+                    'upgrader' => new Plugin_Upgrader(new PluginUpgraderSkin($plugin, ['plugin' => $pluginFile])),
+                    'target' => $pluginFile
+                ];
+
+                continue;
+            }
+
+            $theme = $this->settings->getThemeById($id);
+            if ($theme && $this->extensionHasUpdate($theme)) {
+                if (!current_user_can('update_themes')) {
+                    wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
+                }
+
+                $updates[] = [
+                    'type' => 'theme',
+                    'name' => $this->themeName($theme->installationFolder),
+                    'extension' => $theme,
+                    'upgrader' => new Theme_Upgrader(new ThemeUpgraderSkin($theme, ['theme' => $theme->installationFolder])),
+                    'target' => $theme->installationFolder
+                ];
+            }
+        }
+
+        return $updates;
     }
 
     /**
@@ -1127,6 +1420,7 @@ class Controller
                 }
 
                 $repo['connector'] = $repo['display'] ?? '';
+                $repo['pluginDisplayName'] = $this->pluginName($repo['installationFolder'], $repo['repository']);
                 $repo['lastChecked'] = $this->lastChecked($extension->lastChecked);
                 $repo['version'] = $this->pluginVersion($repo['installationFolder'], $repo['repository']);
                 $repo['repositoryUrl'] = $this->getExtensionRepositoryUrl($extension);
@@ -1669,6 +1963,7 @@ class Controller
                 }
 
                 $repo['connector'] = $repo['display'] ?? '';
+                $repo['themeDisplayName'] = $this->themeName($repo['installationFolder']);
                 $repo['lastChecked'] = $this->lastChecked($extension->lastChecked);
                 $repo['version'] = $this->themeVersion($repo['installationFolder']);
                 $repo['repositoryUrl'] = $this->getExtensionRepositoryUrl($extension);
@@ -2174,6 +2469,7 @@ class Controller
      */
     protected function pluginVersion($installationFolder, $repository)
     {
+        $this->loadPluginDataFunction();
         $pluginFile = WP_PLUGIN_DIR . '/' . $this->getPluginFile($installationFolder, $repository);
 
         // Retrieve plugin data using 'get_plugin_data'.
@@ -2181,6 +2477,36 @@ class Controller
 
         // Return the version of the plugin, or an em dash if the version is not available.
         return $pluginData['Version'] ?: '&mdash;';
+    }
+
+    protected function pluginName($installationFolder, $repository): string {
+        $this->loadPluginDataFunction();
+        $pluginFile = WP_PLUGIN_DIR . '/' . $this->getPluginFile($installationFolder, $repository);
+
+        if (file_exists($pluginFile)) {
+            $pluginData = get_plugin_data($pluginFile);
+            if (!empty($pluginData['Name'])) {
+                return sanitize_text_field($pluginData['Name']);
+            }
+        }
+
+        $readmeName = $this->getNameFromReadme(WP_PLUGIN_DIR . '/' . $installationFolder);
+        if ($readmeName !== '') {
+            return $readmeName;
+        }
+
+        $packageName = $this->getNameFromPackage(WP_PLUGIN_DIR . '/' . $installationFolder);
+        if ($packageName !== '') {
+            return $packageName;
+        }
+
+        return (string) ($repository ?: $installationFolder);
+    }
+
+    private function loadPluginDataFunction(): void {
+        if (!function_exists('get_plugin_data')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
     }
 
     /**
@@ -2200,6 +2526,87 @@ class Controller
 
         // Check if the theme exists and return its version, or return an em dash if it doesn't exist.
         return $theme->exists() ? $theme->get('Version') : '&mdash;';
+    }
+
+    protected function themeName($installationFolder): string {
+        $theme = wp_get_theme($installationFolder);
+
+        if ($theme->exists() && $theme->get('Name')) {
+            return sanitize_text_field($theme->get('Name'));
+        }
+
+        $themeDir = get_theme_root($installationFolder) . '/' . $installationFolder;
+        $readmeName = $this->getNameFromReadme($themeDir);
+        if ($readmeName !== '') {
+            return $readmeName;
+        }
+
+        $packageName = $this->getNameFromPackage($themeDir);
+        if ($packageName !== '') {
+            return $packageName;
+        }
+
+        return (string) $installationFolder;
+    }
+
+    private function getNameFromReadme(string $directory): string {
+        foreach ($this->config->getReadmeFiles() as $readmeFile) {
+            $file = trailingslashit($directory) . $readmeFile;
+
+            if (!is_readable($file)) {
+                continue;
+            }
+
+            $content = file_get_contents($file);
+            if (!is_string($content)) {
+                continue;
+            }
+
+            $name = $this->extractNameFromReadme($content);
+            if ($name !== '') {
+                return $name;
+            }
+        }
+
+        return '';
+    }
+
+    private function extractNameFromReadme(string $content): string {
+        $content = str_replace("\xc2\xa0", ' ', $content);
+
+        if (preg_match('/^\s*===\s*(.+?)\s*===\s*$/m', $content, $matches)) {
+            return sanitize_text_field(trim($matches[1]));
+        }
+
+        if (preg_match('/^\s*#\s+(.+?)\s*$/m', $content, $matches)) {
+            return sanitize_text_field(trim($matches[1]));
+        }
+
+        if (preg_match('/^[\s\/\*#@]*(?:Plugin|Theme)?\s*Name\s*:\s*(.+)$/mi', $content, $matches)) {
+            return sanitize_text_field(trim($matches[1]));
+        }
+
+        return '';
+    }
+
+    private function getNameFromPackage(string $directory): string {
+        $file = trailingslashit($directory) . $this->config->getPackageFile();
+
+        if (!is_readable($file)) {
+            return '';
+        }
+
+        $content = file_get_contents($file);
+        if (!is_string($content)) {
+            return '';
+        }
+
+        $package = json_decode($content, true);
+        if (!is_array($package) || empty($package['name']) || !is_string($package['name'])) {
+            return '';
+        }
+
+        return sanitize_text_field(trim($package['name']));
     }
 
     /**

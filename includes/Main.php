@@ -89,6 +89,7 @@ class Main
             add_action('network_admin_menu', [$this, 'adminMenu']);
             add_action('admin_bar_menu', [$this, 'adminBarMenu'], 100);
             add_filter('network_admin_plugin_action_links', [$this, 'pluginActionLinks'], 10, 2);
+            add_filter('gettext', [$this, 'translateNetworkActivationLabel'], 10, 3);
         }
 
         // Set up filters and actions related to plugin and theme updates.
@@ -96,6 +97,7 @@ class Main
         add_filter('site_transient_update_themes', [$this, 'siteTransientUpdateThemes']);
         add_filter('pre_set_site_transient_update_plugins', [$this, 'preSetSiteTransientUpdatePlugins']);
         add_filter('pre_set_site_transient_update_themes', [$this, 'preSetSiteTransientUpdateThemes']);
+        add_filter('update_plugin_complete_actions', [$this, 'updatePluginCompleteActions'], 10, 2);
 
         // Download authenticated GitHub packages only when the upgrader actually needs them.
         add_filter('upgrader_pre_download', [$this, 'upgraderPreDownloadFilter'], 10, 4);
@@ -112,6 +114,59 @@ class Main
         // Set up filters for modifying plugin and theme metadata.
         add_filter('plugin_row_meta', [$this, 'pluginRowMeta'], 10, 2);
         add_filter('theme_row_meta', [$this, 'themeRowMeta'], 10, 2);
+    }
+
+    public function translateNetworkActivationLabel($translation, $text, $domain) {
+        if (!is_network_admin()) {
+            return $translation;
+        }
+
+        if (in_array($text, ['Activate Plugin', 'Network Activate'], true)) {
+            return __('Plugin netzwerkweit aktivieren', 'rrze-updater');
+        }
+
+        if (in_array($text, ['Activate Theme', 'Network Enable'], true)) {
+            return __('Theme netzwerkweit aktivieren', 'rrze-updater');
+        }
+
+        return $translation;
+    }
+
+    public function updatePluginCompleteActions(array $updateActions, string $pluginFile): array {
+        if (!$this->isManagedPluginFile($pluginFile)) {
+            return $updateActions;
+        }
+
+        $menuSettings = $this->config->getMenuSettings();
+        $repositoriesSlug = $menuSettings['repositories_slug'] ?? 'rrze-updater';
+        $url = is_multisite()
+            ? network_admin_url('admin.php?page=' . $repositoriesSlug)
+            : self_admin_url('admin.php?page=' . $repositoriesSlug);
+
+        $updateActions['rrze_updater'] = sprintf(
+            '<a href="%1$s">%2$s</a>',
+            esc_url($url),
+            esc_html__('Zurück zum Updater', 'rrze-updater')
+        );
+
+        return $updateActions;
+    }
+
+    private function isManagedPluginFile(string $pluginFile): bool {
+        $pluginFileParts = explode('/', $pluginFile);
+        $installationFolder = $pluginFileParts[0] ?? '';
+
+        if ($installationFolder === '') {
+            return false;
+        }
+
+        foreach ($this->settings->plugins as $plugin) {
+            if ($plugin->installationFolder == $installationFolder) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

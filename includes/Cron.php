@@ -123,12 +123,19 @@ class Cron
 
         // Get the current timestamp.
         $now = time();
+        $delay = $this->getUpdateCheckDelay();
+        $checked = false;
 
         // Iterate through plugins and themes to check for updates.
         foreach (array_merge($this->settings->plugins, $this->settings->themes) as $extension) {
             if (!$extension->lastChecked || ($now - $extension->lastChecked) > $this->getMinimumCheckInterval()) {
+                if ($checked) {
+                    sleep($delay);
+                }
+
                 // Check for updates if last checked more than an hour ago.
                 $extension->checkForUpdates();
+                $checked = true;
             }
         }
 
@@ -254,6 +261,12 @@ class Cron
     private function getMinimumCheckInterval(): int
     {
         return (new Config())->getCronMinimumCheckInterval();
+    }
+
+    private function getUpdateCheckDelay(): int {
+        $default = (int) (new Config())->getDefaultSettings()['update_check_delay'];
+
+        return max(1, absint($this->settings->options['update_check_delay'] ?? $default));
     }
 
     private function getMainBlogId(): int

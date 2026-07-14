@@ -239,6 +239,8 @@ class Extension
             return '';
         }
 
+        $readableVersion = '';
+
         foreach ($this->getVersionFileCandidates() as $filePath) {
             $content = $this->connector->getRemoteFile($this->repository, $ref, $filePath);
             if (!is_string($content)) {
@@ -247,11 +249,30 @@ class Extension
 
             $version = $this->extractReadableVersion($content, $filePath);
             if ($version !== '') {
-                return $version;
+                $readableVersion = $this->getHigherReadableVersion($readableVersion, $version);
             }
         }
 
-        return '';
+        return $readableVersion;
+    }
+
+    protected function getHigherReadableVersion(string $currentVersion, string $candidateVersion): string {
+        if ($currentVersion === '') {
+            return $candidateVersion;
+        }
+
+        $currentComparable = $this->getComparableVersion($currentVersion);
+        $candidateComparable = $this->getComparableVersion($candidateVersion);
+
+        if (version_compare($candidateComparable, $currentComparable, '>')) {
+            return $candidateVersion;
+        }
+
+        return $currentVersion;
+    }
+
+    protected function getComparableVersion(string $version): string {
+        return ltrim(trim($version), 'vV');
     }
 
     protected function getVersionFileCandidates(): array
