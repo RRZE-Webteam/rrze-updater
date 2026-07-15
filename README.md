@@ -1,3 +1,4 @@
+[![Aktuelle Version](https://img.shields.io/github/package-json/v/rrze-webteam/rrze-updater/main?label=Version)](https://github.com/RRZE-Webteam/rrze-updater)
 [![Release Version](https://img.shields.io/github/v/release/RRZE-Webteam/rrze-updater?label=Release+Version)](https://github.com/RRZE-Webteam/rrze-updater/releases/)
 [![GitHub License](https://img.shields.io/github/license/RRZE-Webteam/rrze-updater)](https://github.com/RRZE-Webteam/rrze-updater)
 [![GitHub issues](https://img.shields.io/github/issues/RRZE-Webteam/rrze-updater)](https://github.com/RRZE-Webteam/rrze-updater/issues)
