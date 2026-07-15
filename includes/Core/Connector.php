@@ -59,6 +59,13 @@ abstract class Connector
     public $error;
 
     /**
+     * Additional error data from the last failed operation.
+     *
+     * @var array
+     */
+    public $errorData;
+
+    /**
      * Constructor for the Connector class.
      *
      * Initializes warning and error properties as empty strings.
@@ -67,6 +74,7 @@ abstract class Connector
     {
         $this->warning = '';
         $this->error = '';
+        $this->errorData = [];
     }
 
     /**
@@ -172,6 +180,8 @@ abstract class Connector
      */
     protected function api(string $url, array $getArgs = [], array $args = []): mixed
     {
+        $this->errorData = [];
+
         $httpErrors = [
             '401' => __('Unauthorized (use valid authentication)', 'rrze-updater'),
             '403' => __('Forbidden (use valid authentication)', 'rrze-updater'),
@@ -201,14 +211,20 @@ abstract class Connector
 
         if (is_wp_error($response)) {
             $error = $response->get_error_message();
+            $errorData = $response->get_error_data();
+            $this->errorData = [
+                'error-data' => $this->formatLogValue($errorData),
+                'url' => $this->redactLogUrl($url)
+            ];
             if ($args['storeError']) {
                 $this->error = $error;
             }
             if ($args['logErrors']) {
                 $this->logError(
-                    'Repository API request failed: {error}',
+                    'Repository API request failed: {error}. Error data: {error-data}',
                     [
                         'error' => $error,
+                        'error-data' => $this->errorData['error-data'],
                         'url' => $this->redactLogUrl($url)
                     ]
                 );
@@ -217,17 +233,25 @@ abstract class Connector
         }
         if (!in_array($code, $allowedCodes, false)) {
             $error = isset($httpErrors[$code]) ? $httpErrors[$code] : 'HTTP error ' . $code;
+            $this->errorData = array_merge(
+                $this->getResponseErrorContext($response),
+                [
+                    'http-code' => $code,
+                    'url' => $this->redactLogUrl($url)
+                ]
+            );
             if ($args['storeError']) {
                 $this->error = $error;
             }
             if ($args['logErrors']) {
                 $this->logError(
-                    'Repository API request returned HTTP {http-code}: {error}',
-                    [
-                        'error' => $error,
-                        'http-code' => $code,
-                        'url' => $this->redactLogUrl($url)
-                    ]
+                    'Repository API request returned HTTP {http-code}: {error}. Response: {response-body}',
+                    array_merge(
+                        $this->errorData,
+                        [
+                            'error' => $error
+                        ]
+                    )
                 );
             }
             return false;
@@ -259,6 +283,51 @@ abstract class Connector
         );
 
         do_action('rrze.log.error', $message, $context);
+    }
+
+    /**
+     * Returns additional error context from the last failed request.
+     *
+     * @return array Error context.
+     */
+    public function getLastErrorContext(): array {
+        return $this->errorData;
+    }
+
+    protected function getResponseErrorContext($response): array {
+        $body = wp_remote_retrieve_body($response);
+        $headers = wp_remote_retrieve_headers($response);
+        if (is_object($headers) && method_exists($headers, 'getAll')) {
+            $headers = $headers->getAll();
+        }
+
+        $decodedBody = json_decode((string) $body, true);
+        $context = [
+            'http-message' => wp_remote_retrieve_response_message($response),
+            'response-body' => $this->formatLogValue($body),
+            'response-headers' => $this->formatLogValue($headers)
+        ];
+
+        if (is_array($decodedBody)) {
+            $context['response-json'] = $this->formatLogValue($decodedBody);
+            foreach (['message', 'error', 'error_description', 'documentation_url'] as $key) {
+                if (!empty($decodedBody[$key]) && is_scalar($decodedBody[$key])) {
+                    $context['response-' . str_replace('_', '-', $key)] = (string) $decodedBody[$key];
+                }
+            }
+        }
+
+        return $context;
+    }
+
+    protected function formatLogValue($value): string {
+        if (is_scalar($value) || $value === null) {
+            return (string) $value;
+        }
+
+        $encoded = wp_json_encode($value);
+
+        return is_string($encoded) ? $encoded : '';
     }
 
     /**

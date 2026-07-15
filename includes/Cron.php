@@ -320,10 +320,7 @@ class Cron
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
         }
 
-        $candidates = array_values(array_unique([
-            $installationFolder . '/' . $repository . '.php',
-            $installationFolder . '/' . $installationFolder . '.php'
-        ]));
+        $candidates = self::getPluginFileCandidates($installationFolder, $repository);
 
         foreach ($candidates as $candidate) {
             $pluginFile = WP_PLUGIN_DIR . '/' . $candidate;
@@ -337,7 +334,83 @@ class Cron
             }
         }
 
+        $packageVersion = self::getPackageVersion(WP_PLUGIN_DIR . '/' . $installationFolder);
+        if ($packageVersion !== '') {
+            return $packageVersion;
+        }
+
         return 'n/a';
+    }
+
+    private static function getPluginFileCandidates(string $installationFolder, string $repository): array {
+        $candidates = [];
+
+        if (!function_exists('get_plugins')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        foreach (array_keys(get_plugins()) as $pluginFile) {
+            if (dirname($pluginFile) == $installationFolder) {
+                $candidates[] = $pluginFile;
+            }
+        }
+
+        $candidates[] = $installationFolder . '/' . $repository . '.php';
+        $candidates[] = $installationFolder . '/' . $installationFolder . '.php';
+
+        $headerPluginFile = self::findPluginFileByHeader($installationFolder);
+        if ($headerPluginFile !== '') {
+            $candidates[] = $headerPluginFile;
+        }
+
+        return array_values(array_unique($candidates));
+    }
+
+    private static function findPluginFileByHeader(string $installationFolder): string {
+        $directory = trailingslashit(WP_PLUGIN_DIR) . $installationFolder;
+
+        if (!is_dir($directory) || !is_readable($directory)) {
+            return '';
+        }
+
+        $files = scandir($directory);
+        if (!is_array($files)) {
+            return '';
+        }
+
+        foreach ($files as $file) {
+            if ($file === '' || $file[0] === '.' || pathinfo($file, PATHINFO_EXTENSION) !== 'php') {
+                continue;
+            }
+
+            $relativeFile = trailingslashit($installationFolder) . $file;
+            $pluginData = get_plugin_data(trailingslashit(WP_PLUGIN_DIR) . $relativeFile);
+            if (!empty($pluginData['Name'])) {
+                return $relativeFile;
+            }
+        }
+
+        return '';
+    }
+
+    private static function getPackageVersion(string $directory): string {
+        $file = trailingslashit($directory) . (new Config())->getPackageFile();
+
+        if (!is_readable($file)) {
+            return '';
+        }
+
+        $content = file_get_contents($file);
+        if (!is_string($content)) {
+            return '';
+        }
+
+        $package = json_decode($content, true);
+        if (!is_array($package) || empty($package['version']) || !is_string($package['version'])) {
+            return '';
+        }
+
+        return sanitize_text_field(trim($package['version']));
     }
 
     private static function getServerName(): string

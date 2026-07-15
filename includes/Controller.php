@@ -603,6 +603,18 @@ class Controller
         );
     }
 
+    private function isPluginRepositoryFileWarning(WP_Error $warning): bool {
+        return in_array(
+            $warning->get_error_code(),
+            [
+                'rrze_updater_missing_plugin_main_file',
+                'rrze_updater_missing_plugin_name_header',
+                'rrze_updater_missing_plugin_readme'
+            ],
+            true
+        );
+    }
+
     private function getRepositoryRefLabel(array $repo, $extension): string {
         if ($extension && ($extension->updates ?? '') == 'tags') {
             return (string) (($extension->remoteVersion ?? '') ?: __('Release tag not checked yet', 'rrze-updater'));
@@ -838,12 +850,16 @@ class Controller
         );
     }
 
-    private function getPluginFile(string $installationFolder, string $repository): string
-    {
+    private function getPluginFile(string $installationFolder, string $repository): string {
         $candidates = array_values(array_unique([
             $installationFolder . '/' . $repository . '.php',
             $installationFolder . '/' . $installationFolder . '.php'
         ]));
+
+        $installedPluginFile = $this->getInstalledPluginFile($installationFolder);
+        if ($installedPluginFile !== '') {
+            return $installedPluginFile;
+        }
 
         foreach ($candidates as $candidate) {
             if (file_exists(WP_PLUGIN_DIR . '/' . $candidate)) {
@@ -851,7 +867,54 @@ class Controller
             }
         }
 
+        $headerPluginFile = $this->findPluginFileByHeader($installationFolder);
+        if ($headerPluginFile !== '') {
+            return $headerPluginFile;
+        }
+
         return $candidates[0];
+    }
+
+    private function getInstalledPluginFile(string $installationFolder): string {
+        if (!function_exists('get_plugins')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        foreach (array_keys(get_plugins()) as $pluginFile) {
+            if (dirname($pluginFile) == $installationFolder) {
+                return $pluginFile;
+            }
+        }
+
+        return '';
+    }
+
+    private function findPluginFileByHeader(string $installationFolder): string {
+        $this->loadPluginDataFunction();
+        $directory = trailingslashit(WP_PLUGIN_DIR) . $installationFolder;
+
+        if (!is_dir($directory) || !is_readable($directory)) {
+            return '';
+        }
+
+        $files = scandir($directory);
+        if (!is_array($files)) {
+            return '';
+        }
+
+        foreach ($files as $file) {
+            if ($file === '' || $file[0] === '.' || pathinfo($file, PATHINFO_EXTENSION) !== 'php') {
+                continue;
+            }
+
+            $relativeFile = trailingslashit($installationFolder) . $file;
+            $pluginData = get_plugin_data(trailingslashit(WP_PLUGIN_DIR) . $relativeFile);
+            if (!empty($pluginData['Name'])) {
+                return $relativeFile;
+            }
+        }
+
+        return '';
     }
 
     /**
@@ -1781,27 +1844,44 @@ class Controller
         // If updates are configured for tags or commits, check if updates are available
         $extension->checkForUpdates();
 
-        $validation = $extension->validateRemotePluginRepository($extension->remoteVersion ?: $extension->branch);
+        $validation = $extension->getRemotePluginRepositoryWarning($extension->remoteVersion ?: $extension->branch);
         if (is_wp_error($validation)) {
+            if (!$this->isPluginRepositoryFileWarning($validation)) {
+                $this->messages[] = $validation;
+                do_action(
+                    'rrze.log.error',
+                    'Plugin installation failed for {repository}: {error}',
+                    [
+                        'plugin' => $this->config->getLogPlugin(),
+                        'repository' => $extension->repository,
+                        'branch' => $extension->branch,
+                        'ref' => $extension->remoteVersion ?: $extension->branch,
+                        'service' => $extension->connector->display ?? '',
+                        'error' => $validation->get_error_message()
+                    ]
+                );
+
+                $data = [
+                    'connectors' => $this->settings->connectors
+                ];
+                $this->display('plugins/add', $data);
+                return;
+            }
+
+            $extension->lastWarning = $validation->get_error_message();
             $this->messages[] = $validation;
             do_action(
-                'rrze.log.error',
-                'Plugin installation failed for {repository}: {error}',
+                'rrze.log.warning',
+                'Plugin installation warning for {repository}: {warning}',
                 [
                     'plugin' => $this->config->getLogPlugin(),
                     'repository' => $extension->repository,
                     'branch' => $extension->branch,
                     'ref' => $extension->remoteVersion ?: $extension->branch,
                     'service' => $extension->connector->display ?? '',
-                    'error' => $validation->get_error_message()
+                    'warning' => $validation->get_error_message()
                 ]
             );
-
-            $data = [
-                'connectors' => $this->settings->connectors
-            ];
-            $this->display('plugins/add', $data);
-            return;
         }
 
         // Install the plugin
@@ -1817,13 +1897,16 @@ class Controller
             do_action(
                 'rrze.log.error',
                 'Plugin installation failed for {repository}: {error}',
-                [
-                    'plugin' => $this->config->getLogPlugin(),
-                    'repository' => $extension->repository,
-                    'branch' => $extension->branch,
-                    'service' => $extension->connector->display ?? '',
-                    'error' => $extension->connector->error
-                ]
+                array_merge(
+                    [
+                        'plugin' => $this->config->getLogPlugin(),
+                        'repository' => $extension->repository,
+                        'branch' => $extension->branch,
+                        'service' => $extension->connector->display ?? '',
+                        'error' => $extension->connector->error
+                    ],
+                    $this->getConnectorErrorContext($extension)
+                )
             );
         }
 
@@ -2351,13 +2434,16 @@ class Controller
             do_action(
                 'rrze.log.error',
                 'Theme installation failed for {repository}: {error}',
-                [
-                    'plugin' => $this->config->getLogPlugin(),
-                    'repository' => $extension->repository,
-                    'branch' => $extension->branch,
-                    'service' => $extension->connector->display ?? '',
-                    'error' => $extension->connector->error
-                ]
+                array_merge(
+                    [
+                        'plugin' => $this->config->getLogPlugin(),
+                        'repository' => $extension->repository,
+                        'branch' => $extension->branch,
+                        'service' => $extension->connector->display ?? '',
+                        'error' => $extension->connector->error
+                    ],
+                    $this->getConnectorErrorContext($extension)
+                )
             );
         }
 
@@ -2472,11 +2558,19 @@ class Controller
         $this->loadPluginDataFunction();
         $pluginFile = WP_PLUGIN_DIR . '/' . $this->getPluginFile($installationFolder, $repository);
 
-        // Retrieve plugin data using 'get_plugin_data'.
-        $pluginData = get_plugin_data($pluginFile);
+        if (file_exists($pluginFile)) {
+            $pluginData = get_plugin_data($pluginFile);
+            if (!empty($pluginData['Version'])) {
+                return $pluginData['Version'];
+            }
+        }
 
-        // Return the version of the plugin, or an em dash if the version is not available.
-        return $pluginData['Version'] ?: '&mdash;';
+        $packageVersion = $this->getVersionFromPackage(WP_PLUGIN_DIR . '/' . $installationFolder);
+        if ($packageVersion !== '') {
+            return $packageVersion;
+        }
+
+        return '&mdash;';
     }
 
     protected function pluginName($installationFolder, $repository): string {
@@ -2607,6 +2701,26 @@ class Controller
         }
 
         return sanitize_text_field(trim($package['name']));
+    }
+
+    private function getVersionFromPackage(string $directory): string {
+        $file = trailingslashit($directory) . $this->config->getPackageFile();
+
+        if (!is_readable($file)) {
+            return '';
+        }
+
+        $content = file_get_contents($file);
+        if (!is_string($content)) {
+            return '';
+        }
+
+        $package = json_decode($content, true);
+        if (!is_array($package) || empty($package['version']) || !is_string($package['version'])) {
+            return '';
+        }
+
+        return sanitize_text_field(trim($package['version']));
     }
 
     /**
@@ -2742,6 +2856,17 @@ class Controller
         }
 
         return false;
+    }
+
+    private function getConnectorErrorContext($extension): array {
+        if (
+            empty($extension->connector)
+            || !method_exists($extension->connector, 'getLastErrorContext')
+        ) {
+            return [];
+        }
+
+        return $extension->connector->getLastErrorContext();
     }
 
     private function getScreenOptionPerPage(): string

@@ -21,6 +21,18 @@ $returnUrl = $data['returnUrl'] ?? self_admin_url('admin.php?page=rrze-updater')
             } elseif ($update['type'] == 'theme') {
                 $update['upgrader']->upgrade($update['target']);
             }
+
+            if (!empty($update['extension']->lastWarning)) : ?>
+                <div class="notice notice-warning">
+                    <p>
+                        <?php printf(
+                            /* translators: %s: Warning message */
+                            esc_html__('Hinweis: %s', 'rrze-updater'),
+                            esc_html($update['extension']->lastWarning)
+                        ); ?>
+                    </p>
+                </div>
+            <?php endif;
             ?>
         <?php endforeach; ?>
     <?php endif; ?>

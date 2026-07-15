@@ -957,13 +957,16 @@ class Main
                 do_action(
                     'rrze.log.error',
                     'Download failed for {repository} at ref {ref}.',
-                    [
-                        'plugin' => $this->config->getLogPlugin(),
-                        'repository' => $extension->repository,
-                        'ref' => $ref,
-                        'service' => $extension->connector->display ?? '',
-                        'error' => $extension->connector->error ?: __('Download failed.', 'rrze-updater')
-                    ]
+                    array_merge(
+                        [
+                            'plugin' => $this->config->getLogPlugin(),
+                            'repository' => $extension->repository,
+                            'ref' => $ref,
+                            'service' => $extension->connector->display ?? '',
+                            'error' => $extension->connector->error ?: __('Download failed.', 'rrze-updater')
+                        ],
+                        $this->getConnectorErrorContext($extension)
+                    )
                 );
 
                 return new WP_Error(
@@ -981,25 +984,57 @@ class Main
     private function validatePluginRepositoryForUpgrade(Plugin $extension): bool|WP_Error
     {
         $ref = $extension->remoteVersion ?: ($extension->branch ?: 'main');
-        $validation = $extension->validateRemotePluginRepository($ref);
+        $validation = $extension->getRemotePluginRepositoryWarning($ref);
         if (!is_wp_error($validation)) {
             return true;
         }
 
+        if (!$this->isPluginRepositoryFileWarning($validation)) {
+            do_action(
+                'rrze.log.error',
+                'Plugin update failed for {repository}: {error}',
+                [
+                    'plugin' => $this->config->getLogPlugin(),
+                    'repository' => $extension->repository,
+                    'installation-folder' => $extension->installationFolder,
+                    'ref' => $ref,
+                    'service' => $extension->connector->display ?? '',
+                    'error' => $validation->get_error_message()
+                ]
+            );
+
+            return $validation;
+        }
+
+        $extension->lastWarning = $validation->get_error_message();
+        $this->settings->save();
+
         do_action(
-            'rrze.log.error',
-            'Plugin update failed for {repository}: {error}',
+            'rrze.log.warning',
+            'Plugin update warning for {repository}: {warning}',
             [
                 'plugin' => $this->config->getLogPlugin(),
                 'repository' => $extension->repository,
                 'installation-folder' => $extension->installationFolder,
                 'ref' => $ref,
                 'service' => $extension->connector->display ?? '',
-                'error' => $validation->get_error_message()
+                'warning' => $validation->get_error_message()
             ]
         );
 
-        return $validation;
+        return true;
+    }
+
+    private function isPluginRepositoryFileWarning(WP_Error $warning): bool {
+        return in_array(
+            $warning->get_error_code(),
+            [
+                'rrze_updater_missing_plugin_main_file',
+                'rrze_updater_missing_plugin_name_header',
+                'rrze_updater_missing_plugin_readme'
+            ],
+            true
+        );
     }
 
     private function getPluginExtensionForUpgrade($upgrader, array $hookExtra): Plugin|bool
@@ -1173,6 +1208,17 @@ class Main
             'login' => $user->user_login,
             'email' => $user->user_email
         ];
+    }
+
+    private function getConnectorErrorContext($extension): array {
+        if (
+            empty($extension->connector)
+            || !method_exists($extension->connector, 'getLastErrorContext')
+        ) {
+            return [];
+        }
+
+        return $extension->connector->getLastErrorContext();
     }
 
     /**

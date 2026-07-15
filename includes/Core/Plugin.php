@@ -47,6 +47,10 @@ class Plugin extends Extension
 
     public function validateRemotePluginRepository(string $ref): bool|\WP_Error
     {
+        return $this->getRemotePluginRepositoryWarning($ref) ?: true;
+    }
+
+    public function getRemotePluginRepositoryWarning(string $ref): \WP_Error|false {
         if (!$this->connector) {
             return new \WP_Error(
                 'rrze_updater_missing_connector',
@@ -71,7 +75,7 @@ class Plugin extends Extension
             );
         }
 
-        return true;
+        return false;
     }
 
     public function validateRemotePluginBranch(string $branch): bool|\WP_Error
