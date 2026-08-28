@@ -1,7 +1,7 @@
 {
   "name": "rrze-updater",
   "title": "RRZE Updater",
-  "version": "2.5.14",
+  "version": "2.5.15",
   "description": "Sync Plugins and Themes with the corresponding GitHub or GitLab repositories.",
   "main": "rrze-updater.php",
   "textdomain": "rrze-updater",
@@ -19,8 +19,8 @@
   },
   "compatibility": {
     "wprequires": "6.8",
-    "wptestedup": "7.0",
-    "phprequires": "8.2"
+    "wptestedup": "7.1",
+    "phprequires": "8.3"
   },
   "author": {
     "name": "RRZE Webteam",

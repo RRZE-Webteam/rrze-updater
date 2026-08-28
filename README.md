@@ -1,3 +1,4 @@
+[![Aktuelle Version](https://img.shields.io/github/package-json/v/rrze-webteam/rrze-updater/main?label=Version)](https://github.com/RRZE-Webteam/rrze-updater)
 [![Release Version](https://img.shields.io/github/v/release/RRZE-Webteam/rrze-updater?label=Release+Version)](https://github.com/RRZE-Webteam/rrze-updater/releases/)
 [![GitHub License](https://img.shields.io/github/license/RRZE-Webteam/rrze-updater)](https://github.com/RRZE-Webteam/rrze-updater)
 [![GitHub issues](https://img.shields.io/github/issues/RRZE-Webteam/rrze-updater)](https://github.com/RRZE-Webteam/rrze-updater/issues)
@@ -10,6 +11,32 @@ RRZE Updater is a WordPress plugin for synchronizing plugins and themes with the
 - Installation of WordPress themes from a GitHub or GitLab repository
 - Configurable selection of branch, repositories, and service
 - Updating plugins via the plugin/theme overview when there are changes in the branch
+
+## Contributors
+
+* RRZE-Webteam, https://www.rrze.fau.de
+
+## Copyright
+
+GNU General Public License (GPL) Version 3
+
+## Documentation
+
+Public documentation at:
+
+* https://www.wp.rrze.fau.de
+
+## Feedback
+
+* Issues und Feedback: https://github.com/RRZE-Webteam/rrze-updater/issues
+* Kontakt: webmaster@rrze.fau.de
+
+## Requirements
+
+* WordPress ab 6.8
+* PHP ab 8.3
+* WordPress Multisite
+
 
 ## Installation
 
@@ -53,6 +80,3 @@ RRZE Updater automatically checks for new updates. To manually check for new upd
 
 ## Report Errors
 Errors can be logged as issues in GitLab. Alternatively, issues and inquiries can be sent to webmaster@fau.de with the subject "RRZE Updater Plugin".
-
-## License
-GNU GENERAL PUBLIC LICENSE Version 3.
