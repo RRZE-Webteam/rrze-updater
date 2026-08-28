@@ -12,14 +12,14 @@ jobs:
       - name: Send Matrix notification
         env:
           MATRIX_ACCESS_TOKEN: ${{ secrets.MATRIX_ACCESS_TOKEN }}
-          MATRIX_ROOM_ID: "%21wyUpkRsFMDGzzGmxBf%3Afau.de" # HTML-encoded room ID
+          MATRIX_ROOM_ID: ${{ secrets.MATRIX_REPORT_ROOM_ID }} # room ID
         run: |
-          response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://matrix.fau.de/_matrix/client/r0/rooms/${MATRIX_ROOM_ID}/send/m.room.message?access_token=${MATRIX_ACCESS_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"msgtype\": \"m.text\",
-              \"body\": \"A new push was made to the main branch in ${GITHUB_REPOSITORY} by ${GITHUB_ACTOR}. 🤔\"
-            }")
-          if [ "$response" -ne 200 ]; then
-            echo "Error: Failed to send notification to Matrix. HTTP status code: $response"
-          fi
+          transaction_id="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          message="A new push was made to the main branch in ${GITHUB_REPOSITORY} by ${GITHUB_ACTOR}."
+          payload="$(jq -nc --arg body "$message" '{msgtype: "m.text", body: $body}')"
+
+          curl --fail-with-body --silent --show-error --request PUT \
+            "https://matrix.fau.de/_matrix/client/v3/rooms/${MATRIX_ROOM_ID}/send/m.room.message/${transaction_id}" \
+            --header "Authorization: Bearer ${MATRIX_ACCESS_TOKEN}" \
+            --header "Content-Type: application/json" \
+            --data "$payload"

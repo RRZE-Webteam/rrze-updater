@@ -12,6 +12,32 @@ RRZE Updater is a WordPress plugin for synchronizing plugins and themes with the
 - Configurable selection of branch, repositories, and service
 - Updating plugins via the plugin/theme overview when there are changes in the branch
 
+## Contributors
+
+* RRZE-Webteam, https://www.rrze.fau.de
+
+## Copyright
+
+GNU General Public License (GPL) Version 3
+
+## Documentation
+
+Public documentation at:
+
+* https://www.wp.rrze.fau.de
+
+## Feedback
+
+* Issues und Feedback: https://github.com/RRZE-Webteam/rrze-updater/issues
+* Kontakt: webmaster@rrze.fau.de
+
+## Requirements
+
+* WordPress ab 6.8
+* PHP ab 8.3
+* WordPress Multisite
+
+
 ## Installation
 
 - Download the current RRZE Updater repository as a .zip file.
@@ -54,6 +80,3 @@ RRZE Updater automatically checks for new updates. To manually check for new upd
 
 ## Report Errors
 Errors can be logged as issues in GitLab. Alternatively, issues and inquiries can be sent to webmaster@fau.de with the subject "RRZE Updater Plugin".
-
-## License
-GNU GENERAL PUBLIC LICENSE Version 3.
