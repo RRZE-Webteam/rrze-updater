@@ -156,7 +156,13 @@ class GitlabConnector extends Connector
             $url = $this->addPrivateToken($url);
         }
 
-        $response = $this->api($url);
+        $response = $this->api(
+            $url,
+            [],
+            [
+                'logContext' => $this->getRepositoryLogContext($repository, 'commits', $branch)
+            ]
+        );
 
         $ret = false;
         if (is_array($response) && count($response) > 0) {
@@ -183,11 +189,41 @@ class GitlabConnector extends Connector
             [],
             [
                 'logErrors' => false,
-                'storeError' => false
+                'storeError' => false,
+                'logContext' => $this->getRepositoryLogContext($repository, 'branches', $branch)
             ]
         );
 
         return is_object($response) && isset($response->name);
+    }
+
+    public function getRemoteBranches(string $repository): array|false
+    {
+        $url = sprintf(
+            '%1$s/%2$s/repository/branches?per_page=100',
+            $this->getApiBaseUrl(),
+            urlencode($this->owner . '/' . $repository)
+        );
+
+        if ($this->token) {
+            $url = $this->addPrivateToken($url);
+        }
+
+        $response = $this->api(
+            $url,
+            [],
+            [
+                'logErrors' => false,
+                'storeError' => false,
+                'logContext' => $this->getRepositoryLogContext($repository, 'branches')
+            ]
+        );
+
+        if (!is_array($response)) {
+            return false;
+        }
+
+        return $this->extractBranchNames($response);
     }
 
     /**
@@ -211,7 +247,13 @@ class GitlabConnector extends Connector
             $url = $this->addPrivateToken($url);
         }
 
-        $response = $this->api($url);
+        $response = $this->api(
+            $url,
+            [],
+            [
+                'logContext' => $this->getRepositoryLogContext($repository, 'tags')
+            ]
+        );
 
         $ret = false;
         if (is_array($response) && count($response) > 0) {
@@ -242,7 +284,14 @@ class GitlabConnector extends Connector
             $url = $this->addPrivateToken($url);
         }
 
-        $response = $this->api($url, [], ['jsonDecodeBody' => false]);
+        $response = $this->api(
+            $url,
+            [],
+            [
+                'jsonDecodeBody' => false,
+                'logContext' => $this->getRepositoryLogContext($repository, 'archive.zip', $branch)
+            ]
+        );
         if (!$response) {
             return false;
         }
@@ -270,7 +319,8 @@ class GitlabConnector extends Connector
             [
                 'jsonDecodeBody' => false,
                 'logErrors' => false,
-                'storeError' => false
+                'storeError' => false,
+                'logContext' => $this->getRepositoryLogContext($repository, 'repository-file', $ref, $filePath)
             ]
         );
 
@@ -294,6 +344,21 @@ class GitlabConnector extends Connector
         $host = trim($host, " \t\n\r\0\x0B/");
 
         return $host ?: $defaultHost;
+    }
+
+    private function extractBranchNames(array $branches): array
+    {
+        $names = [];
+
+        foreach ($branches as $branch) {
+            if (!is_object($branch) || empty($branch->name)) {
+                continue;
+            }
+
+            $names[] = sanitize_text_field((string) $branch->name);
+        }
+
+        return array_values(array_unique(array_filter($names)));
     }
 
     private static function sanitizeApiUri(string $apiUri): string

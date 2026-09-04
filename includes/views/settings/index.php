@@ -94,6 +94,21 @@ $settingsPage = 'rrze-updater-settings';
             </tbody>
         </table>
 
+        <h3><?php esc_html_e('Debugging und Protokoll', 'rrze-updater'); ?></h3>
+        <table class="form-table">
+            <tbody>
+                <tr>
+                    <th scope="row"><?php esc_html_e('Protokollierung', 'rrze-updater'); ?></th>
+                    <td>
+                        <label>
+                            <input type="checkbox" name="rrze-updater[info_logging_enabled]" value="1" <?php checked(!empty($settings['info_logging_enabled'])); ?>>
+                            <?php esc_html_e('Informative Meldungen an den Info-Kanal senden', 'rrze-updater'); ?>
+                        </label>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
         <?php submit_button(__('Save Changes', 'rrze-updater'), 'primary', 'submit', false); ?>
         <?php submit_button(__('Jetzt senden', 'rrze-updater'), 'secondary', 'rrze-updater-send-now', false); ?>
     </form>

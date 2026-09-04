@@ -51,13 +51,13 @@ $searchTheme = add_query_arg(['s' => $extension->repository], self_admin_url('th
 </h2>
 
 <p><?php echo wp_kses_post(sprintf(
-        /* translators: 1: Installed theme version, 2: Local git reference */
+        /* translators: 1: Installed extension version, 2: Local git reference */
         __('Local Version: <code>%1$s</code> (Git Version: <code>%2$s</code>)', 'rrze-updater'),
         esc_html(wp_strip_all_tags($installedVersion)),
         $extension->localVersion ? esc_html($extension->localVersion) : '&mdash;'
     )); ?></p>
 <p><?php echo wp_kses_post(sprintf(
-        /* translators: 1: Remote theme version, 2: Remote git reference */
+        /* translators: 1: Remote extension version, 2: Remote git reference */
         __('Remote Version: <code>%1$s</code> (Git Version: <code>%2$s</code>)', 'rrze-updater'),
         esc_html(wp_strip_all_tags($extension->getRemoteVersionLabel() ?: '&mdash;')),
         $extension->remoteVersion ? esc_html($extension->remoteVersion) : '&mdash;'

@@ -233,6 +233,136 @@ class Extension
         return sprintf('%1$s (%2$s)', $versionLabel, $gitRef);
     }
 
+    /**
+     * Returns an access-token error for an unavailable GitLab branch.
+     *
+     * GitLab intentionally returns HTTP 404 for private projects that are
+     * requested without sufficient permission.
+     *
+     * @param string $branch Branch that could not be verified.
+     * @return \WP_Error|false Access-token error or false.
+     */
+    protected function getMissingGitlabTokenBranchError(string $branch): \WP_Error|false
+    {
+        if (!$this->connector instanceof GitlabConnector || !empty($this->connector->token)) {
+            return false;
+        }
+
+        $errorContext = $this->connector->getLastErrorContext();
+        $httpCode = absint($errorContext['http-code'] ?? 0);
+        if (!in_array($httpCode, [401, 403, 404], true)) {
+            return false;
+        }
+
+        return new \WP_Error(
+            'rrze_updater_missing_gitlab_token',
+            sprintf(
+                /* translators: 1: Branch name, 2: Repository name, 3: HTTP response code */
+                __('The GitLab repository branch "%1$s" could not be verified for "%2$s" because no access token is configured. GitLab returned HTTP %3$d; private repositories can be hidden this way. Add a valid token in the service settings and try again.', 'rrze-updater'),
+                $branch,
+                $this->repository,
+                $httpCode
+            )
+        );
+    }
+
+    /**
+     * Returns a detailed repository access error after branch lookup failed.
+     *
+     * @return \WP_Error|false Repository access error or false.
+     */
+    protected function getRemoteRepositoryLookupError(): \WP_Error|false
+    {
+        $errorContext = $this->connector->getLastErrorContext();
+        $httpCode = absint($errorContext['http-code'] ?? 0);
+        $service = (string) ($this->connector->display ?? '');
+
+        if (in_array($httpCode, [401, 403], true)) {
+            return new \WP_Error(
+                'rrze_updater_repository_access_denied',
+                sprintf(
+                    /* translators: 1: Repository name, 2: Service name, 3: HTTP response code */
+                    __('Access to repository "%1$s" was denied by %2$s (HTTP %3$d). Check whether the configured token is valid and authorized to access this repository.', 'rrze-updater'),
+                    $this->repository,
+                    $service,
+                    $httpCode
+                )
+            );
+        }
+
+        if ($httpCode === 404) {
+            return new \WP_Error(
+                'rrze_updater_repository_not_found',
+                sprintf(
+                    /* translators: 1: Repository name, 2: Service name */
+                    __('Repository "%1$s" could not be found on %2$s or is not accessible with the configured token. Check the user/group and repository name. If both are correct, grant the token access to this repository.', 'rrze-updater'),
+                    $this->repository,
+                    $service
+                )
+            );
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns a detailed error for a missing branch.
+     *
+     * @param string $branch    Requested branch name.
+     * @param array  $branches  Available branch names.
+     * @return \WP_Error Branch error.
+     */
+    protected function getMissingBranchError(string $branch, array $branches): \WP_Error
+    {
+        $branches = array_values(array_unique(array_filter($branches, 'is_string')));
+
+        if (empty($branches)) {
+            return new \WP_Error(
+                'rrze_updater_missing_branch',
+                sprintf(
+                    /* translators: 1: Branch name, 2: Repository name */
+                    __('The repository branch "%1$s" could not be found for "%2$s". The repository does not contain any branches.', 'rrze-updater'),
+                    $branch,
+                    $this->repository
+                )
+            );
+        }
+
+        $suggestion = $this->getBranchSuggestion($branch, $branches);
+
+        return new \WP_Error(
+            'rrze_updater_missing_branch',
+            sprintf(
+                /* translators: 1: Requested branch, 2: Repository, 3: Available branches, 4: Suggested branch */
+                __('The repository branch "%1$s" could not be found for "%2$s". Available branches: %3$s. Suggested branch: %4$s.', 'rrze-updater'),
+                $branch,
+                $this->repository,
+                implode(', ', $branches),
+                $suggestion
+            )
+        );
+    }
+
+    private function getBranchSuggestion(string $branch, array $branches): string
+    {
+        if (in_array('main', $branches, true)) {
+            return 'main';
+        }
+
+        $suggestion = $branches[0];
+        $shortestDistance = PHP_INT_MAX;
+
+        foreach ($branches as $candidate) {
+            $distance = levenshtein(strtolower($branch), strtolower($candidate));
+            if ($distance < $shortestDistance) {
+                $suggestion = $candidate;
+                $shortestDistance = $distance;
+            }
+        }
+
+        return $suggestion;
+    }
+
     protected function getRemoteReadableVersion(string $ref): string
     {
         if (!$this->connector) {

@@ -14,7 +14,7 @@ defined('ABSPATH') || exit;
             <div class="notice <?php echo esc_attr($isWarning ? 'notice-warning' : 'notice-error'); ?>">
                 <p>
                     <?php printf(
-                        /* translators: %s: Error message */
+                        /* translators: %s: Notice message */
                         $isWarning ? esc_html__('Hinweis: %s', 'rrze-updater') : esc_html__('Error: %s', 'rrze-updater'),
                         esc_html($message->get_error_message())
                     ); ?>

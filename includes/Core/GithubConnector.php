@@ -118,7 +118,13 @@ class GithubConnector extends Connector
             'headers' => $this->getHeaders()
         ];
 
-        $response = $this->api($url, $getArgs);
+        $response = $this->api(
+            $url,
+            $getArgs,
+            [
+                'logContext' => $this->getRepositoryLogContext($repository, 'commits', $branch)
+            ]
+        );
 
         $ret = false;
         if (is_array($response) && count($response) > 0 && !$this->isRateLimitReached()) {
@@ -144,11 +150,40 @@ class GithubConnector extends Connector
             ],
             [
                 'logErrors' => false,
-                'storeError' => false
+                'storeError' => false,
+                'logContext' => $this->getRepositoryLogContext($repository, 'branches', $branch)
             ]
         );
 
         return is_object($response) && isset($response->name);
+    }
+
+    public function getRemoteBranches(string $repository): array|false
+    {
+        $url = sprintf(
+            'https://%1$s/repos/%2$s/%3$s/branches?per_page=100',
+            $this->getApiHost(),
+            rawurlencode($this->owner),
+            rawurlencode($repository)
+        );
+
+        $response = $this->api(
+            $url,
+            [
+                'headers' => $this->getHeaders()
+            ],
+            [
+                'logErrors' => false,
+                'storeError' => false,
+                'logContext' => $this->getRepositoryLogContext($repository, 'branches')
+            ]
+        );
+
+        if (!is_array($response)) {
+            return false;
+        }
+
+        return $this->extractBranchNames($response);
     }
 
     /**
@@ -173,7 +208,13 @@ class GithubConnector extends Connector
             'headers' => $this->getHeaders()
         ];
 
-        $response = $this->api($url, $getArgs);
+        $response = $this->api(
+            $url,
+            $getArgs,
+            [
+                'logContext' => $this->getRepositoryLogContext($repository, 'tags')
+            ]
+        );
 
         $ret = false;
         if (is_array($response) && count($response) > 0 && !$this->isRateLimitReached()) {
@@ -205,7 +246,8 @@ class GithubConnector extends Connector
             ],
             [
                 'logErrors' => false,
-                'storeError' => false
+                'storeError' => false,
+                'logContext' => $this->getRepositoryLogContext($repository, 'contents', $ref, $filePath)
             ]
         );
 
@@ -231,7 +273,8 @@ class GithubConnector extends Connector
                 'headers' => $this->getHeaders()
             ],
             [
-                'jsonDecodeBody' => false
+                'jsonDecodeBody' => false,
+                'logContext' => $this->getRepositoryLogContext($repository, 'zipball', $branch)
             ]
         );
 
@@ -309,6 +352,21 @@ class GithubConnector extends Connector
             $headers['Authorization'] = 'token ' . $this->token;
         }
         return $headers;
+    }
+
+    private function extractBranchNames(array $branches): array
+    {
+        $names = [];
+
+        foreach ($branches as $branch) {
+            if (!is_object($branch) || empty($branch->name)) {
+                continue;
+            }
+
+            $names[] = sanitize_text_field((string) $branch->name);
+        }
+
+        return array_values(array_unique(array_filter($names)));
     }
 
     /**

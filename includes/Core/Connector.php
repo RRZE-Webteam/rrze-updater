@@ -5,6 +5,7 @@ namespace RRZE\Updater\Core;
 defined('ABSPATH') || exit;
 
 use RRZE\Updater\Config;
+use RRZE\Updater\TokenNotice;
 
 /**
  * Abstract base class for different repository connectors.
@@ -115,6 +116,14 @@ abstract class Connector
     abstract public function remoteBranchExists(string $repository, string $branch): bool;
 
     /**
+     * Returns available branches for a repository.
+     *
+     * @param string $repository The name of the repository.
+     * @return array|false Branch names or false on failure.
+     */
+    abstract public function getRemoteBranches(string $repository): array|false;
+
+    /**
      * Abstract method to get the remote tag for the repository.
      *
      * @abstract
@@ -198,11 +207,15 @@ abstract class Connector
         $defaultArgs = [
             'jsonDecodeBody' => true,
             'logErrors' => true,
-            'storeError' => true
+            'storeError' => true,
+            'logContext' => []
         ];
 
         $getArgs = wp_parse_args($getArgs, $defaultGetArgs);
         $args = wp_parse_args($args, $defaultArgs);
+        $headers = is_array($getArgs['headers']) ? $getArgs['headers'] : [];
+        $headers['User-Agent'] = (new Config())->getUserAgent();
+        $getArgs['headers'] = $headers;
 
         $response = wp_remote_get($url, $getArgs);
         $code = wp_remote_retrieve_response_code($response);
@@ -212,28 +225,36 @@ abstract class Connector
         if (is_wp_error($response)) {
             $error = $response->get_error_message();
             $errorData = $response->get_error_data();
-            $this->errorData = [
-                'error-data' => $this->formatLogValue($errorData),
-                'url' => $this->redactLogUrl($url)
-            ];
+            $this->errorData = array_merge(
+                $this->getRequestLogContext($args, $url),
+                [
+                    'error-data' => $this->formatLogValue($errorData),
+                    'url' => $this->redactLogUrl($url)
+                ]
+            );
             if ($args['storeError']) {
                 $this->error = $error;
             }
             if ($args['logErrors']) {
                 $this->logError(
-                    'Repository API request failed: {error}. Error data: {error-data}',
-                    [
-                        'error' => $error,
-                        'error-data' => $this->errorData['error-data'],
-                        'url' => $this->redactLogUrl($url)
-                    ]
+                    'Repository API request failed for {resource-label}: {error}. Error data: {error-data}',
+                    array_merge(
+                        $this->errorData,
+                        [
+                            'error' => $error
+                        ]
+                    )
                 );
             }
             return false;
         }
         if (!in_array($code, $allowedCodes, false)) {
             $error = isset($httpErrors[$code]) ? $httpErrors[$code] : 'HTTP error ' . $code;
+            if (in_array((int) $code, [401, 403], true)) {
+                TokenNotice::record($this, (int) $code);
+            }
             $this->errorData = array_merge(
+                $this->getRequestLogContext($args, $url),
                 $this->getResponseErrorContext($response),
                 [
                     'http-code' => $code,
@@ -245,7 +266,7 @@ abstract class Connector
             }
             if ($args['logErrors']) {
                 $this->logError(
-                    'Repository API request returned HTTP {http-code}: {error}. Response: {response-body}',
+                    'Repository API request returned HTTP {http-code} for {resource-label}: {error}. Response: {response-body}',
                     array_merge(
                         $this->errorData,
                         [
@@ -315,6 +336,46 @@ abstract class Connector
                     $context['response-' . str_replace('_', '-', $key)] = (string) $decodedBody[$key];
                 }
             }
+        }
+
+        return $context;
+    }
+
+    protected function getRequestLogContext(array $args, string $url): array {
+        $context = is_array($args['logContext'] ?? null) ? $args['logContext'] : [];
+
+        if (empty($context['resource-label'])) {
+            $context['resource-label'] = $this->redactLogUrl($url);
+        }
+
+        return $context;
+    }
+
+    protected function getRepositoryLogContext(string $repository, string $resource, string $ref = '', string $filePath = ''): array {
+        $resourceLabel = trim(($this->owner ?? '') . '/' . $repository, '/');
+        $resourceLabel .= ' ' . $resource;
+
+        if ($ref !== '') {
+            $resourceLabel .= ' @ ' . $ref;
+        }
+
+        if ($filePath !== '') {
+            $resourceLabel .= ' file ' . $filePath;
+        }
+
+        $context = [
+            'repository' => $repository,
+            'repository-path' => trim(($this->owner ?? '') . '/' . $repository, '/'),
+            'resource' => $resource,
+            'resource-label' => $resourceLabel
+        ];
+
+        if ($ref !== '') {
+            $context['ref'] = $ref;
+        }
+
+        if ($filePath !== '') {
+            $context['file'] = $filePath;
         }
 
         return $context;

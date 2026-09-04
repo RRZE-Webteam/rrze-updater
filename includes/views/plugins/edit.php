@@ -53,7 +53,7 @@ $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' =>
 </h2>
 
 <p><?php echo wp_kses_post(sprintf(
-        /* translators: 1: Installed plugin version, 2: Local git reference */
+        /* translators: 1: Installed extension version, 2: Local git reference */
         __('Local Version: <code>%1$s</code> (Git Version: <code>%2$s</code>)', 'rrze-updater'),
         esc_html(wp_strip_all_tags($installedVersion)),
         $extension->localVersion ? esc_html($extension->localVersion) : '&mdash;'
@@ -67,7 +67,7 @@ $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' =>
     )); ?>
 </p>
 <p><?php echo wp_kses_post(sprintf(
-        /* translators: %s: Last extension checked error */
+        /* translators: %s: Last checked date */
         __('Last checked on: %s', 'rrze-updater'),
         $lastChecked
     )); ?>

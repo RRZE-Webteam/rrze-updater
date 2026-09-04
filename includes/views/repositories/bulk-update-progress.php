@@ -26,7 +26,7 @@ $returnUrl = $data['returnUrl'] ?? self_admin_url('admin.php?page=rrze-updater')
                 <div class="notice notice-warning">
                     <p>
                         <?php printf(
-                            /* translators: %s: Warning message */
+                            /* translators: %s: Notice message */
                             esc_html__('Hinweis: %s', 'rrze-updater'),
                             esc_html($update['extension']->lastWarning)
                         ); ?>
