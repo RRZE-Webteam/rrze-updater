@@ -202,8 +202,8 @@ class Cron
             return 'failed';
         }
 
-        do_action(
-            'rrze.log.info',
+        Logger::info(
+            $settings,
             'Update notice email sent to {recipient}. Open updates: {update-count}.',
             [
                 'plugin' => (new Config())->getLogPlugin(),

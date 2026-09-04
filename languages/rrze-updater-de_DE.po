@@ -2,8 +2,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RRZE Updater\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/rrze-updater\n"
-"POT-Creation-Date: 2023-10-11T12:50:19+00:00\n"
-"PO-Revision-Date: 2024-10-25 14:17+0000\n"
+"POT-Creation-Date: 2026-09-04T11:13:44+00:00\n"
+"PO-Revision-Date: 2026-09-04 13:00+0200\n"
 "Last-Translator: RRZE Webteam <webmaster@fau.de>\n"
 "Language-Team: German\n"
 "Language: de_DE\n"
@@ -11,259 +11,17 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Loco https://localise.biz/"
-
-#: includes/views/plugins/edit.php:13 includes/views/themes/edit.php:13
-msgid "A new version is available."
-msgstr "Es ist eine neue Version verfügbar."
-
-#: includes/views/connectors/add.php:6 includes/views/connectors/add.php:43
-#: includes/views/plugins/add.php:30 includes/views/themes/add.php:30
-msgid "Add a New Service"
-msgstr "Neuen Dienst erstellen"
-
-#: includes/views/connectors/index.php:8
-msgid "Add new"
-msgstr "Neu hinzufügen"
-
-#: includes/Controller.php:505 includes/Controller.php:924
-#: includes/Controller.php:1363
-msgid "An error occurred. Please try again."
-msgstr "Ein Fehler ist aufgetreten. Bitte versuche es erneut."
-
-#: includes/ListTable/PluginsListTable.php:154
-#: includes/ListTable/RepoListTable.php:154
-#: includes/ListTable/ThemesListTable.php:154 includes/views/plugins/add.php:44
-#: includes/views/plugins/edit.php:95 includes/views/themes/add.php:44
-#: includes/views/themes/edit.php:70
-msgid "Branch"
-msgstr "Branch"
-
-#. translators: %s: Repository branch name
-#: includes/Main.php:621 includes/Main.php:663
-msgid "Branch %s"
-msgstr "Branch %s"
-
-#: includes/views/plugins/add.php:48 includes/views/plugins/edit.php:99
-#: includes/views/themes/add.php:48 includes/views/themes/edit.php:74
-msgid "By default the main branch will be used."
-msgstr "Standardmäßig wird der Main-Zweig verwendet."
-
-#: includes/views/plugins/add.php:80 includes/views/themes/add.php:80
-msgid "By default, the name of the repository."
-msgstr "Standardmäßig der Name des Repositories."
-
-#: includes/views/plugins/add.php:53 includes/views/plugins/edit.php:38
-#: includes/views/plugins/edit.php:104 includes/views/themes/add.php:53
-#: includes/views/themes/edit.php:28 includes/views/themes/edit.php:79
-msgid "Check for updates"
-msgstr "Auf Updates prüfen"
-
-#: includes/views/plugins/add.php:59 includes/views/plugins/edit.php:110
-#: includes/views/themes/add.php:59 includes/views/themes/edit.php:85
-msgid "Commits"
-msgstr "Commits"
-
-#: includes/ListTable/ConnListTable.php:103
-#: includes/ListTable/PluginsListTable.php:110
-#: includes/ListTable/PluginsListTable.php:184
-#: includes/ListTable/RepoListTable.php:114
-#: includes/ListTable/RepoListTable.php:188
-#: includes/ListTable/ThemesListTable.php:110
-#: includes/ListTable/ThemesListTable.php:184
-msgid "Delete"
-msgstr "Löschen"
-
-#: includes/ListTable/ConnListTable.php:84
-#: includes/ListTable/PluginsListTable.php:97
-#: includes/ListTable/RepoListTable.php:100
-#: includes/ListTable/ThemesListTable.php:97
-msgid "Edit"
-msgstr "Bearbeiten"
-
-#: includes/Main.php:217 includes/Main.php:218
-msgid "Edit repository"
-msgstr "Repository bearbeiten"
-
-#: includes/views/connectors/edit.php:9
-msgid "Edit Service"
-msgstr "Dienst bearbeiten"
-
-#. translators: %s: Error message
-#: includes/views/main.php:15
-msgid "Error: %s"
-msgstr "Fehler: %s"
-
-#: includes/ListTable/PluginsListTable.php:151
-#: includes/ListTable/ThemesListTable.php:151
-msgid "Folder"
-msgstr "Ordner"
-
-#. translators: %s: Installation folder path
-#: includes/Main.php:638 includes/Main.php:671
-msgid "Folder %s"
-msgstr "Ordner %s"
-
-#: includes/Core/Connector.php:154
-msgid "Forbidden (use valid authentication)"
-msgstr "Verboten (gültige Authentifizierung verwenden)"
-
-#. translators: %s: API rate limit time availabelity
-#: includes/Core/GithubConnector.php:242
-msgid "GitHub API Rate Limit is reached! It'll be available %s."
-msgstr "GitHub API-Rate-Limit ist erreicht! Es wird %s verfügbar sein."
-
-#. translators: 1: API rate limit, 2: API rate left, 3: API rate reset
-#: includes/Core/GithubConnector.php:226
-msgid "GitHub API Rate Limit: %1$s (%2$s left). It'll be reset %3$s."
-msgstr "GitHub API-Rate-Limit: %1$s (%2$s übrig). Es wird %3$s zurückgesetzt."
-
-#: includes/views/connectors/add.php:19
-msgid "GitHub.com"
-msgstr "GitHub.com"
-
-#. Author URI of the plugin
-#: rrze-updater.php
-msgid "https://github.com/RRZE-Webteam"
-msgstr "https://github.com/RRZE-Webteam"
-
-#. Plugin URI of the plugin
-#: rrze-updater.php
-msgid "https://github.com/RRZE-Webteam/rrze-updater"
-msgstr "https://github.com/RRZE-Webteam/rrze-updater"
-
-#. translators: %s: Human time difference
-#: includes/Core/GithubConnector.php:231 includes/Core/GithubConnector.php:245
-#| msgctxt "%s = github-rate-limit time difference"
-#| msgid "in %s"
-msgctxt "Human time difference"
-msgid "in %s"
-msgstr "in %s"
-
-#: rrze-updater.php:102
-msgid ""
-"In a multisite installation, the plugin can only be installed network-wide."
-msgstr ""
-"Bei einer Multisite-Installation kann das Plugin nur netzwerkweit "
-"installiert werden."
-
-#: includes/views/plugins/index.php:9 includes/views/themes/index.php:9
-msgid "Install"
-msgstr "Installieren"
-
-#: includes/views/plugins/add.php:7 includes/views/plugins/add.php:85
-msgid "Install Plugin"
-msgstr "Plugin installieren"
-
-#: includes/views/themes/add.php:7 includes/views/themes/add.php:85
-msgid "Install Theme"
-msgstr "Theme installieren"
-
-#. translators: %s: Last extension checked error
-#: includes/views/plugins/edit.php:55 includes/views/themes/edit.php:33
-msgid "Last checked on: %s"
-msgstr "Zuletzt überprüft am: %s"
-
-#. translators: %s: Last extension error
-#: includes/views/plugins/edit.php:30 includes/views/themes/edit.php:23
-msgid "Last error: %s"
-msgstr "Letzter Fehler: %s"
-
-#. translators: %s: Local version of the repository
-#: includes/views/plugins/edit.php:43 includes/views/themes/edit.php:31
-msgid "Local Version: %s"
-msgstr "Lokale Version: %s"
-
-#: includes/Controller.php:159 includes/Controller.php:305
-#: includes/Controller.php:603 includes/Controller.php:1038
-msgid "Number of items per page:"
-msgstr "Einträge pro Seite:"
-
-#: includes/views/connectors/add.php:38 includes/views/connectors/edit.php:39
-msgid "Optional."
-msgstr "Optional."
-
-#: includes/Controller.php:113 includes/ListTable/PluginsListTable.php:149
-#: includes/views/plugins/edit.php:37
-msgid "Plugin"
-msgstr "Plugin"
-
-#: includes/views/plugins/add.php:76 includes/views/plugins/edit.php:127
-msgid "Plugin folder"
-msgstr "Ordner des Plugins"
-
-#: includes/Main.php:150 includes/Main.php:151
-#: includes/views/plugins/index.php:8
-msgid "Plugins"
-msgstr "Plugins"
-
-#. translators: 1: The plugin name, 2: The error string.
-#: rrze-updater.php:111 rrze-updater.php:221
-msgid "Plugins: %1$s: %2$s"
-msgstr "Plugins: %1$s: %2$s"
-
-#. translators: %s: Remote extension version
-#: includes/views/plugins/edit.php:49 includes/views/themes/edit.php:32
-msgid "Remote Version: %s"
-msgstr "Remote-Version: %s"
-
-#: includes/ListTable/ConnListTable.php:129 includes/Main.php:130
-#: includes/Main.php:131 includes/views/repositories/index.php:8
-msgid "Repositories"
-msgstr "Repositories"
-
-#: includes/ListTable/PluginsListTable.php:153
-#: includes/ListTable/RepoListTable.php:153
-#: includes/ListTable/ThemesListTable.php:153 includes/Main.php:626
-#: includes/Main.php:633 includes/Main.php:666 includes/Main.php:668
-#: includes/views/plugins/add.php:35 includes/views/plugins/edit.php:86
-#: includes/views/themes/add.php:35 includes/views/themes/edit.php:61
-msgid "Repository"
-msgstr "Repository"
-
-#: includes/Core/Connector.php:155
-msgid "Resource not found (check repository name, branch/tag/commit name)"
-msgstr ""
-"Ressource nicht gefunden (Repository-Name prüfen, Branch / Tag / Commit-Name)"
-
-#: includes/views/connectors/add.php:20
-msgid "RRZE Gitlab"
-msgstr "RRZE Gitlab"
+"X-Generator: Loco https://localise.biz/\n"
 
 #. Plugin Name of the plugin
 #: rrze-updater.php
 msgid "RRZE Updater"
 msgstr "RRZE Updater"
 
-#. Author of the plugin
+#. Plugin URI of the plugin
 #: rrze-updater.php
-msgid "RRZE Webteam"
-msgstr "RRZE-Webteam"
-
-#: includes/views/connectors/edit.php:44 includes/views/plugins/edit.php:135
-#: includes/views/themes/edit.php:110
-msgid "Save Changes"
-msgstr "Änderungen übernehmen"
-
-#: includes/views/connectors/index.php:14 includes/views/plugins/index.php:15
-#: includes/views/repositories/index.php:14 includes/views/themes/index.php:15
-msgid "Search"
-msgstr "Suchen"
-
-#: includes/ListTable/ConnListTable.php:126
-#: includes/ListTable/PluginsListTable.php:152
-#: includes/ListTable/RepoListTable.php:155
-#: includes/ListTable/ThemesListTable.php:152
-#: includes/views/connectors/add.php:15 includes/views/connectors/edit.php:19
-#: includes/views/plugins/add.php:16 includes/views/plugins/edit.php:68
-#: includes/views/themes/add.php:16 includes/views/themes/edit.php:43
-msgid "Service"
-msgstr "Dienst"
-
-#: includes/Main.php:141 includes/Main.php:142
-#: includes/views/connectors/index.php:7
-msgid "Services"
-msgstr "Dienste"
+msgid "https://github.com/RRZE-Webteam/rrze-updater"
+msgstr "https://github.com/RRZE-Webteam/rrze-updater"
 
 #. Description of the plugin
 #: rrze-updater.php
@@ -273,36 +31,851 @@ msgstr ""
 "Synchronisation von Plugins und Themes mit den entsprechenden GitHub- oder "
 "GitLab-Repositories."
 
-#: includes/views/plugins/add.php:60 includes/views/plugins/edit.php:111
-#: includes/views/themes/add.php:60 includes/views/themes/edit.php:86
-msgid "Tags"
-msgstr "Tags"
+#. Author of the plugin
+#: rrze-updater.php
+msgid "RRZE Webteam"
+msgstr "RRZE-Webteam"
 
-#: includes/views/plugins/add.php:39 includes/views/plugins/edit.php:90
-#: includes/views/themes/add.php:39 includes/views/themes/edit.php:65
-msgid "The name of the repository."
-msgstr "Der Name des Repositorys."
+#. Author URI of the plugin
+#: rrze-updater.php
+msgid "https://github.com/RRZE-Webteam"
+msgstr "https://github.com/RRZE-Webteam"
 
-#: includes/Controller.php:841 includes/Controller.php:1280
-msgid "The Repository already exists."
-msgstr "Das Repository existiert bereits."
+#: includes/Controller.php:123 includes/ListTable/PluginsListTable.php:261
+#: includes/views/plugins/edit.php:45
+msgid "Plugin"
+msgstr "Plugin"
 
-#: includes/Controller.php:833 includes/Controller.php:929
-#: includes/Controller.php:1272 includes/Controller.php:1368
+#: includes/Controller.php:133 includes/ListTable/ThemesListTable.php:255
+#: includes/views/themes/edit.php:43
+msgid "Theme"
+msgstr "Theme"
+
+#: includes/Controller.php:182 includes/Controller.php:338
+#: includes/Controller.php:799 includes/Controller.php:1002
+#: includes/Controller.php:1069 includes/Controller.php:1087
+#: includes/Controller.php:1297 includes/Controller.php:1338
+#: includes/Controller.php:1407 includes/Controller.php:1721
+#: includes/Controller.php:1776 includes/Controller.php:1955
+#: includes/Controller.php:2272 includes/Controller.php:2330
+#: includes/Controller.php:2492 includes/Controller.php:2782
+msgid "You need a higher level of permission."
+msgstr "Sie benötigen eine höhere Berechtigungsstufe."
+
+#: includes/Controller.php:202
+msgid "Repository not found."
+msgstr "Repository nicht gefunden."
+
+#: includes/Controller.php:216
+msgid "Neues Update vorhanden"
+msgstr "Neues Update vorhanden"
+
+#: includes/Controller.php:217
+msgid "Aktuell"
+msgstr "Aktuell"
+
+#. translators: %s: Update check error
+#: includes/Controller.php:223
+msgid "Fehler: %s"
+msgstr "Fehler: %s"
+
+#: includes/Controller.php:288 includes/Controller.php:1391
+msgid "Service created."
+msgstr "Dienst erstellt."
+
+#: includes/Controller.php:384
+msgid "Settings saved."
+msgstr "Einstellungen gespeichert."
+
+#: includes/Controller.php:393
+msgid "Update notice email sent."
+msgstr "Update-Hinweis per E-Mail wurde gesendet."
+
+#: includes/Controller.php:396
+msgid "Es liegen keine Updates vor, über die berichtet werden kann."
+msgstr "Es liegen keine Updates vor, über die berichtet werden kann."
+
+#: includes/Controller.php:399
+msgid "No valid email address is configured."
+msgstr "Es ist keine gültige E-Mail-Adresse konfiguriert."
+
+#: includes/Controller.php:402
+msgid "The update notice email could not be sent."
+msgstr "Der Update-Hinweis per E-Mail konnte nicht gesendet werden."
+
+#: includes/Controller.php:405
+msgid "The update notice email is disabled."
+msgstr "Der Update-Hinweis per E-Mail ist deaktiviert."
+
+#: includes/Controller.php:621
+msgid "Release tag not checked yet"
+msgstr "Release-Tag noch nicht geprüft"
+
+#: includes/Controller.php:804 includes/Controller.php:1422
+#: includes/Controller.php:1961 includes/Controller.php:2498
+msgid "An error occurred. Please try again."
+msgstr "Ein Fehler ist aufgetreten. Bitte versuche es erneut."
+
+#: includes/Controller.php:810
+msgid "Theme Check is not available."
+msgstr "Theme Check ist nicht verfügbar."
+
+#: includes/Controller.php:815
+msgid "The selected theme does not exist."
+msgstr "Das ausgewählte Theme existiert nicht."
+
+#: includes/Controller.php:825 includes/Controller.php:834
+#: includes/ListTable/ThemesListTable.php:225 includes/views/themes/edit.php:46
+msgid "Theme Check"
+msgstr "Theme Check"
+
+#: includes/Controller.php:833
+msgid "Theme Check requires a form submission. Continue with the button below."
+msgstr ""
+"Theme Check erfordert das Absenden eines Formulars. Fahren Sie mit dem "
+"untenstehenden Button fort."
+
+#: includes/Controller.php:940 includes/Controller.php:1191
+#: includes/Controller.php:1539 includes/Controller.php:2098
+msgid "Number of items per page:"
+msgstr "Einträge pro Seite:"
+
+#: includes/Controller.php:994 includes/Controller.php:1012
+#: includes/Controller.php:1292 includes/Controller.php:1716
+#: includes/Controller.php:2267
+msgid "Unable to submit this form, please refresh and try again."
+msgstr ""
+"Dieses Formular konnte nicht gesendet werden. Bitte aktualisieren Sie es und "
+"versuchen Sie es erneut."
+
+#: includes/Controller.php:1351
+msgid "The User/Group field must not be empty."
+msgstr "Das Feld Benutzer/Gruppe darf nicht leer sein."
+
+#: includes/Controller.php:1789 includes/Controller.php:1966
+#: includes/Controller.php:2343 includes/Controller.php:2503
 msgid "The Repository field must not be empty."
 msgstr "Das Feld Repository darf nicht leer sein."
 
-#. translators: 1: Server PHP version number, 2: Required PHP version number.
-#: rrze-updater.php:180
-msgid ""
-"The server is running PHP version %1$s. The plugin requires at least PHP "
-"version %2$s."
+#: includes/Controller.php:1797 includes/Controller.php:2351
+msgid "The Repository already exists."
+msgstr "Das Repository existiert bereits."
+
+#: includes/Controller.php:2744 includes/Controller.php:2759
+msgid "Y/m/d"
+msgstr "j.n.Y"
+
+#. translators: %s: Human-readable time difference
+#: includes/Controller.php:2754
+msgid "%s ago"
+msgstr "vor %s"
+
+#: includes/Core/Connector.php:195
+msgid "Unauthorized (use valid authentication)"
+msgstr "Nicht autorisiert (gültige Authentifizierung verwenden)"
+
+#: includes/Core/Connector.php:196
+msgid "Forbidden (use valid authentication)"
+msgstr "Verboten (gültige Authentifizierung verwenden)"
+
+#: includes/Core/Connector.php:197
+msgid "Resource not found (check repository name, branch/tag/commit name)"
 msgstr ""
-"Auf dem Server wird die PHP-Version %1$s ausgeführt. Das Plugin erfordert "
-"mindestens die PHP-Version %2$s."
+"Ressource nicht gefunden (Repository-Name prüfen, Branch / Tag / Commit-Name)"
+
+#: includes/Core/Connector.php:198
+msgid "Too many requests"
+msgstr "Zu viele Anfragen"
+
+#. translators: 1: Branch name, 2: Repository name, 3: HTTP response code
+#: includes/Core/Extension.php:261
+msgid ""
+"The GitLab repository branch \"%1$s\" could not be verified for \"%2$s\" "
+"because no access token is configured. GitLab returned HTTP %3$d; private "
+"repositories can be hidden this way. Add a valid token in the service "
+"settings and try again."
+msgstr ""
+"Der GitLab-Repository-Branch „%1$s“ für „%2$s“ konnte nicht geprüft werden, "
+"weil kein Zugriffstoken konfiguriert ist. GitLab lieferte HTTP %3$d; private "
+"Repositories können auf diese Weise verborgen werden. Hinterlegen Sie einen "
+"gültigen Token in den Diensteinstellungen und versuchen Sie es erneut."
+
+#. translators: 1: Repository name, 2: Service name, 3: HTTP response code
+#: includes/Core/Extension.php:285
+msgid ""
+"Access to repository \"%1$s\" was denied by %2$s (HTTP %3$d). Check whether "
+"the configured token is valid and authorized to access this repository."
+msgstr ""
+"Der Zugriff auf das Repository „%1$s“ wurde von %2$s verweigert (HTTP %3$d). "
+"Prüfen Sie, ob der konfigurierte Token gültig ist und Zugriff auf dieses "
+"Repository hat."
+
+#. translators: 1: Repository name, 2: Service name
+#: includes/Core/Extension.php:298
+msgid ""
+"Repository \"%1$s\" could not be found on %2$s or is not accessible with the "
+"configured token. Check the user/group and repository name. If both are "
+"correct, grant the token access to this repository."
+msgstr ""
+"Das Repository „%1$s“ wurde bei %2$s nicht gefunden oder ist mit dem "
+"konfigurierten Token nicht zugreifbar. Prüfen Sie Benutzer/Gruppe und den "
+"Repository-Namen. Wenn beides korrekt ist, erteilen Sie dem Token Zugriff "
+"auf dieses Repository."
+
+#. translators: 1: Branch name, 2: Repository name
+#: includes/Core/Extension.php:324
+msgid ""
+"The repository branch \"%1$s\" could not be found for \"%2$s\". The "
+"repository does not contain any branches."
+msgstr ""
+"Der Repository-Branch „%1$s“ wurde für „%2$s“ nicht gefunden. Das Repository "
+"enthält keine Branches."
+
+#. translators: 1: Requested branch, 2: Repository, 3: Available branches, 4: Suggested branch
+#: includes/Core/Extension.php:337
+msgid ""
+"The repository branch \"%1$s\" could not be found for \"%2$s\". Available "
+"branches: %3$s. Suggested branch: %4$s."
+msgstr ""
+"Der Repository-Branch „%1$s“ wurde für „%2$s“ nicht gefunden. Verfügbare "
+"Branches: %3$s. Vorgeschlagener Branch: %4$s."
+
+#: includes/Core/GithubConnector.php:291
+msgid "Could not create temporary file."
+msgstr "Temporäre Datei konnte nicht erstellt werden."
+
+#: includes/Core/GithubConnector.php:305
+msgid "Could not write ZIP archive to temporary file."
+msgstr "ZIP-Archiv konnte nicht in die temporäre Datei geschrieben werden."
+
+#. translators: 1: API rate limit, 2: API rate left, 3: API rate reset
+#: includes/Core/GithubConnector.php:390
+msgid "GitHub API Rate Limit: %1$s (%2$s left). It'll be reset %3$s."
+msgstr "GitHub API-Rate-Limit: %1$s (%2$s übrig). Es wird %3$s zurückgesetzt."
+
+#. translators: %s: Human time difference
+#: includes/Core/GithubConnector.php:395 includes/Core/GithubConnector.php:409
+msgctxt "Human time difference"
+msgid "in %s"
+msgstr "in %s"
+
+#. translators: %s: API rate limit time availabelity
+#: includes/Core/GithubConnector.php:406
+msgid "GitHub API Rate Limit is reached! It'll be available %s."
+msgstr "GitHub API-Rate-Limit ist erreicht! Es wird %s verfügbar sein."
+
+#: includes/Core/Plugin.php:57 includes/Core/Plugin.php:86
+msgid "No repository service is configured for this plugin."
+msgstr "Für dieses Plugin ist kein Repository-Dienst konfiguriert."
+
+#. translators: %s: Comma-separated list of checked readme files
+#: includes/Core/Plugin.php:72
+msgid ""
+"The repository is not recognized as a WordPress plugin. Missing readme file. "
+"Checked: %s."
+msgstr ""
+"Das Repository wird nicht als WordPress-Plugin erkannt. Die Readme-Datei "
+"fehlt. Geprüft: %s."
+
+#. translators: %s: Comma-separated list of checked plugin main file candidates
+#: includes/Core/Plugin.php:132
+msgid ""
+"The repository is not recognized as a WordPress plugin. Missing plugin main "
+"file. Checked: %s."
+msgstr ""
+"Das Repository wird nicht als WordPress-Plugin erkannt. Die Plugin-"
+"Hauptdatei fehlt. Geprüft: %s."
+
+#. translators: %s: Comma-separated list of plugin main file candidates found without Plugin Name header
+#: includes/Core/Plugin.php:142
+msgid ""
+"The repository is not recognized as a WordPress plugin. Found plugin main "
+"file candidate, but the required \"Plugin Name:\" header is missing. "
+"Checked: %s."
+msgstr ""
+"Das Repository wird nicht als WordPress-Plugin erkannt. Eine mögliche Plugin-"
+"Hauptdatei wurde gefunden, aber der erforderliche Header „Plugin Name:“ "
+"fehlt. Geprüft: %s."
+
+#: includes/Core/Theme.php:53 includes/Core/Theme.php:82
+msgid "No repository service is configured for this theme."
+msgstr "Für dieses Theme ist kein Repository-Dienst konfiguriert."
+
+#. translators: 1: Classic theme index file, 2: Block theme index file
+#: includes/Core/Theme.php:97
+msgid ""
+"The repository is not recognized as a WordPress theme. Missing theme index "
+"template. Checked: %1$s or %2$s."
+msgstr ""
+"Das Repository wird nicht als WordPress-Theme erkannt. Die Theme-"
+"Indexvorlage fehlt. Geprüft: %1$s oder %2$s."
+
+#. translators: %s: Theme stylesheet file path
+#: includes/Core/Theme.php:118
+msgid ""
+"The repository is not recognized as a WordPress theme. Missing stylesheet "
+"file: %s."
+msgstr ""
+"Das Repository wird nicht als WordPress-Theme erkannt. Die Stylesheet-Datei "
+"fehlt: %s."
+
+#. translators: %s: Theme stylesheet file path
+#: includes/Core/Theme.php:132
+msgid ""
+"The repository is not recognized as a WordPress theme. Found %s, but the "
+"required \"Theme Name:\" header is missing."
+msgstr ""
+"Das Repository wird nicht als WordPress-Theme erkannt. %s wurde gefunden, "
+"aber der erforderliche Header „Theme Name:“ fehlt."
+
+#: includes/Cron.php:65
+msgid "Once weekly"
+msgstr "Einmal wöchentlich"
+
+#: includes/Cron.php:72
+msgid "Once monthly"
+msgstr "Einmal monatlich"
+
+#: includes/ListTable/ConnListTable.php:87
+#: includes/ListTable/PluginsListTable.php:106
+#: includes/ListTable/RepoListTable.php:100
+#: includes/ListTable/ThemesListTable.php:100
+msgid "Edit"
+msgstr "Bearbeiten"
+
+#: includes/ListTable/ConnListTable.php:107
+#: includes/ListTable/PluginsListTable.php:119
+#: includes/ListTable/PluginsListTable.php:304
+#: includes/ListTable/RepoListTable.php:114
+#: includes/ListTable/RepoListTable.php:265
+#: includes/ListTable/ThemesListTable.php:113
+#: includes/ListTable/ThemesListTable.php:295
+#: includes/views/partials/bulk-delete-confirm.php:59
+msgid "Delete"
+msgstr "Löschen"
+
+#: includes/ListTable/ConnListTable.php:130
+#: includes/views/connectors/add.php:33 includes/views/connectors/edit.php:38
+#: includes/views/plugins/add.php:18 includes/views/plugins/edit.php:96
+#: includes/views/themes/add.php:18 includes/views/themes/edit.php:91
+msgid "Service"
+msgstr "Dienst"
+
+#: includes/ListTable/ConnListTable.php:131
+#: includes/views/connectors/add.php:71 includes/views/connectors/edit.php:74
+msgid "User/Group"
+msgstr "Benutzer / Gruppe"
+
+#: includes/ListTable/ConnListTable.php:132
+#: includes/views/connectors/add.php:79 includes/views/connectors/edit.php:82
+msgid "Token"
+msgstr "Token"
+
+#: includes/ListTable/ConnListTable.php:133
+msgid "Repositories"
+msgstr "Repositories"
+
+#. translators: %s: New extension version
+#: includes/ListTable/PluginsListTable.php:162
+#: includes/ListTable/RepoListTable.php:202
+#: includes/ListTable/ThemesListTable.php:156
+msgid "Update auf %s"
+msgstr "Update auf %s"
+
+#: includes/ListTable/PluginsListTable.php:184
+#: includes/views/plugins/edit.php:48 includes/views/plugins/index.php:38
+msgid "Plugin Check"
+msgstr "Plugin Check"
+
+#: includes/ListTable/PluginsListTable.php:192
+#: includes/ListTable/ThemesListTable.php:233
+#: includes/views/plugins/edit.php:51 includes/views/plugins/index.php:41
+#: includes/views/themes/edit.php:49
+msgid "Multisite Manager"
+msgstr "Multisite Manager"
+
+#: includes/ListTable/PluginsListTable.php:262
+#: includes/ListTable/RepoListTable.php:229
+#: includes/ListTable/ThemesListTable.php:256
+msgid "Version"
+msgstr "Version"
+
+#: includes/ListTable/PluginsListTable.php:263
+#: includes/ListTable/ThemesListTable.php:257
+msgid "Folder"
+msgstr "Ordner"
+
+#: includes/ListTable/PluginsListTable.php:264
+#: includes/ListTable/RepoListTable.php:231
+#: includes/ListTable/ThemesListTable.php:258 includes/Main.php:791
+#: includes/Main.php:798 includes/Main.php:835 includes/Main.php:837
+#: includes/views/plugins/add.php:38 includes/views/plugins/edit.php:115
+#: includes/views/themes/add.php:38 includes/views/themes/edit.php:110
+msgid "Repository"
+msgstr "Repository"
+
+#: includes/ListTable/PluginsListTable.php:265
+#: includes/ListTable/ThemesListTable.php:259 includes/views/plugins/add.php:47
+#: includes/views/plugins/edit.php:124 includes/views/themes/add.php:47
+#: includes/views/themes/edit.php:119
+msgid "Branch"
+msgstr "Branch"
+
+#: includes/ListTable/PluginsListTable.php:266
+#: includes/ListTable/ThemesListTable.php:260
+msgid "Last checked"
+msgstr "Zuletzt geprüft"
+
+#: includes/ListTable/PluginsListTable.php:269
+#: includes/ListTable/ThemesListTable.php:261
+msgid "Tools"
+msgstr "Werkzeuge"
+
+#: includes/ListTable/RepoListTable.php:228
+msgid "Name"
+msgstr "Name"
+
+#: includes/ListTable/RepoListTable.php:230
+msgid "Type"
+msgstr "Typ"
+
+#: includes/ListTable/RepoListTable.php:232
+msgid "Branch / Release tag"
+msgstr "Branch / Release-Tag"
+
+#: includes/ListTable/RepoListTable.php:264
+msgid "Update"
+msgstr "Aktualisieren"
+
+#. translators: 1: Service name, 2: User or group, 3: HTTP response code
+#: includes/Main.php:154
+msgid ""
+"The token for %1$s / %2$s was rejected while checking for updates (HTTP "
+"%3$d). Please check and replace the token in the service settings."
+msgstr ""
+"Der Token für %1$s / %2$s wurde bei der Update-Prüfung abgelehnt (HTTP "
+"%3$d). Prüfen und ersetzen Sie den Token in den Diensteinstellungen."
+
+#: includes/Main.php:164
+msgid "Open services"
+msgstr "Dienste öffnen"
+
+#: includes/Main.php:175 includes/Upgrader/PluginUpgraderSkin.php:51
+msgid "Plugin netzwerkweit aktivieren"
+msgstr "Plugin netzwerkweit aktivieren"
+
+#: includes/Main.php:179 includes/Upgrader/ThemeUpgraderSkin.php:51
+msgid "Theme netzwerkweit aktivieren"
+msgstr "Theme netzwerkweit aktivieren"
+
+#: includes/Main.php:199
+#: includes/views/repositories/bulk-update-progress.php:42
+msgid "Zurück zum Updater"
+msgstr "Zurück zum Updater"
+
+#: includes/Main.php:238 includes/Main.php:259 includes/Main.php:263
+#: includes/views/repositories/index.php:107
+msgid "Updater"
+msgstr "Updater"
+
+#: includes/Main.php:273 includes/Main.php:274
+#: includes/views/plugins/index.php:31
+msgid "Plugins"
+msgstr "Plugins"
+
+#: includes/Main.php:282 includes/Main.php:283
+#: includes/views/themes/index.php:28
+msgid "Themes"
+msgstr "Themes"
+
+#: includes/Main.php:291 includes/Main.php:292
+#: includes/views/connectors/add.php:17 includes/views/connectors/edit.php:21
+#: includes/views/settings/index.php:13
+msgid "Einstellungen"
+msgstr "Einstellungen"
+
+#: includes/Main.php:376 includes/Main.php:377
+msgid "Edit repository"
+msgstr "Repository bearbeiten"
+
+#. translators: 1: Extension name, 2: Version number
+#: includes/Main.php:619 includes/Main.php:712
+msgid "There is a new version of %1$s available: %2$s."
+msgstr "Eine neue Version von %1$s ist verfügbar: %2$s."
+
+#. translators: 1: Extension name, 2: Version number
+#: includes/Main.php:626
+msgid ""
+"There is a new version of %1$s available: %2$s. <em>Automatic update is "
+"unavailable for this plugin.</em>"
+msgstr ""
+"Eine neue Version von %1$s ist verfügbar: %2$s. <em>Eine automatische "
+"Aktualisierung ist für dieses Plugin nicht verfügbar.</em>"
+
+#. translators: 1: Extension name, 2: Version number, 3: Update URL, 4: Additional link attributes
+#: includes/Main.php:633 includes/Main.php:726
+msgid ""
+"There is a new version of %1$s available: %2$s. <a href=\"%3$s\" %4$s>Update "
+"now</a>."
+msgstr ""
+"Eine neue Version von %1$s ist verfügbar: %2$s. <a href=\"%3$s\" %4$s>Jetzt "
+"aktualisieren</a>."
+
+#. translators: %s: Extension name
+#: includes/Main.php:641 includes/Main.php:735
+msgid "Update %s now"
+msgstr "%s jetzt aktualisieren"
+
+#. translators: 1: Extension name, 2: Version number
+#: includes/Main.php:719
+msgid ""
+"There is a new version of %1$s available: %2$s. <em>Automatic update is "
+"unavailable for this theme.</em>"
+msgstr ""
+"Eine neue Version von %1$s ist verfügbar: %2$s. <em>Eine automatische "
+"Aktualisierung ist für dieses Theme nicht verfügbar.</em>"
+
+#. translators: %s: Branch name
+#: includes/Main.php:786 includes/Main.php:830
+msgid "Branch %s"
+msgstr "Branch %s"
+
+#. translators: %s: Installation folder name
+#: includes/Main.php:803 includes/Main.php:842
+msgid "Folder %s"
+msgstr "Ordner %s"
+
+#: includes/Main.php:1016 includes/Main.php:1024
+msgid "Download failed."
+msgstr "Download fehlgeschlagen."
+
+#: includes/views/connectors/add.php:20 includes/views/connectors/edit.php:24
+#: includes/views/settings/index.php:16
+msgid "Allgemein"
+msgstr "Allgemein"
+
+#: includes/views/connectors/add.php:21 includes/views/connectors/edit.php:25
+#: includes/views/connectors/index.php:7 includes/views/settings/index.php:17
+msgid "Dienste"
+msgstr "Dienste"
+
+#: includes/views/connectors/add.php:24 includes/views/connectors/add.php:88
+#: includes/views/plugins/add.php:33 includes/views/themes/add.php:33
+msgid "Add a New Service"
+msgstr "Neuen Dienst erstellen"
+
+#: includes/views/connectors/add.php:45 includes/views/connectors/edit.php:47
+msgid "GitLab host"
+msgstr "GitLab-Host"
+
+#. translators: %s: Example GitLab host name
+#: includes/views/connectors/add.php:51
+msgid "Only used for GitLab. Example: %s"
+msgstr "Wird nur für GitLab verwendet. Beispiel: %s"
+
+#: includes/views/connectors/add.php:58 includes/views/connectors/edit.php:60
+msgid "GitLab API URI"
+msgstr "GitLab-API-URI"
+
+#. translators: %s: Default GitLab API URI
+#: includes/views/connectors/add.php:64
+msgid "Only used for GitLab. Default: %s"
+msgstr "Wird nur für GitLab verwendet. Standard: %s"
+
+#: includes/views/connectors/add.php:83 includes/views/connectors/edit.php:86
+msgid "Optional."
+msgstr "Optional."
+
+#: includes/views/connectors/edit.php:28
+msgid "Edit Service"
+msgstr "Dienst bearbeiten"
+
+#. translators: %s: Example GitLab host name
+#: includes/views/connectors/edit.php:53
+msgid "Example: %s"
+msgstr "Beispiel: %s"
+
+#. translators: %s: Default GitLab API URI
+#: includes/views/connectors/edit.php:66
+msgid "Default: %s"
+msgstr "Standard: %s"
+
+#: includes/views/connectors/edit.php:91 includes/views/plugins/edit.php:165
+#: includes/views/settings/index.php:112 includes/views/themes/edit.php:160
+msgid "Save Changes"
+msgstr "Änderungen übernehmen"
+
+#: includes/views/connectors/index.php:8
+msgid "Add new"
+msgstr "Neu hinzufügen"
+
+#: includes/views/connectors/index.php:15 includes/views/plugins/index.php:49
+#: includes/views/repositories/index.php:114 includes/views/themes/index.php:35
+msgid "Search"
+msgstr "Suchen"
+
+#. translators: %s: Notice message
+#: includes/views/main.php:18
+#: includes/views/repositories/bulk-update-progress.php:30
+msgid "Hinweis: %s"
+msgstr "Hinweis: %s"
+
+#. translators: %s: Notice message
+#: includes/views/main.php:18
+msgid "Error: %s"
+msgstr "Fehler: %s"
+
+#: includes/views/partials/bulk-delete-confirm.php:7
+#: includes/views/repositories/index.php:123
+msgid "Delete selected repositories?"
+msgstr "Ausgewählte Repositories löschen?"
+
+#: includes/views/partials/bulk-delete-confirm.php:8
+msgid ""
+"This action removes the selected repository definitions from RRZE Updater."
+msgstr ""
+"Diese Aktion entfernt die ausgewählten Repository-Definitionen aus dem RRZE "
+"Updater."
+
+#: includes/views/partials/bulk-delete-confirm.php:9
+msgid "I understand that the selected entries will be deleted."
+msgstr "Ich bestätige, dass die ausgewählten Einträge gelöscht werden."
+
+#: includes/views/partials/bulk-delete-confirm.php:58
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: includes/views/plugins/add.php:9 includes/views/plugins/add.php:89
+msgid "Install Plugin"
+msgstr "Plugin installieren"
+
+#: includes/views/plugins/add.php:42 includes/views/plugins/edit.php:119
+#: includes/views/themes/add.php:42 includes/views/themes/edit.php:114
+msgid "The name of the repository."
+msgstr "Der Name des Repositorys."
+
+#: includes/views/plugins/add.php:51 includes/views/plugins/edit.php:128
+#: includes/views/themes/add.php:51 includes/views/themes/edit.php:123
+msgid "By default the main branch will be used."
+msgstr "Standardmäßig wird der Main-Zweig verwendet."
+
+#: includes/views/plugins/add.php:56 includes/views/plugins/edit.php:46
+#: includes/views/plugins/edit.php:133 includes/views/themes/add.php:56
+#: includes/views/themes/edit.php:44 includes/views/themes/edit.php:128
+msgid "Check for updates"
+msgstr "Auf Updates prüfen"
+
+#: includes/views/plugins/add.php:62 includes/views/plugins/edit.php:139
+#: includes/views/themes/add.php:62 includes/views/themes/edit.php:134
+msgid "Commits"
+msgstr "Commits"
+
+#: includes/views/plugins/add.php:63 includes/views/plugins/edit.php:140
+#: includes/views/themes/add.php:63 includes/views/themes/edit.php:135
+msgid "Tags"
+msgstr "Tags"
+
+#: includes/views/plugins/add.php:80 includes/views/plugins/edit.php:157
+msgid "Plugin folder"
+msgstr "Ordner des Plugins"
+
+#: includes/views/plugins/add.php:84 includes/views/themes/add.php:84
+msgid "By default, the name of the repository."
+msgstr "Standardmäßig der Name des Repositories."
+
+#. translators: %s: Remote extension version
+#: includes/views/plugins/edit.php:19 includes/views/themes/edit.php:19
+msgid "A new version is available: %s."
+msgstr "Eine neue Version ist verfügbar: %s."
+
+#. translators: %s: Warning message
+#: includes/views/plugins/edit.php:28 includes/views/themes/edit.php:28
+msgid "Warning: %s"
+msgstr "Warnhinweis: %s"
+
+#. translators: %s: Last extension error
+#: includes/views/plugins/edit.php:38 includes/views/themes/edit.php:37
+msgid "Last error: %s"
+msgstr "Letzter Fehler: %s"
+
+#. translators: 1: Installed extension version, 2: Local git reference
+#: includes/views/plugins/edit.php:57 includes/views/themes/edit.php:55
+msgid "Local Version: <code>%1$s</code> (Git Version: <code>%2$s</code>)"
+msgstr "Lokale Version: <code>%1$s</code> (Git-Version: <code>%2$s</code>)"
+
+#. translators: 1: Remote extension version, 2: Remote git reference
+#: includes/views/plugins/edit.php:64 includes/views/themes/edit.php:61
+msgid "Remote Version: <code>%1$s</code> (Git Version: <code>%2$s</code>)"
+msgstr "Remote-Version: <code>%1$s</code> (Git-Version: <code>%2$s</code>)"
+
+#. translators: %s: Last checked date
+#: includes/views/plugins/edit.php:71 includes/views/themes/edit.php:67
+msgid "Last checked on: %s"
+msgstr "Zuletzt überprüft am: %s"
+
+#. translators: %s: Repository URL
+#: includes/views/plugins/edit.php:78 includes/views/themes/edit.php:73
+msgid "Repository: %s"
+msgstr "Repository: %s"
+
+#: includes/views/plugins/index.php:32 includes/views/themes/index.php:29
+msgid "Install"
+msgstr "Installieren"
+
+#: includes/views/plugins/index.php:58
+msgid "Delete selected plugin repositories?"
+msgstr "Ausgewählte Plugin-Repositories löschen?"
+
+#: includes/views/plugins/index.php:59
+msgid ""
+"This action deletes the selected plugin repository definitions from RRZE "
+"Updater. Installed plugins are not removed by this bulk action."
+msgstr ""
+"Diese Aktion löscht die ausgewählten Plugin-Repository-Definitionen aus dem "
+"RRZE Updater. Installierte Plugins werden durch diese Mehrfachaktion nicht "
+"entfernt."
+
+#: includes/views/plugins/index.php:60
+msgid ""
+"I understand that the selected plugin repository definitions will be deleted."
+msgstr ""
+"Ich bestätige, dass die ausgewählten Plugin-Repository-Definitionen gelöscht "
+"werden."
+
+#: includes/views/repositories/bulk-update-progress.php:11
+msgid "Repository-Updates"
+msgstr "Repository-Updates"
+
+#: includes/views/repositories/bulk-update-progress.php:14
+msgid "Für die ausgewählten Repositories liegen keine Updates vor."
+msgstr "Für die ausgewählten Repositories liegen keine Updates vor."
+
+#: includes/views/repositories/index.php:108
+#: includes/views/repositories/index.php:131
+msgid "Auf Updates prüfen"
+msgstr "Auf Updates prüfen"
+
+#: includes/views/repositories/index.php:124
+msgid ""
+"This action deletes the selected repository definitions from RRZE Updater. "
+"Installed plugins or themes are not removed by this bulk action."
+msgstr ""
+"Diese Aktion löscht die ausgewählten Repository-Definitionen aus dem RRZE "
+"Updater. Installierte Plugins oder Themes werden durch diese Mehrfachaktion "
+"nicht entfernt."
+
+#: includes/views/repositories/index.php:125
+msgid "I understand that the selected repository definitions will be deleted."
+msgstr ""
+"Ich bestätige, dass die ausgewählten Repository-Definitionen gelöscht werden."
+
+#: includes/views/repositories/index.php:135
+msgid "Schließen"
+msgstr "Schließen"
+
+#: includes/views/repositories/index.php:242
+msgid "Prüfe..."
+msgstr "Prüfe..."
+
+#: includes/views/repositories/index.php:269
+#: includes/views/repositories/index.php:299
+msgid "Fehler bei der Prüfung"
+msgstr "Fehler bei der Prüfung"
+
+#: includes/views/repositories/index.php:277
+msgid "Prüfung abgeschlossen. Schließen lädt die Übersicht neu."
+msgstr "Prüfung abgeschlossen. Schließen lädt die Übersicht neu."
+
+#: includes/views/repositories/index.php:323
+msgid "Keine Repositories vorhanden."
+msgstr "Keine Repositories vorhanden."
+
+#: includes/views/settings/index.php:27
+msgid "Scheduler"
+msgstr "Scheduler"
+
+#: includes/views/settings/index.php:32
+msgid "Abfragehäufigkeit"
+msgstr "Abfragehäufigkeit"
+
+#: includes/views/settings/index.php:44
+msgid "Delay zwischen Repository-Prüfungen"
+msgstr "Verzögerung zwischen Repository-Prüfungen"
+
+#: includes/views/settings/index.php:48
+msgid "Sekunden"
+msgstr "Sekunden"
+
+#: includes/views/settings/index.php:54
+msgid "Update-Hinweise per E-Mail"
+msgstr "Update-Hinweise per E-Mail"
+
+#: includes/views/settings/index.php:58
+msgid "E-Mail-Hinweise"
+msgstr "E-Mail-Hinweise"
+
+#: includes/views/settings/index.php:62
+msgid "E-Mail-Hinweise aktivieren"
+msgstr "E-Mail-Hinweise aktivieren"
+
+#: includes/views/settings/index.php:68
+msgid "E-Mail-Adresse"
+msgstr "E-Mail-Adresse"
+
+#: includes/views/settings/index.php:76
+msgid "E-Mail-Betreff-Prefix"
+msgstr "E-Mail-Betreff-Präfix"
+
+#: includes/views/settings/index.php:84
+msgid "Sendehäufigkeit"
+msgstr "Sendehäufigkeit"
+
+#: includes/views/settings/index.php:97
+msgid "Debugging und Protokoll"
+msgstr "Debugging und Protokoll"
+
+#: includes/views/settings/index.php:101
+msgid "Protokollierung"
+msgstr "Protokollierung"
+
+#: includes/views/settings/index.php:105
+msgid "Informative Meldungen an den Info-Kanal senden"
+msgstr "Informative Meldungen an den Info-Kanal senden"
+
+#: includes/views/settings/index.php:113
+msgid "Jetzt senden"
+msgstr "Jetzt senden"
+
+#: includes/views/themes/add.php:9 includes/views/themes/add.php:89
+msgid "Install Theme"
+msgstr "Theme installieren"
+
+#: includes/views/themes/add.php:80 includes/views/themes/edit.php:152
+msgid "Theme folder"
+msgstr "Ordner des Themes"
+
+#: includes/views/themes/index.php:44
+msgid "Delete selected theme repositories?"
+msgstr "Ausgewählte Theme-Repositories löschen?"
+
+#: includes/views/themes/index.php:45
+msgid ""
+"This action deletes the selected theme repository definitions from RRZE "
+"Updater. Installed themes are not removed by this bulk action."
+msgstr ""
+"Diese Aktion löscht die ausgewählten Theme-Repository-Definitionen aus dem "
+"RRZE Updater. Installierte Themes werden durch diese Mehrfachaktion nicht "
+"entfernt."
+
+#: includes/views/themes/index.php:46
+msgid ""
+"I understand that the selected theme repository definitions will be deleted."
+msgstr ""
+"Ich bestätige, dass die ausgewählten Theme-Repository-Definitionen gelöscht "
+"werden."
 
 #. translators: 1: Server WordPress version number, 2: Required WordPress version number.
-#: rrze-updater.php:172
+#: rrze-updater.php:114
 msgid ""
 "The server is running WordPress version %1$s. The plugin requires at least "
 "WordPress version %2$s."
@@ -310,107 +883,35 @@ msgstr ""
 "Auf dem Server wird die WordPress-Version %1$s ausgeführt. Das Plugin "
 "erfordert mindestens die WordPress-Version %2$s."
 
-#: includes/Controller.php:457
-msgid "The User/Group field must not be empty."
-msgstr "Das Feld Benutzer/Gruppe darf nicht leer sein."
-
-#: includes/Controller.php:117 includes/ListTable/ThemesListTable.php:149
-#: includes/views/themes/edit.php:27
-msgid "Theme"
-msgstr "Theme"
-
-#: includes/views/themes/add.php:76 includes/views/themes/edit.php:102
-msgid "Theme folder"
-msgstr "Ordner des Themes"
-
-#: includes/Main.php:159 includes/Main.php:160
-#: includes/views/themes/index.php:8
-msgid "Themes"
-msgstr "Themes"
-
-#. translators: 1: Extension name, 2: Update URL, 3: Additional link attributes
-#: includes/Main.php:562
+#. translators: 1: Server PHP version number, 2: Required PHP version number.
+#: rrze-updater.php:121
 msgid ""
-"There is a new version of %1$s available. <a href=\"%2$s\" %3$s>Update "
-"now</a>."
+"The server is running PHP version %1$s. The plugin requires at least PHP "
+"version %2$s."
 msgstr ""
-"Eine neue Version von %1$s ist verfügbar. <a href=\"%2$s\" %3$s>Jetzt "
-"aktualisieren</a>."
+"Auf dem Server wird die PHP-Version %1$s ausgeführt. Das Plugin erfordert "
+"mindestens die PHP-Version %2$s."
 
-#. translators: %s: Extension name
-#: includes/Main.php:460 includes/Main.php:550
-msgid "There is a new version of %s available."
-msgstr "Eine neue Version von %s ist verfügbar."
-
-#. translators: %s: Extension name
-#: includes/Main.php:466
+#: rrze-updater.php:126
 msgid ""
-"There is a new version of %s available. <em>Automatic update is unavailable "
-"for this plugin.</em>"
+"In a multisite installation, the plugin can only be installed network-wide."
 msgstr ""
-"Eine neue Version von %s ist verfügbar. <em>Eine automatische Aktualisierung "
-"für dieses Plugin ist nicht verfügbar.</em>"
+"Bei einer Multisite-Installation kann das Plugin nur netzwerkweit "
+"installiert werden."
 
-#. translators: %s: Extension name
-#: includes/Main.php:556
-msgid ""
-"There is a new version of %s available. <em>Automatic update is unavailable "
-"for this theme.</em>"
-msgstr ""
-"Eine neue Version von %s ist verfügbar. <em>Eine automatische Aktualisierung "
-"für dieses Theme ist nicht verfügbar.</em>"
+#. translators: 1: The plugin name, 2: The error string.
+#: rrze-updater.php:152
+msgid "Plugins: %1$s: %2$s"
+msgstr "Plugins: %1$s: %2$s"
 
-#: includes/ListTable/ConnListTable.php:128
-#: includes/views/connectors/add.php:34 includes/views/connectors/edit.php:35
-msgid "Token"
-msgstr "Token"
+#~ msgid "GitHub.com"
+#~ msgstr "GitHub.com"
 
-#: includes/Core/Connector.php:156
-msgid "Too many requests"
-msgstr "Zu viele Anfragen"
+#~ msgid "Local Version: %s"
+#~ msgstr "Lokale Version: %s"
 
-#: includes/ListTable/RepoListTable.php:157
-msgid "Type"
-msgstr "Typ"
+#~ msgid "Remote Version: %s"
+#~ msgstr "Remote-Version: %s"
 
-#: includes/Controller.php:207 includes/Controller.php:401
-#: includes/Controller.php:763 includes/Controller.php:1198
-msgid "Unable to submit this form, please refresh and try again."
-msgstr ""
-"Dieses Formular konnte nicht gesendet werden. Bitte aktualisieren Sie es und "
-"versuchen Sie es erneut."
-
-#: includes/Core/Connector.php:153
-msgid "Unauthorized (use valid authentication)"
-msgstr "Nicht autorisiert (gültige Authentifizierung verwenden)"
-
-#. translators: %s: Extension name
-#: includes/Main.php:479 includes/Main.php:570
-msgid "Update %s now"
-msgstr "%s jetzt aktualisieren"
-
-#: includes/ListTable/ConnListTable.php:127
-#: includes/ListTable/RepoListTable.php:156
-#: includes/views/connectors/add.php:26 includes/views/connectors/edit.php:27
-msgid "User/Group"
-msgstr "Benutzer / Gruppe"
-
-#: includes/ListTable/PluginsListTable.php:150
-#: includes/ListTable/RepoListTable.php:158
-#: includes/ListTable/ThemesListTable.php:150
-msgid "Version"
-msgstr "Version"
-
-#. translators: %s: Warning message
-#: includes/views/plugins/edit.php:20 includes/views/themes/edit.php:18
-msgid "Warning: %s"
-msgstr "Warnhinweis: %s"
-
-#: includes/Controller.php:215 includes/Controller.php:406
-#: includes/Controller.php:444 includes/Controller.php:490
-#: includes/Controller.php:768 includes/Controller.php:820
-#: includes/Controller.php:918 includes/Controller.php:1203
-#: includes/Controller.php:1259 includes/Controller.php:1357
-#: includes/Controller.php:1503
-msgid "You need a higher level of permission."
-msgstr "Sie benötigen eine höhere Berechtigungsstufe."
+#~ msgid "RRZE Gitlab"
+#~ msgstr "RRZE Gitlab"

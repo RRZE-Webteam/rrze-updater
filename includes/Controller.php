@@ -357,6 +357,7 @@ class Controller
         $this->settings->options = [
             'update_check_schedule' => $updateCheckSchedule,
             'update_check_delay' => $updateCheckDelay,
+            'info_logging_enabled' => !empty($request['info_logging_enabled']),
             'email_updates_enabled' => !empty($request['email_updates_enabled']),
             'email_address' => sanitize_email($request['email_address'] ?? $defaults['email_address']),
             'email_subject_prefix' => sanitize_text_field($request['email_subject_prefix'] ?? $defaults['email_subject_prefix']),

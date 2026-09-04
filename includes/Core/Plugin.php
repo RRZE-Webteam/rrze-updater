@@ -91,15 +91,20 @@ class Plugin extends Extension
             return true;
         }
 
-        return new \WP_Error(
-            'rrze_updater_missing_branch',
-            sprintf(
-                /* translators: 1: Branch name, 2: Repository name */
-                __('The repository branch "%1$s" could not be found for "%2$s". Check the branch name before the plugin contents are validated.', 'rrze-updater'),
-                $branch,
-                $this->repository
-            )
-        );
+        $accessError = $this->getMissingGitlabTokenBranchError($branch);
+        if ($accessError) {
+            return $accessError;
+        }
+
+        $branches = $this->connector->getRemoteBranches($this->repository);
+        if ($branches === false) {
+            $repositoryError = $this->getRemoteRepositoryLookupError();
+            if ($repositoryError) {
+                return $repositoryError;
+            }
+        }
+
+        return $this->getMissingBranchError($branch, is_array($branches) ? $branches : []);
     }
 
     private function validateRemotePluginMainFile(string $ref): bool|\WP_Error

@@ -22,9 +22,19 @@ class Config {
                 'minimum_check_interval' => HOUR_IN_SECONDS,
                 'main_blog_id' => 1,
             ],
+            'http' => [
+                'invalid_token_transient' => 'rrze_updater_invalid_tokens',
+                'user_agent' => [
+                    'organization' => 'RRZE',
+                    'bot' => 'Updater',
+                    'info_url' => 'https://www.wp.rrze.fau.de/',
+                    'contact' => 'webmaster@rrze.fau.de',
+                ],
+            ],
             'settings' => [
                 'update_check_schedule' => 'twicedaily',
                 'update_check_delay' => 1,
+                'info_logging_enabled' => false,
                 'email_updates_enabled' => false,
                 'email_address' => '',
                 'email_subject_prefix' => '[RRZE-Updater]',
@@ -225,6 +235,26 @@ class Config {
 
     public function getCronMainBlogId(): int {
         return (int) $this->get('cron.main_blog_id');
+    }
+
+    public function getUserAgent(): string
+    {
+        $settings = $this->get('http.user_agent', []);
+        $version = plugin()->getVersion();
+
+        return sprintf(
+            'FAU-%1$s-%2$s/%3$s (+%4$s;mailto:%5$s)',
+            $settings['organization'] ?? 'RRZE',
+            $settings['bot'] ?? 'Updater',
+            $version,
+            $settings['info_url'] ?? 'https://www.wp.rrze.fau.de/',
+            $settings['contact'] ?? 'webmaster@rrze.fau.de'
+        );
+    }
+
+    public function getInvalidTokenTransient(): string
+    {
+        return (string) $this->get('http.invalid_token_transient', 'rrze_updater_invalid_tokens');
     }
 
     public function getGitlabDefaultHost(): string {

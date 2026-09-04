@@ -136,6 +136,16 @@ class Settings
     }
 
     /**
+     * Checks whether informative log messages are enabled.
+     *
+     * @return bool Whether messages may be sent to the info log channel.
+     */
+    public function isInfoLoggingEnabled(): bool
+    {
+        return !empty($this->options['info_logging_enabled']);
+    }
+
+    /**
      * Retrieves a Connector Object by ID
      *
      * This method retrieves a `Connector` object from the `connectors` array based on its ID.

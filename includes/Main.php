@@ -84,9 +84,11 @@ class Main
 
         if (!is_multisite()) {
             add_action('admin_menu', [$this, 'adminMenu']);
+            add_action('admin_notices', [$this, 'invalidTokenNotice']);
             add_filter('plugin_action_links', [$this, 'pluginActionLinks'], 10, 2);
         } else {
             add_action('network_admin_menu', [$this, 'adminMenu']);
+            add_action('network_admin_notices', [$this, 'invalidTokenNotice']);
             add_action('admin_bar_menu', [$this, 'adminBarMenu'], 100);
             add_filter('network_admin_plugin_action_links', [$this, 'pluginActionLinks'], 10, 2);
             add_filter('gettext', [$this, 'translateNetworkActivationLabel'], 10, 3);
@@ -114,6 +116,54 @@ class Main
         // Set up filters for modifying plugin and theme metadata.
         add_filter('plugin_row_meta', [$this, 'pluginRowMeta'], 10, 2);
         add_filter('theme_row_meta', [$this, 'themeRowMeta'], 10, 2);
+    }
+
+    /**
+     * Displays token access errors on the appropriate WordPress dashboard.
+     *
+     * @return void
+     */
+    public function invalidTokenNotice(): void
+    {
+        $capability = is_multisite() ? 'manage_network_options' : 'manage_options';
+        if (!current_user_can($capability)) {
+            return;
+        }
+
+        $screen = get_current_screen();
+        if (!$screen || !in_array($screen->base, ['dashboard', 'dashboard-network'], true)) {
+            return;
+        }
+
+        $notices = TokenNotice::getActive($this->settings);
+        if (empty($notices)) {
+            return;
+        }
+
+        $settingsSlug = $this->config->getMenuSettings()['settings_slug'] ?? 'rrze-updater-settings';
+        $settingsUrl = is_multisite()
+            ? network_admin_url('admin.php?page=' . $settingsSlug . '&tab=services')
+            : self_admin_url('admin.php?page=' . $settingsSlug . '&tab=services');
+
+        foreach ($notices as $notice) {
+            $service = (string) ($notice['service'] ?? '');
+            $owner = (string) ($notice['owner'] ?? '');
+            $httpCode = absint($notice['http-code'] ?? 0);
+            $message = sprintf(
+                /* translators: 1: Service name, 2: User or group, 3: HTTP response code */
+                __('The token for %1$s / %2$s was rejected while checking for updates (HTTP %3$d). Please check and replace the token in the service settings.', 'rrze-updater'),
+                $service,
+                $owner,
+                $httpCode
+            );
+
+            printf(
+                '<div class="notice notice-error"><p>%1$s <a href="%2$s">%3$s</a></p></div>',
+                esc_html($message),
+                esc_url($settingsUrl),
+                esc_html__('Open services', 'rrze-updater')
+            );
+        }
     }
 
     public function translateNetworkActivationLabel($translation, $text, $domain) {
@@ -732,7 +782,7 @@ class Main
                 unset($pluginMeta);
                 $pluginMeta[] = $version;
                 $pluginMeta[] = sprintf(
-                    /* translators: %s: Repository branch name */
+                    /* translators: %s: Branch name */
                     esc_html__('Branch %s', 'rrze-updater'),
                     esc_html(mb_strimwidth($extension->branch, 0, 20, '...'))
                 );
@@ -749,7 +799,7 @@ class Main
                     esc_html(preg_replace("#^[^:/.]*[:/]+#i", "", $extension->connector->getUrl($extension->repository)))
                 );
                 $pluginMeta[] = sprintf(
-                    /* translators: %s: Installation folder path */
+                    /* translators: %s: Installation folder name */
                     esc_html__('Folder %s', 'rrze-updater'),
                     esc_html($extension->installationFolder)
                 );
@@ -788,7 +838,7 @@ class Main
                     esc_html(preg_replace("#^[^:/.]*[:/]+#i", "", $extension->connector->getUrl($extension->repository)))
                 );
                 $themeMeta[] = sprintf(
-                    /* translators: %s: Theme folder name */
+                    /* translators: %s: Installation folder name */
                     esc_html__('Folder %s', 'rrze-updater'),
                     esc_html($extension->installationFolder)
                 );
@@ -1172,8 +1222,8 @@ class Main
             'admin-email' => $admin['email']
         ];
 
-        do_action(
-            'rrze.log.info',
+        Logger::info(
+            $this->settings,
             'Updated {extension-type} {repository} to {version}. Git ref: {git-version}. Admin: {admin-login}',
             $context
         );
