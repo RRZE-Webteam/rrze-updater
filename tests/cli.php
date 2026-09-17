@@ -45,7 +45,9 @@ namespace {
     class WP_CLI {
         public static array $commands = [];
         public static array $messages = [];
+        public static array $warnings = [];
         public static function add_command($name, $callback, $options) { self::$commands[$name] = [$callback, $options]; }
+        public static function warning($message) { self::$warnings[] = $message; }
         public static function success($message) { self::$messages[] = $message; }
         public static function error($message) { throw new RuntimeException($message); }
     }
@@ -227,6 +229,69 @@ namespace {
     [ $unregister ] = WP_CLI::$commands['rrze-updater repo theme unregister'];
     $unregister(['released'], []);
     check(count($settings->themes) === 0, 'CLI invokes repository operation.');
+
+    // Valid plugins need neither a README nor a conventional entry-file name.
+    class AdvisoryPluginConnectorFixture extends ConnectorFixture {
+        public string $scenario = 'readme';
+        public function getRemoteFile(string $repository, string $ref, string $file): string|bool {
+            if ($this->scenario === 'readme' && $file === 'readme.txt') {
+                return false;
+            }
+            if ($this->scenario !== 'readme' && $file === "$repository.php") {
+                return $this->scenario === 'main_file' ? false : '<?php // Helper without a plugin header.';
+            }
+            if ($file === 'bootstrap.php') {
+                return "<?php\n/*\nPlugin Name: Valid Plugin\nVersion: 1.0.0\n*/";
+            }
+            return parent::getRemoteFile($repository, $ref, $file);
+        }
+    }
+    $advisorySettings = new Settings();
+    $advisorySettings->plugins = $advisorySettings->themes = [];
+    $advisoryConnector = new AdvisoryPluginConnectorFixture();
+    $advisoryConnector->id = 'advisory';
+    $advisorySettings->connectors = [$advisoryConnector];
+    $advisoryInstaller = new InstallerFixture();
+    $advisoryManager = new RepositoryManager($advisorySettings, $advisoryInstaller);
+    $advisoryOptions = ['connector' => 'advisory'];
+    foreach (['readme', 'main_file', 'name_header'] as $scenario) {
+        $advisoryConnector->scenario = $scenario;
+        foreach (['register', 'install'] as $action) {
+            $repository = "advisory-$scenario-$action";
+            if ($action === 'register') {
+                $advisoryInstaller->installed["plugin/$repository"] = true;
+            }
+            $result = $advisoryManager->$action('plugin', $repository, $advisoryOptions);
+            check(is_string($result), "$action accepts advisory $scenario failure.");
+            $warnings = $advisoryManager->getWarnings();
+            check(count($warnings) === 1, "$action exposes one $scenario warning.");
+            $storedPlugins = $storage['rrze_updater']['plugins'];
+            check(RRZE\Updater\Core\Plugin::createFromArray(end($storedPlugins))->lastWarning === $warnings[0],
+                'Persist advisory warning across serialization.');
+        }
+    }
+    check($advisoryInstaller->installs === 3, 'Registration does not run the installer.');
+    check(!RRZE\Updater\Core\Plugin::isRepositoryFileWarning(new WP_Error('download_failed', 'Failed.')),
+        'Only known advisory errors are downgraded.');
+    $advisoryInstaller->fail = true;
+    $before = $advisorySettings->asArray();
+    check(is_wp_error($advisoryManager->install('plugin', 'invalid-archive', $advisoryOptions)),
+        'Installer rejection remains fatal despite an advisory warning.');
+    check($before === $advisorySettings->asArray(), 'Rejected archive does not save an association.');
+    $advisoryInstaller->fail = false;
+    $advisoryConnector->tag = false;
+    errorCode($advisoryManager->install('plugin', 'inaccessible', $advisoryOptions), 'remote_ref_unavailable');
+    check($advisoryManager->getWarnings() === [], 'Failed ref lookup does not inherit old warnings.');
+    $advisoryConnector->tag = 'v2.0.0';
+    $advisoryConnector->scenario = 'readme';
+    $advisoryCLI = new CLI($advisoryManager);
+    $runCommand = new ReflectionMethod(CLI::class, 'runRepositoryCommand');
+    WP_CLI::$warnings = WP_CLI::$messages = [];
+    $runCommand->invoke($advisoryCLI, 'plugin', 'install', ['cli-advisory'], $advisoryOptions);
+    check(count(WP_CLI::$warnings) === 1 && count(WP_CLI::$messages) === 1,
+        'CLI prints the warning and still reports success.');
+    $runCommand->invoke($advisoryCLI, 'plugin', 'unregister', ['cli-advisory'], []);
+    check(count(WP_CLI::$warnings) === 1, 'Unregister does not print stale warnings.');
 
     class GithubApiFixture extends GithubConnector {
         public mixed $response;

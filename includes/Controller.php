@@ -604,18 +604,6 @@ class Controller
         );
     }
 
-    private function isPluginRepositoryFileWarning(WP_Error $warning): bool {
-        return in_array(
-            $warning->get_error_code(),
-            [
-                'rrze_updater_missing_plugin_main_file',
-                'rrze_updater_missing_plugin_name_header',
-                'rrze_updater_missing_plugin_readme'
-            ],
-            true
-        );
-    }
-
     private function getRepositoryRefLabel(array $repo, $extension): string {
         if ($extension && in_array($extension->updates ?? '', ['tags', 'releases'], true)) {
             return (string) (($extension->remoteVersion ?? '') ?: __('Release tag not checked yet', 'rrze-updater'));
@@ -1847,7 +1835,7 @@ class Controller
 
         $validation = $extension->getRemotePluginRepositoryWarning($extension->remoteVersion ?: $extension->branch);
         if (is_wp_error($validation)) {
-            if (!$this->isPluginRepositoryFileWarning($validation)) {
+            if (!Plugin::isRepositoryFileWarning($validation)) {
                 $this->messages[] = $validation;
                 do_action(
                     'rrze.log.error',

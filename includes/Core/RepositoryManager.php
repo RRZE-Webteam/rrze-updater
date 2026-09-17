@@ -12,6 +12,14 @@ use WP_Error;
 /** Manage associations independently of the admin UI and WP-CLI. */
 class RepositoryManager
 {
+    private array $warnings = [];
+
+    /** Warnings from the most recent repository operation. */
+    public function getWarnings(): array
+    {
+        return $this->warnings;
+    }
+
     public function __construct(
         private Settings $settings,
         private RepositoryInstaller $installer = new RepositoryInstaller()
@@ -49,6 +57,7 @@ class RepositoryManager
 
     public function unregister(string $type, string $repository, string $connectorId = ''): string|WP_Error
     {
+        $this->warnings = [];
         if ($connectorId !== '' && !$this->settings->getConnectorById($connectorId)) {
             return $this->error('unknown_connector', 'Unknown connector ID. Run wp rrze-updater connector list.');
         }
@@ -69,6 +78,7 @@ class RepositoryManager
 
     private function add(string $type, string $repository, array $options, bool $install): string|WP_Error
     {
+        $this->warnings = [];
         $extension = $this->definition($type, $repository, $options);
         if (is_wp_error($extension)) {
             return $extension;
@@ -185,6 +195,12 @@ class RepositoryManager
         $validation = $extension instanceof Plugin
             ? $extension->validateRemotePluginRepository($extension->remoteVersion)
             : $extension->validateRemoteThemeRepository($extension->remoteVersion);
+        if (is_wp_error($validation) && $extension instanceof Plugin
+            && Plugin::isRepositoryFileWarning($validation)) {
+            $extension->lastWarning = $validation->get_error_message();
+            $this->warnings[] = $extension->lastWarning;
+            return true;
+        }
         return is_wp_error($validation) ? $validation : true;
     }
 

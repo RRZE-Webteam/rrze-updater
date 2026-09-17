@@ -1043,7 +1043,7 @@ class Main
             return true;
         }
 
-        if (!$this->isPluginRepositoryFileWarning($validation)) {
+        if (!Plugin::isRepositoryFileWarning($validation)) {
             do_action(
                 'rrze.log.error',
                 'Plugin update failed for {repository}: {error}',
@@ -1077,18 +1077,6 @@ class Main
         );
 
         return true;
-    }
-
-    private function isPluginRepositoryFileWarning(WP_Error $warning): bool {
-        return in_array(
-            $warning->get_error_code(),
-            [
-                'rrze_updater_missing_plugin_main_file',
-                'rrze_updater_missing_plugin_name_header',
-                'rrze_updater_missing_plugin_readme'
-            ],
-            true
-        );
     }
 
     private function getPluginExtensionForUpgrade($upgrader, array $hookExtra): Plugin|bool

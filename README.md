@@ -144,6 +144,11 @@ to a branch.
 Repeating a command with the same association and existing files succeeds
 without reinstalling or duplicating the entry. Conflicting associations fail.
 Existing folders are never overwritten by `install`; use `register` for them.
+Missing README files and nonstandard plugin entry-file names or headers produce
+warnings, matching the admin workflow. WordPress still validates downloaded plugin
+packages before installation; access, ref lookup and installation failures remain
+fatal. Warnings are printed by WP-CLI and stored with the repository association.
+
 Registration cannot establish the installed Git ref from arbitrary local files.
 It leaves that ref unknown, so the next update may replace those files with the
 selected remote version. Installation records the ref it actually installed.

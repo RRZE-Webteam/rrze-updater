@@ -52,6 +52,9 @@ class CLI
             'install' => $this->repositories->install($type, $repository, $options),
             'unregister' => $this->repositories->unregister($type, $repository, $options['connector'] ?? ''),
         };
+        foreach ($this->repositories->getWarnings() as $warning) {
+            WP_CLI::warning($warning);
+        }
         if ($result instanceof WP_Error) {
             WP_CLI::error($result->get_error_message());
             return;
