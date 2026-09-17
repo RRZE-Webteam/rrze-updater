@@ -1,0 +1,2 @@
+# Standalone CLI tests must not be accessible over HTTP.
+Require all denied

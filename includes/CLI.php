@@ -99,8 +99,6 @@ class CLI
                 'description' => 'Update policy (default: tags).', 'options' => ['tags', 'commits', 'releases']],
             ['type' => 'flag', 'name' => 'only-release', 'optional' => true,
                 'description' => 'Use published releases for installation and future updates.'],
-            ['type' => 'flag', 'name' => 'onlyRelease', 'optional' => true,
-                'description' => 'Alias for --only-release.'],
         ]);
     }
 }

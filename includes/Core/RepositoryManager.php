@@ -142,9 +142,9 @@ class RepositoryManager
         if (!$connector) {
             return $this->error('unknown_connector', 'Unknown connector ID. Run wp rrze-updater connector list.');
         }
-        $onlyRelease = !empty($options['only-release']) || !empty($options['onlyRelease']);
+        $onlyRelease = !empty($options['only-release']);
         if ($onlyRelease && isset($options['updates']) && $options['updates'] !== 'releases') {
-            return $this->error('conflicting_updates', '--only-release/--onlyRelease conflicts with --updates=tags or --updates=commits.');
+            return $this->error('conflicting_updates', '--only-release conflicts with --updates=tags or --updates=commits.');
         }
         $updates = $onlyRelease ? 'releases' : ($options['updates'] ?? 'tags');
         if (!in_array($updates, ['tags', 'commits', 'releases'], true)) {

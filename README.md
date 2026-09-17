@@ -123,13 +123,13 @@ Both commands accept:
 - `--folder=<name>`: installation folder, defaulting to the repository name.
 - `--branch=<ref>`: branch for commit updates, defaulting to `main`.
 - `--updates=tags|commits|releases`: update policy, defaulting to **tags**.
-- `--only-release` or `--onlyRelease`: select release mode and persist it for
-  future update checks. These flags conflict with `--updates=tags|commits`.
+- `--only-release`: select release mode and persist it for
+  future update checks. This flag conflicts with `--updates=tags|commits`.
 
 Example (replace `a1b2c3d4` with the ID from your connector list):
 
 ```sh
-wp rrze-updater repo plugin install rrze-notices --connector=a1b2c3d4 --onlyRelease
+wp rrze-updater repo plugin install rrze-notices --connector=a1b2c3d4 --only-release
 wp rrze-updater repo plugin list --format=json
 ```
 
@@ -169,3 +169,14 @@ HTTP responses and the WordPress installer are fixtures. It tests successful and
 failed registration/installation, repeated commands, conflicts, release policies,
 credential-free lists and temporary-file/filter cleanup. It does not perform a
 live database migration, fetch private repositories or extract a real ZIP.
+
+To additionally validate every command synopsis with WP-CLI's own parser, pass
+its PHAR (with a `.phar` extension) or its `php/` source directory:
+
+```sh
+php wp-content/plugins/rrze-updater/tests/cli.php /path/to/wp-cli.phar
+```
+
+This catches option-name errors that help rendering alone does not detect.
+Use `--only-release`; WP-CLI does not accept the uppercase `--onlyRelease`
+spelling as a valid synopsis flag.

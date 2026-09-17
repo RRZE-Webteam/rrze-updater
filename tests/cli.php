@@ -134,16 +134,16 @@ namespace {
     errorCode($manager->unregister('plugin', 'existing', 'unknown'), 'unknown_connector');
     errorCode($manager->install('plugin', 'good', $options + ['updates' => 'invalid']), 'invalid_updates');
     errorCode($manager->install('plugin', 'good', $options + ['branch' => '']), 'invalid_branch');
-    errorCode($manager->install('plugin', 'good', $options + ['onlyRelease' => true, 'updates' => 'commits']), 'conflicting_updates');
+    errorCode($manager->install('plugin', 'good', $options + ['only-release' => true, 'updates' => 'commits']), 'conflicting_updates');
     errorCode($manager->install('plugin', 'good', $options + ['only-release' => true, 'updates' => 'tags']), 'conflicting_updates');
 
-    foreach (['plugin' => 'onlyRelease', 'theme' => 'only-release'] as $type => $flag) {
-        check(is_string($manager->install($type, 'released', $options + [$flag => true])), 'Release installation.');
+    foreach (['plugin', 'theme'] as $type) {
+        check(is_string($manager->install($type, 'released', $options + ['only-release' => true])), 'Release installation.');
         $rows = $manager->listRepositories($type);
         $row = end($rows);
         check($row['updates'] === 'releases' && $row['local_ref'] === 'v1.0.0', 'Save release policy and installed ref.');
         $before = $installer->installs;
-        check(is_string($manager->install($type, 'released', $options + [$flag => true])), 'Repeat install.');
+        check(is_string($manager->install($type, 'released', $options + ['only-release' => true])), 'Repeat install.');
         check($installer->installs === $before, 'Repeat install must not overwrite files.');
     }
     check($storage['rrze_updater']['themes'][0]['updates'] === 'releases', 'Release mode survives serialization.');
@@ -152,7 +152,7 @@ namespace {
     $connector->release = false;
     $settings->themes[0]->checkForUpdates();
     check($settings->themes[0]->remoteVersion === false, 'Missing release clears the previous update ref.');
-    errorCode($manager->install('theme', 'no-release', $options + ['onlyRelease' => true]), 'remote_ref_unavailable');
+    errorCode($manager->install('theme', 'no-release', $options + ['only-release' => true]), 'remote_ref_unavailable');
     check(end($connector->calls) === ['releases'], 'No fallback to tags.');
     $connector->release = 'v1.0.0';
     $connector->tag = false;
@@ -189,6 +189,32 @@ namespace {
 
     CLI::registerCommands($settings);
     check(count(WP_CLI::$commands) === 9, 'All nine commands registered.');
+    // Optional WP-CLI PHAR or php/ source directory. Help rendering alone does
+    // not detect malformed option names; validate the rendered synopsis too.
+    if (isset($argv[1])) {
+        $wpCliPath = realpath($argv[1]);
+        if ($wpCliPath === false) {
+            throw new RuntimeException('WP-CLI path not found.');
+        }
+        $wpCliPhp = is_dir($wpCliPath) ? $wpCliPath : "phar://$wpCliPath/vendor/wp-cli/wp-cli/php";
+        if (!file_exists($wpCliPhp . '/WP_CLI/SynopsisParser.php')) {
+            throw new RuntimeException('Pass a WP-CLI php/ source directory or a PHAR file with a .phar extension.');
+        }
+        require $wpCliPhp . '/WP_CLI/SynopsisParser.php';
+        require $wpCliPhp . '/WP_CLI/SynopsisValidator.php';
+        foreach (WP_CLI::$commands as $name => [$callback, $metadata]) {
+            $specification = $metadata['synopsis'];
+            $synopsis = \WP_CLI\SynopsisParser::render($specification);
+            $validator = new \WP_CLI\SynopsisValidator($synopsis);
+            check($validator->get_unknown() === [], "$name: invalid synopsis: $synopsis");
+            if (str_ends_with($name, ' register') || str_ends_with($name, ' install')) {
+                check($validator->unknown_assoc(['connector' => 'fixture-id', 'only-release' => true]) === [],
+                    "$name accepts --only-release.");
+                check(in_array('onlyRelease', $validator->unknown_assoc(['onlyRelease' => true]), true),
+                    "$name rejects the unsupported uppercase flag.");
+            }
+        }
+    }
     foreach (['plugin', 'theme'] as $type) {
         foreach (['register', 'install', 'list', 'unregister'] as $action) {
             check(isset(WP_CLI::$commands["rrze-updater repo $type $action"]), "$type $action exists.");
