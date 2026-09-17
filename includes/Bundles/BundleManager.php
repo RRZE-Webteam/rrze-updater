@@ -25,7 +25,7 @@ class BundleManager
         if ($action === 'status') {
             return ['job' => $this->store->load()];
         }
-        if (!in_array($action, ['check', 'step', 'install', 'retry'], true)) {
+        if (!in_array($action, ['check', 'step', 'install', 'install_anyways', 'retry'], true)) {
             return $this->error('invalid_action', 'Unknown bundle action.');
         }
         return $this->store->withLock(function () use ($action, $jobId, $revision, $connectors) {
@@ -50,18 +50,11 @@ class BundleManager
                 return $this->error('missing_job', 'Run prerequisite checks for the current bundle first.');
             } elseif (!isset($job['connectors'])) {
                 return $this->error('selection_required', 'Select connectors and run prerequisite checks again for this older job.');
-            } elseif ($action === 'install') {
-                if ($job['phase'] !== 'ready') {
-                    return $this->error('not_ready', 'Resolve all prerequisite errors before installing.');
+            } elseif (in_array($action, ['install', 'install_anyways'], true)) {
+                $started = $this->startInstallation($job, $action === 'install_anyways');
+                if (is_wp_error($started)) {
+                    return $started;
                 }
-                if ($job['created_at'] < time() - DAY_IN_SECONDS) {
-                    return $this->error('expired_plan', 'The prerequisite checks are older than a day. Run them again.');
-                }
-                $job['phase'] = 'running';
-                foreach ($job['items'] as &$item) {
-                    $item['status'] = 'queued';
-                }
-                unset($item);
             } elseif ($action === 'retry') {
                 if ($job['phase'] === 'blocked') {
                     $job = $this->newJob($job['connectors']);
@@ -88,6 +81,44 @@ class BundleManager
             $this->store->save($job);
             return ['job' => $job];
         });
+    }
+
+    private function startInstallation(array &$job, bool $skipErrors): true|WP_Error
+    {
+        if ($job['phase'] !== ($skipErrors ? 'blocked' : 'ready')) {
+            return $this->error('not_ready', 'Complete prerequisite checks before installing. Use Install anyways to skip prerequisite errors.');
+        }
+        if ($job['created_at'] < time() - DAY_IN_SECONDS) {
+            return $this->error('expired_plan', 'The prerequisite checks are older than a day. Run them again.');
+        }
+        foreach ($job['items'] as &$item) {
+            $item['status'] = $item['status'] === 'ready' ? 'queued' : 'prerequisite_skipped';
+        }
+        unset($item);
+        // Propagate skipped prerequisites to all dependents. Such skips must not
+        // count as successful "already managed" entries during execution.
+        do {
+            $changed = false;
+            foreach ($job['items'] as &$item) {
+                if ($item['status'] !== 'queued') {
+                    continue;
+                }
+                foreach ($item['dependencies'] as $dependency) {
+                    if (($job['items'][$dependency]['status'] ?? 'prerequisite_skipped') === 'prerequisite_skipped') {
+                        $item['status'] = 'prerequisite_skipped';
+                        $item['message'] = sprintf('Skipped because required parent %s did not pass prerequisite checks.', $dependency);
+                        $changed = true;
+                        break;
+                    }
+                }
+            }
+            unset($item);
+        } while ($changed);
+        if (!$this->hasStatus($job, ['queued'])) {
+            return $this->error('nothing_to_install', 'No entries can be processed. Resolve prerequisite errors and run the checks again.');
+        }
+        $job['phase'] = 'running';
+        return true;
     }
 
     private function newJob(array $connectors): array

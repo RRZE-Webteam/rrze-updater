@@ -362,6 +362,58 @@ check(count($f['manager']->connectorChoices()['github']) === 1, 'Host capitaliza
 $hostConnector->owner = 'different-owner';
 check($f['manager']->connectorChoices()['github'] === [], 'Different GitHub owners remain excluded.');
 
+// Partial installation is explicit and never queues prerequisite failures.
+$f = bundleFixture([bundleEntry('good'), bundleEntry('denied'), bundleEntry('retryable')]);
+$f['connector']->denied = ['denied'];
+$job = bundleAction($f, 'check');
+check(is_wp_error($f['manager']->handle('install_anyways', $job['id'], $job['revision'])), 'Cannot bypass incomplete preflight.');
+$job = bundleDrain($f);
+$errorMessage = $job['items']['plugin/denied']['message'];
+check(is_wp_error($f['manager']->handle('install', $job['id'], $job['revision'])), 'Standard install still requires successful preflight.');
+$expired = $job;
+$f['store']->job['created_at'] = time() - 86401;
+check(is_wp_error($f['manager']->handle('install_anyways', $job['id'], $job['revision'])), 'Partial installation still rejects an expired plan.');
+$f['store']->job = $expired;
+$f['installer']->failRepositories = ['retryable'];
+$job = bundleAction($f, 'install_anyways');
+check($job['items']['plugin/denied']['status'] === 'prerequisite_skipped', 'Mark prerequisite failures as distinct skips.');
+check($job['items']['plugin/denied']['message'] === $errorMessage, 'Preserve the original prerequisite error.');
+$job = bundleAction($f, 'step');
+check($f['installer']->installs === 1, 'Partial install still handles one entry per request.');
+$f['manager'] = new BundleManager($f['catalog'], $f['store'], $f['settings'], $f['installer']);
+$job = bundleDrain($f);
+check($job['phase'] === 'complete' && $job['items']['plugin/good']['status'] === 'done', 'Partial installation can resume and complete.');
+check(!isset($f['installer']->refs['denied']), 'Never send a prerequisite failure to the installer.');
+$f['connector']->denied = [];
+$f['installer']->failRepositories = [];
+bundleAction($f, 'retry'); $job = bundleDrain($f);
+check($job['items']['plugin/retryable']['status'] === 'done', 'Retry execution failures normally.');
+check($job['items']['plugin/denied']['status'] === 'prerequisite_skipped' && !isset($f['installer']->refs['denied']), 'Retry cannot revive an unchecked prerequisite.');
+bundleAction($f, 'check'); $job = bundleDrain($f);
+check($job['phase'] === 'ready', 'Fresh preflight can approve a previously skipped entry.');
+bundleAction($f, 'install'); $job = bundleDrain($f);
+check($job['items']['plugin/denied']['status'] === 'done' && $f['installer']->installs === 3, 'Process repaired prerequisite without reinstalling successful entries.');
+
+$f = bundleFixture([bundleEntry('child', 'theme'), bundleEntry('parent', 'theme'), bundleEntry('independent')]);
+$f['connector']->parents['child'] = 'parent';
+$f['connector']->denied = ['parent'];
+bundleAction($f, 'check'); bundleDrain($f); $job = bundleAction($f, 'install_anyways');
+check($job['items']['theme/parent']['status'] === 'prerequisite_skipped'
+    && $job['items']['theme/child']['status'] === 'prerequisite_skipped', 'Skip dependents of failed prerequisites.');
+$job = bundleDrain($f);
+check($job['items']['plugin/independent']['status'] === 'done' && $f['installer']->installs === 1, 'Only independent passing entries reach installation.');
+check(!isset($f['installer']->refs['child']), 'A prerequisite skip is never considered a successful parent.');
+
+$f = bundleFixture([bundleEntry('cycle-a', 'theme'), bundleEntry('cycle-b', 'theme'), bundleEntry('valid')]);
+$f['connector']->parents = ['cycle-a' => 'cycle-b', 'cycle-b' => 'cycle-a'];
+bundleAction($f, 'check'); bundleDrain($f); bundleAction($f, 'install_anyways'); $job = bundleDrain($f);
+check($job['items']['plugin/valid']['status'] === 'done' && $f['installer']->installs === 1, 'Skip dependency cycles while processing independent entries.');
+$f = bundleFixture([bundleEntry('only-error')]);
+$f['connector']->denied = ['only-error'];
+bundleAction($f, 'check'); $job = bundleDrain($f);
+$result = $f['manager']->handle('install_anyways', $job['id'], $job['revision']);
+check(is_wp_error($result) && $f['store']->job === $job && $f['installer']->installs === 0, 'No runnable entries leaves the blocked job unchanged.');
+
 echo 'Passed ' . ($checks - $beforeBundleChecks) . " bundle checks.\n";
 
 // Exercise the real persistence/lock adapter and the AJAX authorization boundary.

@@ -205,7 +205,10 @@ resolves the exact commit to install; tags and releases are not used by this bun
 2. Select **Check prerequisites**. Each request checks one repository, verifies
    access, resolves its target ref and identifies installed files, conflicting
    associations and required parent themes. Missing or incompatible selected connectors,
-   unavailable refs, missing parents and dependency cycles block installation.
+   unavailable refs, missing parents and dependency cycles block the standard installation.
+   After checks finish, **Install anyways** can process the passing entries while
+   skipping prerequisite errors and their dependents. It does not bypass validation
+   or install entries that failed preflight.
 3. Review the actions and refs, then select **Install bundle**. Missing extensions
    are installed and registered; existing unmanaged extensions are registered;
    matching managed extensions are checked and skipped. Existing files are never
@@ -214,7 +217,9 @@ resolves the exact commit to install; tags and releases are not used by this bun
 4. Keep the page open, or pause and resume later. Processing stops issuing requests
    when the page closes, although an in-flight request may still finish. Progress
    is stored per network. Reopening the page reads progress without automatically
-   starting installation. Failed entries can be retried independently of successes.
+   starting installation. Failed installations can be retried independently of successes. Entries skipped
+   for prerequisite errors keep their original error messages; after fixing them,
+   run prerequisite checks again before installing them.
 
 The installation uses the commit hashes reviewed during preflight. New commits
 pushed while processing do not change those hashes; normal updater checks

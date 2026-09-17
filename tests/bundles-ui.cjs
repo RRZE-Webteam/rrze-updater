@@ -89,6 +89,40 @@ function job(phase, status) { return { id: 'job-1', revision: 1, phase, connecto
     expect(!selected.get('install').disabled, 'Review completed using the new selections');
     expect(!Object.keys(selectionRequests[0]).some(key => key.startsWith('connectors[')), 'Status requests do not override job selections');
 
+    let partialState = job('blocked', 'ready');
+    partialState.items['plugin/bad'] = { ...entry, id: 'plugin/bad', status: 'error', message: 'Access denied' };
+    const partialOps = [];
+    const partial = page(async (_url, request) => {
+        const operation = request.body.get('operation'); partialOps.push(operation);
+        if (operation === 'install_anyways') {
+            partialState.phase = 'running';
+            partialState.items[entry.id].status = 'queued';
+            partialState.items['plugin/bad'].status = 'prerequisite_skipped';
+        }
+        if (operation === 'step') {
+            partialState.phase = 'complete';
+            partialState.items[entry.id].status = 'done';
+        }
+        return response(partialState);
+    });
+    await tick();
+    expect(!partial.get('install-anyways').hidden && !partial.get('install-anyways').disabled, 'Offer Install anyways for a partially blocked job');
+    expect(partial.get('install').hidden, 'Keep standard install hidden for prerequisite errors');
+    partial.get('connector-github').value = 'changed';
+    partial.get('connector-github').listeners.change();
+    expect(partial.get('install-anyways').disabled, 'Partial installation cannot use an unreviewed connector selection');
+    partial.get('connector-github').value = 'github-one';
+    partial.get('connector-github').listeners.change();
+    partial.click('install-anyways'); await tick();
+    expect(partialOps.join(',') === 'status,install_anyways,step', 'Partial installation uses its explicit server action and normal queue');
+    expect(partial.get('status').textContent === 'completeWithSkips', 'Completion summary distinguishes prerequisite skips');
+    expect(partial.get('items').children[1].children[5].textContent === 'Access denied', 'Original prerequisite errors remain visible after skipping');
+    expect(partial.get('retry').hidden, 'Skipped prerequisites require new checks rather than installation retry');
+    const allErrors = page(async () => response(job('blocked', 'error')));
+    await tick();
+    expect(allErrors.get('install-anyways').disabled, 'Disable partial installation when every prerequisite failed');
+    expect(ui.get('install-anyways').hidden, 'Do not offer partial installation on completed jobs');
+
     let shouldFail = false;
     const failureOps = [];
     const failed = page(async (_url, request) => {

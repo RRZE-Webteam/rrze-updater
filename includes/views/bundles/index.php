@@ -37,6 +37,7 @@ defined('ABSPATH') || exit;
     <p>
         <button type="button" class="button" id="rrze-bundle-check" disabled><?php esc_html_e('Check prerequisites', 'rrze-updater'); ?></button>
         <button type="button" class="button button-primary" id="rrze-bundle-install" hidden><?php esc_html_e('Install bundle', 'rrze-updater'); ?></button>
+        <button type="button" class="button" id="rrze-bundle-install-anyways" hidden><?php esc_html_e('Install anyways', 'rrze-updater'); ?></button>
         <button type="button" class="button button-primary" id="rrze-bundle-resume" hidden><?php esc_html_e('Resume', 'rrze-updater'); ?></button>
         <button type="button" class="button" id="rrze-bundle-retry" hidden><?php esc_html_e('Retry failed entries / checks', 'rrze-updater'); ?></button>
         <button type="button" class="button" id="rrze-bundle-pause" hidden><?php esc_html_e('Pause after current entry', 'rrze-updater'); ?></button>
