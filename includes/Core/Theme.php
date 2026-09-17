@@ -105,6 +105,12 @@ class Theme extends Extension
         return true;
     }
 
+    public function getRemoteParentTheme(string $ref): string|\WP_Error
+    {
+        $stylesheet = $this->getValidatedRemoteThemeStylesheet($ref);
+        return is_wp_error($stylesheet) ? $stylesheet : $this->getStylesheetHeader($stylesheet, 'Template');
+    }
+
     private function getValidatedRemoteThemeStylesheet(string $ref): string|\WP_Error
     {
         $config = new Config();

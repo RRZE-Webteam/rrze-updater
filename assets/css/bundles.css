@@ -1,0 +1,25 @@
+#rrze-bundle [hidden] {
+    display: none !important;
+}
+
+#rrze-bundle-progress {
+    width: 18rem;
+    max-width: 100%;
+    vertical-align: middle;
+    margin: 0 0.5rem 1rem 0;
+}
+
+#rrze-bundle-error {
+    background: #fff;
+    border-left: 4px solid #d63638;
+    padding: 12px;
+}
+
+#rrze-bundle .widefat td {
+    overflow-wrap: anywhere;
+    vertical-align: top;
+}
+
+#rrze-bundle .widefat th {
+    white-space: nowrap;
+}

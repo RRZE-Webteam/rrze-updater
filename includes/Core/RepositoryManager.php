@@ -55,6 +55,42 @@ class RepositoryManager
         return $this->add($type, $repository, $options, true);
     }
 
+    /** Build a read-only plan. No files or associations are changed. */
+    public function prepare(string $type, string $repository, array $options): array|WP_Error
+    {
+        $this->warnings = [];
+        $extension = $this->definition($type, $repository, $options);
+        if (is_wp_error($extension)) {
+            return $extension;
+        }
+        $state = $this->localState($type, $extension);
+        if (is_wp_error($state)) {
+            return $state;
+        }
+        $checked = $this->checkRemote($extension);
+        if (is_wp_error($checked)) {
+            return $checked;
+        }
+        $parent = $extension instanceof Theme ? $extension->getRemoteParentTheme($extension->remoteVersion) : '';
+        if (is_wp_error($parent)) {
+            return $parent;
+        }
+        return [
+            'action' => $state['installed'] ? ($state['existing'] ? 'skip' : 'register') : 'install',
+            'ref' => $extension->remoteVersion, 'readable' => $extension->remoteReadableVersion,
+            'checked_at' => $extension->lastChecked, 'warning' => $extension->lastWarning,
+            'parent' => $parent,
+        ];
+    }
+
+    /** Execute a server-side preflight plan without resolving a newer ref. */
+    public function applyPrepared(string $type, string $repository, array $options, array $plan): string|WP_Error
+    {
+        // An interrupted install may have saved its association already. The
+        // normal association checks recognize that case without reinstalling.
+        return $this->add($type, $repository, $options, $plan['action'] === 'install', $plan);
+    }
+
     public function unregister(string $type, string $repository, string $connectorId = ''): string|WP_Error
     {
         $this->warnings = [];
@@ -76,28 +112,18 @@ class RepositoryManager
         return is_wp_error($saved) ? $saved : "$repository unregistered. Installed files were kept.";
     }
 
-    private function add(string $type, string $repository, array $options, bool $install): string|WP_Error
+    private function add(string $type, string $repository, array $options, bool $install, ?array $prepared = null): string|WP_Error
     {
         $this->warnings = [];
         $extension = $this->definition($type, $repository, $options);
         if (is_wp_error($extension)) {
             return $extension;
         }
-        $existing = null;
-        foreach ($this->extensions($type) as $candidate) {
-            $sameRepository = $candidate->connectorId === $extension->connectorId
-                && $candidate->repository === $extension->repository;
-            $sameFolder = $candidate->installationFolder === $extension->installationFolder;
-            if (!$sameRepository && !$sameFolder) {
-                continue;
-            }
-            if (!$sameRepository || !$sameFolder
-                || $candidate->branch !== $extension->branch || $candidate->updates !== $extension->updates) {
-                return $this->error('conflicting_repository', 'The repository or folder already has a different association. Unregister it before changing the configuration.');
-            }
-            $existing = $candidate;
+        $state = $this->localState($type, $extension);
+        if (is_wp_error($state)) {
+            return $state;
         }
-        $installed = $this->installer->isInstalled($type, $extension->installationFolder);
+        ['existing' => $existing, 'installed' => $installed] = $state;
         if ($existing && $installed) {
             return "$repository is already registered with this configuration.";
         }
@@ -107,9 +133,22 @@ class RepositoryManager
         if ($install && $this->installer->destinationExists($type, $extension->installationFolder)) {
             return $this->error('destination_exists', 'The installation folder already exists. Use register for an installed plugin/theme; install never overwrites it.');
         }
-        $checked = $this->checkRemote($extension);
-        if (is_wp_error($checked)) {
-            return $checked;
+        if ($prepared === null) {
+            $checked = $this->checkRemote($extension);
+            if (is_wp_error($checked)) {
+                return $checked;
+            }
+        } else {
+            if (empty($prepared['ref']) || !is_string($prepared['ref'])) {
+                return $this->error('invalid_plan', 'The reviewed repository ref is missing. Run preflight again.');
+            }
+            $extension->remoteVersion = $prepared['ref'];
+            $extension->remoteReadableVersion = $prepared['readable'] ?? '';
+            $extension->lastChecked = $prepared['checked_at'];
+            $extension->lastWarning = $prepared['warning'] ?? '';
+            if ($extension->lastWarning !== '') {
+                $this->warnings[] = $extension->lastWarning;
+            }
         }
         if ($install) {
             $result = $this->installer->install($type, $extension);
@@ -138,6 +177,29 @@ class RepositoryManager
         return $install
             ? "$repository installed and registered ({$extension->updates}: {$extension->remoteVersion}). Activation is unchanged."
             : "$repository registered. The installed Git ref is unknown; the next update can install the selected remote ref.";
+    }
+
+    private function localState(string $type, Extension $extension): array|WP_Error
+    {
+        $existing = null;
+        foreach ($this->extensions($type) as $candidate) {
+            $sameRepository = $candidate->connectorId === $extension->connectorId
+                && $candidate->repository === $extension->repository;
+            $sameFolder = $candidate->installationFolder === $extension->installationFolder;
+            if (!$sameRepository && !$sameFolder) {
+                continue;
+            }
+            if (!$sameRepository || !$sameFolder
+                || $candidate->branch !== $extension->branch || $candidate->updates !== $extension->updates) {
+                return $this->error('conflicting_repository', 'The repository or folder already has a different association. Unregister it before changing the configuration.');
+            }
+            $existing = $candidate;
+        }
+        $installed = $this->installer->isInstalled($type, $extension->installationFolder);
+        if (!$installed && $this->installer->destinationExists($type, $extension->installationFolder)) {
+            return $this->error('destination_exists', 'The destination contains unrecognized files. Inspect it before proceeding.');
+        }
+        return ['existing' => $existing, 'installed' => $installed];
     }
 
     private function definition(string $type, string $repository, array $options): Extension|WP_Error

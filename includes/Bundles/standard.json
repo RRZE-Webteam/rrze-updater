@@ -1,0 +1,748 @@
+{
+  "id": "rrze-standard",
+  "version": 1,
+  "name": "RRZE Standard",
+  "connectors": {
+    "github": {
+      "type": "github",
+      "host": "github.com",
+      "owner": "RRZE-Webteam"
+    },
+    "gitlab": {
+      "type": "gitlab",
+      "host": "gitlab.rrze.fau.de",
+      "owner": "rrze-webteam"
+    }
+  },
+  "items": [
+    {
+      "id": "plugin/rrze-settings",
+      "provider": "github",
+      "repository": "rrze-settings",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-settings",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/cms-workflow",
+      "provider": "github",
+      "repository": "cms-workflow",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "cms-workflow",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/contact-form-7",
+      "provider": "github",
+      "repository": "contact-form-7",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "contact-form-7",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-cf7-redirect",
+      "provider": "gitlab",
+      "repository": "rrze-cf7-redirect",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-cf7-redirect",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-cf7-save",
+      "provider": "gitlab",
+      "repository": "rrze-cf7-save",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-cf7-save",
+      "updates": "tags"
+    },
+    {
+      "id": "theme/FAU-Einrichtungen",
+      "provider": "github",
+      "repository": "FAU-Einrichtungen",
+      "branch": "master",
+      "type": "theme",
+      "folder": "FAU-Einrichtungen",
+      "updates": "tags"
+    },
+    {
+      "id": "theme/FAU-Elemental",
+      "provider": "github",
+      "repository": "FAU-Elemental",
+      "branch": "main",
+      "type": "theme",
+      "folder": "FAU-Elemental",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/fau-jobportal",
+      "provider": "gitlab",
+      "repository": "fau-jobportal",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "fau-jobportal",
+      "updates": "tags"
+    },
+    {
+      "id": "theme/FAU-Medfak",
+      "provider": "github",
+      "repository": "FAU-Medfak",
+      "branch": "master",
+      "type": "theme",
+      "folder": "FAU-Medfak",
+      "updates": "tags"
+    },
+    {
+      "id": "theme/FAU-Natfak",
+      "provider": "github",
+      "repository": "FAU-Natfak",
+      "branch": "master",
+      "type": "theme",
+      "folder": "FAU-Natfak",
+      "updates": "tags"
+    },
+    {
+      "id": "theme/FAU-Philfak",
+      "provider": "github",
+      "repository": "FAU-Philfak",
+      "branch": "master",
+      "type": "theme",
+      "folder": "FAU-Philfak",
+      "updates": "tags"
+    },
+    {
+      "id": "theme/FAU-RWFak",
+      "provider": "github",
+      "repository": "FAU-RWFak",
+      "branch": "master",
+      "type": "theme",
+      "folder": "FAU-RWFak",
+      "updates": "tags"
+    },
+    {
+      "id": "theme/FAU-Techfak",
+      "provider": "github",
+      "repository": "FAU-Techfak",
+      "branch": "master",
+      "type": "theme",
+      "folder": "FAU-Techfak",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/fau-cris",
+      "provider": "github",
+      "repository": "fau-cris",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "fau-cris",
+      "updates": "tags"
+    },
+    {
+      "id": "theme/fau-events",
+      "provider": "gitlab",
+      "repository": "fau-events",
+      "branch": "master",
+      "type": "theme",
+      "folder": "fau-events",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/FAU-Fehlermeldungen",
+      "provider": "github",
+      "repository": "FAU-Fehlermeldungen",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "FAU-Fehlermeldungen",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/fau-oembed",
+      "provider": "github",
+      "repository": "fau-oembed",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "fau-oembed",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/fau-orga-breadcrumb",
+      "provider": "github",
+      "repository": "fau-orga-breadcrumb",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "fau-orga-breadcrumb",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/fau-person",
+      "provider": "github",
+      "repository": "fau-person",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "fau-person",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/FAU-Studium-Embed",
+      "provider": "github",
+      "repository": "FAU-Studium-Embed",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "FAU-Studium-Embed",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/fau-studium-display",
+      "provider": "github",
+      "repository": "fau-studium-display",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "fau-studium-display",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/FAU-Studium-Fachanteile",
+      "provider": "github",
+      "repository": "FAU-Studium-Fachanteile",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "FAU-Studium-Fachanteile",
+      "updates": "tags"
+    },
+    {
+      "id": "theme/francesca-child",
+      "provider": "gitlab",
+      "repository": "francesca-child",
+      "branch": "main",
+      "type": "theme",
+      "folder": "francesca-child",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-highcharts",
+      "provider": "gitlab",
+      "repository": "rrze-highcharts",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-highcharts",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-remoter",
+      "provider": "github",
+      "repository": "rrze-remoter",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-remoter",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-designsystem",
+      "provider": "github",
+      "repository": "rrze-designsystem",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-designsystem",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-jobspreader-analytics",
+      "provider": "github",
+      "repository": "rrze-jobspreader-analytics",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-jobspreader-analytics",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-log",
+      "provider": "github",
+      "repository": "rrze-log",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-log",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-search",
+      "provider": "github",
+      "repository": "rrze-search",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-search",
+      "updates": "tags"
+    },
+    {
+      "id": "theme/rrze-2019",
+      "provider": "gitlab",
+      "repository": "rrze-2019",
+      "branch": "master",
+      "type": "theme",
+      "folder": "rrze-2019",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-ac",
+      "provider": "github",
+      "repository": "rrze-ac",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-ac",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-answers",
+      "provider": "github",
+      "repository": "rrze-answers",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-answers",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-appointment",
+      "provider": "github",
+      "repository": "rrze-appointment",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-appointment",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-autoshare",
+      "provider": "github",
+      "repository": "rrze-autoshare",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-autoshare",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-block-control",
+      "provider": "github",
+      "repository": "rrze-block-control",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-block-control",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-bluesky",
+      "provider": "github",
+      "repository": "rrze-bluesky",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-bluesky",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-cache",
+      "provider": "gitlab",
+      "repository": "rrze-cache",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-cache",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-cli",
+      "provider": "github",
+      "repository": "rrze-cli",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-cli",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-cmsinfo",
+      "provider": "github",
+      "repository": "rrze-cmsinfo",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-cmsinfo",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-downloads",
+      "provider": "github",
+      "repository": "rrze-downloads",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-downloads",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-elements",
+      "provider": "github",
+      "repository": "rrze-elements",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-elements",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-elements-blocks",
+      "provider": "github",
+      "repository": "rrze-elements-blocks",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-elements-blocks",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-advanced-search",
+      "provider": "github",
+      "repository": "rrze-advanced-search",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-advanced-search",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-events",
+      "provider": "github",
+      "repository": "rrze-events",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-events",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-expo",
+      "provider": "github",
+      "repository": "rrze-expo",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-expo",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-faubox",
+      "provider": "github",
+      "repository": "rrze-faubox",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-faubox",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-faudir",
+      "provider": "github",
+      "repository": "rrze-faudir",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-faudir",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-formular",
+      "provider": "github",
+      "repository": "rrze-formular",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-formular",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-git",
+      "provider": "gitlab",
+      "repository": "rrze-git",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-git",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-green-office",
+      "provider": "github",
+      "repository": "rrze-green-office",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-green-office",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-greetings",
+      "provider": "github",
+      "repository": "rrze-greetings",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-greetings",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-jobs",
+      "provider": "github",
+      "repository": "rrze-jobs",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-jobs",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-calendar",
+      "provider": "github",
+      "repository": "rrze-calendar",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-calendar",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-lectures",
+      "provider": "github",
+      "repository": "rrze-lectures",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-lectures",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-legal",
+      "provider": "github",
+      "repository": "rrze-legal",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-legal",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-literature-manager",
+      "provider": "github",
+      "repository": "rrze-literature-manager",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-literature-manager",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-multilang",
+      "provider": "github",
+      "repository": "rrze-multilang",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-multilang",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-notices",
+      "provider": "gitlab",
+      "repository": "rrze-notices",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-notices",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-netzwerk-audit",
+      "provider": "gitlab",
+      "repository": "rrze-netzwerk-audit",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-netzwerk-audit",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-newsletter",
+      "provider": "github",
+      "repository": "rrze-newsletter",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-newsletter",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-obsidian-wizard",
+      "provider": "github",
+      "repository": "rrze-obsidian-wizard",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-obsidian-wizard",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-post-expiration",
+      "provider": "gitlab",
+      "repository": "rrze-post-expiration",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-post-expiration",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-preise",
+      "provider": "gitlab",
+      "repository": "rrze-preise",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-preise",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-private-site",
+      "provider": "gitlab",
+      "repository": "rrze-private-site",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-private-site",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-qr",
+      "provider": "github",
+      "repository": "rrze-qr",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-qr",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-ratebutton",
+      "provider": "github",
+      "repository": "rrze-ratebutton",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-ratebutton",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-research-data",
+      "provider": "github",
+      "repository": "rrze-research-data",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-research-data",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-rss",
+      "provider": "gitlab",
+      "repository": "rrze-rss",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-rss",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-rsvp",
+      "provider": "github",
+      "repository": "rrze-rsvp",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-rsvp",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-rsvp-network",
+      "provider": "github",
+      "repository": "rrze-rsvp-network",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-rsvp-network",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-servicekatalog",
+      "provider": "github",
+      "repository": "rrze-servicekatalog",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-servicekatalog",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-siteimprove",
+      "provider": "github",
+      "repository": "rrze-siteimprove",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-siteimprove",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-sso",
+      "provider": "github",
+      "repository": "rrze-sso",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-sso",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-statistik",
+      "provider": "github",
+      "repository": "rrze-statistik",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-statistik",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-typesettings",
+      "provider": "github",
+      "repository": "rrze-typesettings",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-typesettings",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-univis",
+      "provider": "github",
+      "repository": "rrze-univis",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-univis",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-video",
+      "provider": "github",
+      "repository": "rrze-video",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-video",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-webt",
+      "provider": "github",
+      "repository": "rrze-webt",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-webt",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-wmp",
+      "provider": "github",
+      "repository": "rrze-wmp",
+      "branch": "main",
+      "type": "plugin",
+      "folder": "rrze-wmp",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-wp-cron",
+      "provider": "gitlab",
+      "repository": "rrze-wp-cron",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-wp-cron",
+      "updates": "tags"
+    },
+    {
+      "id": "plugin/rrze-xliff",
+      "provider": "github",
+      "repository": "rrze-xliff",
+      "branch": "master",
+      "type": "plugin",
+      "folder": "rrze-xliff",
+      "updates": "tags"
+    }
+  ]
+}

@@ -81,6 +81,7 @@ class Main
     public function loaded()
     {
         $this->initSettings();
+        (new BundleAdmin())->register();
 
         if (!is_multisite()) {
             add_action('admin_menu', [$this, 'adminMenu']);

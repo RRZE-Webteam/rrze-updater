@@ -185,3 +185,62 @@ php wp-content/plugins/rrze-updater/tests/cli.php /path/to/wp-cli.phar
 This catches option-name errors that help rendering alone does not detect.
 Use `--only-release`; WP-CLI does not accept the uppercase `--onlyRelease`
 spelling as a valid synopsis flag.
+
+## Recommended installation (Multisite)
+
+Network administrators can open **Updater → Recommended installation** to install
+**RRZE Standard**, a predefined bundle of 71 plugins and 10 themes. The version 1
+manifest is shipped in `includes/Bundles/standard.json`. Repository names, folder
+case and branches follow the curated list; `rrze-notices` remains on GitLab.
+Every entry currently uses tags. A missing tag is a prerequisite error, with no
+fallback to the configured branch.
+
+1. Configure exactly one connector for `github.com / RRZE-Webteam` and one for
+   `gitlab.rrze.fau.de / rrze-webteam` under **Settings → Services**. Both require
+   access tokens for this bundle. Credentials are read from the existing service
+   settings and are never copied into the bundle definition or progress record.
+2. Select **Check prerequisites**. Each request checks one repository, verifies
+   access, resolves its target ref and identifies installed files, conflicting
+   associations and required parent themes. Missing or ambiguous connectors,
+   unavailable refs, missing parents and dependency cycles block installation.
+3. Review the actions and refs, then select **Install bundle**. Missing extensions
+   are installed and registered; existing unmanaged extensions are registered;
+   matching managed extensions are checked and skipped. Existing files are never
+   overwritten. Plugins remain inactive unless already active; theme availability
+   and the active theme are unchanged.
+4. Keep the page open, or pause and resume later. Processing stops issuing requests
+   when the page closes, although an in-flight request may still finish. Progress
+   is stored per network. Reopening the page reads progress without automatically
+   starting installation. Failed entries can be retried independently of successes.
+
+The installation uses the refs reviewed during preflight. New tags published while
+processing do not change those refs; normal updater checks subsequently continue
+using each entry's saved update policy. Initial installation must start within one
+day of preflight. Bundled parent themes are processed before their children. A
+parent outside the bundle must already be installed; it is not silently downloaded
+from WordPress.org. A failed parent prevents dependent child installation, while
+independent entries continue.
+
+A connection-owned MySQL/MariaDB advisory lock serializes bundle requests across
+networks sharing the installation. Stale requests from another tab are rejected.
+The database user/server must support `GET_LOCK` and `RELEASE_LOCK`; failure to
+acquire the lock prevents processing. The job is stored separately from updater
+settings in the network option `rrze_updater_bundle_job`.
+
+If a request installed files but failed before saving the repository association,
+resuming reports the existing destination for inspection. It does not assume those
+files match the reviewed ref. Once inspected, use repository registration to recover,
+then retry the entry or rerun prerequisite checks. The bundle never activates code
+or removes files as part of recovery.
+
+Additional development checks:
+
+```sh
+php wp-content/plugins/rrze-updater/tests/bundles.php /path/to/wp-cli.phar
+node wp-content/plugins/rrze-updater/tests/bundles-ui.cjs
+```
+
+These cover manifest contents, incremental processing, reviewed refs, retries,
+interruption recovery, parent dependencies, authorization, network isolation and
+browser pause/resume behavior. Repository APIs, storage and file installation are
+simulated; use staging for an end-to-end installation against the real services.
