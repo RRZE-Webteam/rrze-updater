@@ -45,10 +45,14 @@ class RepositoryInstaller
         if (!$package) {
             return new WP_Error('rrze_updater_download_failed', 'Could not download the selected repository ref.');
         }
-        $selectSource = static function ($source, $remoteSource, $currentUpgrader) use ($upgrader, $extension) {
-            if ($currentUpgrader !== $upgrader || is_wp_error($source)) {
+        $sourceSelected = false;
+        $selectSource = static function ($source, $remoteSource, $currentUpgrader) use ($upgrader, $extension, &$sourceSelected) {
+            if ($currentUpgrader !== $upgrader || $sourceSelected || is_wp_error($source)) {
                 return $source;
             }
+            // WordPress reuses this upgrader when installing a missing parent theme.
+            // Only the requested package should use our configured folder name.
+            $sourceSelected = true;
             global $wp_filesystem;
             $destination = trailingslashit($remoteSource) . $extension->installationFolder . '/';
             if (untrailingslashit($source) !== untrailingslashit($destination)

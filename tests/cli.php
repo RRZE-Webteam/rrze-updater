@@ -458,5 +458,75 @@ namespace {
     errorCode($adapter->install('plugin', $definition), 'source_move_failed');
     $package->downloadFails = true;
     errorCode($adapter->install('plugin', $definition), 'download_failed');
+    // Keep WordPress's actual install and parent-theme orchestration. Only
+    // package/file operations and theme discovery are simulated here.
+    function get_theme_root() { return '/tmp/themes'; }
+    function wp_clean_themes_cache($clearUpdateCache = true) {}
+    function themes_api($action, $args) {
+        check($action === 'theme_information' && $args['slug'] === 'parent-theme', 'Look up the declared parent.');
+        return (object) ['name' => 'Parent', 'version' => '1.0', 'download_link' => 'parent.zip'];
+    }
+    class ParentThemeUpgraderFixture extends Theme_Upgrader {
+        public int $runs = 0;
+        public function __construct(public ParentThemeInstallerFixture $adapter) {
+            $this->skin = new class {
+                public $api = null;
+                public function feedback(...$args) {}
+            };
+        }
+        public function init() {}
+        public function check_package($source) { return $source; }
+        public function theme_info($theme = null) {
+            return new class($this->result['destination_name'] === 'child-custom') {
+                public function __construct(private bool $child) {}
+                public function parent() {
+                    return $this->child ? new class { public function errors() { return true; } } : false;
+                }
+                public function get($header) { return 'parent-theme'; }
+            };
+        }
+        public function run($options) {
+            $this->runs++;
+            $isParent = $options['package'] === 'parent.zip';
+            $remote = $isParent ? '/tmp/parent-archive/' : '/tmp/child-archive/';
+            $folder = $isParent ? 'parent-theme' : $this->adapter->sourceFolder;
+            $source = apply_filters('upgrader_source_selection', "$remote$folder/", $remote, $this, $options['hook_extra'] ?? []);
+            check(!is_wp_error($source), 'Prepare child/parent source.');
+            $expected = $isParent ? 'parent-theme' : 'child-custom';
+            check($source === "$remote$expected/", $isParent
+                ? 'Parent keeps its own folder when WordPress reuses the upgrader.'
+                : 'Child uses the configured installation folder.');
+            check($options['clear_destination'] === false, 'Neither child nor parent overwrites files.');
+            $this->adapter->installedFolders[] = $expected;
+            $this->result = ['destination_name' => $expected];
+            apply_filters('upgrader_post_install', true, $options['hook_extra'] ?? [], $this->result);
+            return $this->result;
+        }
+    }
+    class ParentThemeInstallerFixture extends RepositoryInstaller {
+        public array $installedFolders = [];
+        public ParentThemeUpgraderFixture $upgrader;
+        public function __construct(public string $sourceFolder) {}
+        public function isInstalled(string $type, string $folder): bool { return in_array($folder, $this->installedFolders, true); }
+        public function destinationExists(string $type, string $folder): bool { return $this->isInstalled($type, $folder); }
+        protected function createUpgrader(string $type): WP_Upgrader {
+            return $this->upgrader = new ParentThemeUpgraderFixture($this);
+        }
+    }
+    $wp_filesystem->fails = false;
+    foreach (['generated-child', 'child-custom'] as $sourceFolder) {
+        $childDefinition = RRZE\Updater\Core\Theme::createFromArray([
+            'repository' => 'child', 'installationFolder' => 'child-custom', 'remoteVersion' => 'v1',
+        ]);
+        $childPackage = new PackageFixture();
+        $childDefinition->connector = $childPackage;
+        $parentAdapter = new ParentThemeInstallerFixture($sourceFolder);
+        check($parentAdapter->install('theme', $childDefinition) === true, 'Install child and missing parent.');
+        check($parentAdapter->installedFolders === ['child-custom', 'parent-theme'], 'Child and parent have separate destinations.');
+        check($parentAdapter->upgrader->runs === 2, 'WordPress runs a nested parent installation.');
+        check($parentAdapter->upgrader->result['destination_name'] === 'child-custom', 'WordPress restores the child result.');
+        check(!is_file($childPackage->package), 'Clean up the child archive after nested installation.');
+        check(!has_filter('upgrader_source_selection') && !has_filter('upgrader_post_install'), 'Clean up nested installer filters.');
+    }
     echo "Passed $checks repository/CLI/release/installer checks.\n";
 }
