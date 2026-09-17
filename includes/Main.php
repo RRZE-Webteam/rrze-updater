@@ -116,6 +116,10 @@ class Main
         // Set up filters for modifying plugin and theme metadata.
         add_filter('plugin_row_meta', [$this, 'pluginRowMeta'], 10, 2);
         add_filter('theme_row_meta', [$this, 'themeRowMeta'], 10, 2);
+
+        if (defined('WP_CLI') && WP_CLI) {
+            CLI::registerCommands($this->settings);
+        }
     }
 
     /**

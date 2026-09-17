@@ -106,6 +106,7 @@ class Config {
                 'update_modes' => [
                     'commits',
                     'tags',
+                    'releases',
                 ],
                 'cron_schedules' => [
                     'hourly' => 'hourly',

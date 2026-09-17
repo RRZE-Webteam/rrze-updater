@@ -132,6 +132,13 @@ abstract class Connector
      */
     abstract public function getRemoteTag(string $repository): mixed;
 
+    /** Return the tag of a published release; never fall back to an ordinary tag. */
+    public function getRemoteRelease(string $repository): string|false
+    {
+        $this->error = __('This connector does not support release updates.', 'rrze-updater');
+        return false;
+    }
+
     /**
      * Abstract method to get a file from the repository at a specific ref.
      *

@@ -263,11 +263,44 @@ class GitlabConnector extends Connector
     }
 
     /**
-     * Get the latest remote tag of a GitLab repository.
+     * Return the tag of the newest published GitLab release.
      *
-     * @param string $repository The name of the repository.
-     * @return string|boolean The latest remote tag or false on failure.
+     * @param string $repository The repository name.
+     * @return string|false A published release tag, or false if none is available.
      */
+    public function getRemoteRelease(string $repository): string|false
+    {
+        // GitLab has upcoming releases, but no GitHub-style prerelease flag.
+        // Read newest released_at first and skip entries not published yet.
+        for ($page = 1; $page <= 100; $page++) {
+            $url = sprintf('%s/%s/releases?order_by=released_at&sort=desc&per_page=100&page=%d',
+                $this->getApiBaseUrl(), rawurlencode($this->owner . '/' . $repository), $page);
+            $response = $this->api($url, [
+                'headers' => $this->token ? ['PRIVATE-TOKEN' => $this->token] : [],
+            ], [
+                'logContext' => $this->getRepositoryLogContext($repository, 'releases'),
+            ]);
+            if (!is_array($response)) {
+                return false;
+            }
+            foreach ($response as $release) {
+                if (!is_object($release) || !empty($release->upcoming_release)
+                    || empty($release->tag_name) || !is_string($release->tag_name)) {
+                    continue;
+                }
+                $releasedAt = strtotime($release->released_at ?? '');
+                if ($releasedAt !== false && $releasedAt <= time()) {
+                    return $release->tag_name;
+                }
+            }
+            if (count($response) < 100) {
+                return false;
+            }
+        }
+        $this->error = __('Release lookup exceeded the pagination limit.', 'rrze-updater');
+        return false;
+    }
+
     public function downloadRepoZip(string $repository, string $branch = 'main'): string|bool
     {
         // Construct and return the ZIP archive download URL.

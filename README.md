@@ -80,3 +80,92 @@ RRZE Updater automatically checks for new updates. To manually check for new upd
 
 ## Report Errors
 Errors can be logged as issues in GitLab. Alternatively, issues and inquiries can be sent to webmaster@fau.de with the subject "RRZE Updater Plugin".
+
+## WP-CLI
+
+The active updater plugin provides these commands without requiring rrze-cli:
+
+```sh
+wp rrze-updater connector list
+wp rrze-updater repo plugin register <repository> --connector=<id>
+wp rrze-updater repo plugin install <repository> --connector=<id>
+wp rrze-updater repo plugin list
+wp rrze-updater repo plugin unregister <repository> [--connector=<id>]
+
+wp rrze-updater repo theme register <repository> --connector=<id>
+wp rrze-updater repo theme install <repository> --connector=<id>
+wp rrze-updater repo theme list
+wp rrze-updater repo theme unregister <repository> [--connector=<id>]
+
+wp help rrze-updater repo plugin install
+```
+
+On Multisite the plugin must be network-active. Use WP-CLI's `--url` to select
+the target network through one of its sites. Associations belong to the network,
+not just the selected site.
+
+Run `connector list` first and use its actual `id` value. Connectors are
+configured through the existing service settings; names such as `github-rrze`
+are not automatically created aliases. The list shows provider, host, owner and
+whether credentials are configured, but never prints token values. All list
+commands accept `--format=table|json|csv|yaml|count`.
+
+### Register and install
+
+`register` associates an already installed plugin/theme with a repository.
+`install` downloads and installs it, then saves the association only after
+WordPress confirms success. Neither command activates a plugin, enables a theme,
+nor changes an existing activation. `unregister` removes only the association.
+
+Both commands accept:
+
+- `--connector=<id>` (required): an existing connector ID.
+- `--folder=<name>`: installation folder, defaulting to the repository name.
+- `--branch=<ref>`: branch for commit updates, defaulting to `main`.
+- `--updates=tags|commits|releases`: update policy, defaulting to **tags**.
+- `--only-release` or `--onlyRelease`: select release mode and persist it for
+  future update checks. These flags conflict with `--updates=tags|commits`.
+
+Example (replace `a1b2c3d4` with the ID from your connector list):
+
+```sh
+wp rrze-updater repo plugin install rrze-notices --connector=a1b2c3d4 --onlyRelease
+wp rrze-updater repo plugin list --format=json
+```
+
+Tags and releases are selected across the repository; `--branch` does not filter
+them. Release mode installs the **source archive at the release's tag**, not an
+attached build asset. GitHub uses its latest published full release, excluding
+drafts and prereleases. GitLab uses the newest release by `released_at`, excluding
+future/upcoming releases; GitLab does not provide the same prerelease flag.
+If no eligible tag or release exists, the command fails without falling back
+to a branch.
+
+Repeating a command with the same association and existing files succeeds
+without reinstalling or duplicating the entry. Conflicting associations fail.
+Existing folders are never overwritten by `install`; use `register` for them.
+Registration cannot establish the installed Git ref from arbitrary local files.
+It leaves that ref unknown, so the next update may replace those files with the
+selected remote version. Installation records the ref it actually installed.
+
+For a Multisite setup, install or register each desired extension, then activate
+plugins explicitly with WordPress's own commands, for example:
+
+```sh
+wp plugin activate rrze-notices --network
+```
+
+### Development checks
+
+From the WordPress root, run:
+
+```sh
+php wp-content/plugins/rrze-updater/tests/cli.php
+```
+
+The standalone suite uses the real repository manager, settings serialization,
+release-selection methods, CLI adapter and WordPress hook dispatcher. Storage,
+HTTP responses and the WordPress installer are fixtures. It tests successful and
+failed registration/installation, repeated commands, conflicts, release policies,
+credential-free lists and temporary-file/filter cleanup. It does not perform a
+live database migration, fetch private repositories or extract a real ZIP.

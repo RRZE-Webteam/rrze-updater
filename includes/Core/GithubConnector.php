@@ -109,9 +109,9 @@ class GithubConnector extends Connector
         $url = sprintf(
             'https://%1$s/repos/%2$s/%3$s/commits?sha=%4$s',
             $this->getApiHost(),
-            $this->owner,
-            $repository,
-            $branch
+            rawurlencode($this->owner),
+            rawurlencode($repository),
+            rawurlencode($branch)
         );
 
         $getArgs = [
@@ -223,6 +223,21 @@ class GithubConnector extends Connector
         return $ret;
     }
 
+    public function getRemoteRelease(string $repository): string|false
+    {
+        $url = sprintf('https://%s/repos/%s/%s/releases/latest',
+            $this->getApiHost(), rawurlencode($this->owner), rawurlencode($repository));
+        $response = $this->api($url, ['headers' => $this->getHeaders()], [
+            'logContext' => $this->getRepositoryLogContext($repository, 'releases/latest'),
+        ]);
+        if (!is_object($response) || $this->isRateLimitReached()
+            || !empty($response->draft) || !empty($response->prerelease)) {
+            return false;
+        }
+        return isset($response->tag_name) && is_string($response->tag_name) && $response->tag_name !== ''
+            ? $response->tag_name : false;
+    }
+
     public function downloadRepoZip(string $repository, string $branch = 'main'): string
     {
         return $this->getRepoZipUrl($repository, $branch);
@@ -322,9 +337,9 @@ class GithubConnector extends Connector
         return sprintf(
             'https://%1$s/repos/%2$s/%3$s/zipball/%4$s',
             $this->getApiHost(),
-            $this->owner,
-            $repository,
-            $branch
+            rawurlencode($this->owner),
+            rawurlencode($repository),
+            rawurlencode($branch)
         );
     }
 

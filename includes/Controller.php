@@ -617,7 +617,7 @@ class Controller
     }
 
     private function getRepositoryRefLabel(array $repo, $extension): string {
-        if ($extension && ($extension->updates ?? '') == 'tags') {
+        if ($extension && in_array($extension->updates ?? '', ['tags', 'releases'], true)) {
             return (string) (($extension->remoteVersion ?? '') ?: __('Release tag not checked yet', 'rrze-updater'));
         }
 
