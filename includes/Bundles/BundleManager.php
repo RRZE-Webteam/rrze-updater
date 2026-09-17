@@ -5,6 +5,7 @@ namespace RRZE\Updater\Bundles;
 defined('ABSPATH') || exit;
 
 use RRZE\Updater\Core\RepositoryManager;
+use RRZE\Updater\Core\Connector;
 use RRZE\Updater\Settings;
 use RRZE\Updater\Upgrader\RepositoryInstaller;
 use WP_Error;
@@ -19,7 +20,7 @@ class BundleManager
         private RepositoryInstaller $installer = new RepositoryInstaller()
     ) {}
 
-    public function handle(string $action, string $jobId = '', int $revision = -1): array|WP_Error
+    public function handle(string $action, string $jobId = '', int $revision = -1, array $connectors = []): array|WP_Error
     {
         if ($action === 'status') {
             return ['job' => $this->store->load()];
@@ -27,7 +28,7 @@ class BundleManager
         if (!in_array($action, ['check', 'step', 'install', 'retry'], true)) {
             return $this->error('invalid_action', 'Unknown bundle action.');
         }
-        return $this->store->withLock(function () use ($action, $jobId, $revision) {
+        return $this->store->withLock(function () use ($action, $jobId, $revision, $connectors) {
             $job = $this->store->load();
             if ($job && ($job['id'] !== $jobId || $job['revision'] !== $revision)) {
                 return $this->error('stale_job', 'The bundle changed in another request. Reload its progress before continuing.');
@@ -37,9 +38,18 @@ class BundleManager
             $settings = $this->settings ?? new Settings();
             $repositories = new RepositoryManager($settings, $this->installer);
             if ($action === 'check') {
-                $job = $this->newJob();
+                $selected = [];
+                foreach ($this->catalog->get()['connectors'] as $provider => $requirement) {
+                    if (!isset($connectors[$provider]) || !is_string($connectors[$provider]) || trim($connectors[$provider]) === '') {
+                        return $this->error('selection_required', 'Select a connector for each provider before checking prerequisites.');
+                    }
+                    $selected[$provider] = trim($connectors[$provider]);
+                }
+                $job = $this->newJob($selected);
             } elseif (!$job || $job['catalog'] !== $this->catalog->fingerprint()) {
                 return $this->error('missing_job', 'Run prerequisite checks for the current bundle first.');
+            } elseif (!isset($job['connectors'])) {
+                return $this->error('selection_required', 'Select connectors and run prerequisite checks again for this older job.');
             } elseif ($action === 'install') {
                 if ($job['phase'] !== 'ready') {
                     return $this->error('not_ready', 'Resolve all prerequisite errors before installing.');
@@ -54,7 +64,7 @@ class BundleManager
                 unset($item);
             } elseif ($action === 'retry') {
                 if ($job['phase'] === 'blocked') {
-                    $job = $this->newJob();
+                    $job = $this->newJob($job['connectors']);
                 } elseif ($job['phase'] === 'complete') {
                     foreach ($job['items'] as &$item) {
                         if ($item['status'] === 'failed') {
@@ -80,7 +90,7 @@ class BundleManager
         });
     }
 
-    private function newJob(): array
+    private function newJob(array $connectors): array
     {
         $items = [];
         foreach ($this->catalog->get()['items'] as $entry) {
@@ -89,23 +99,50 @@ class BundleManager
         return [
             'id' => wp_generate_uuid4(), 'revision' => 0, 'created_at' => time(),
             'catalog' => $this->catalog->fingerprint(), 'phase' => 'checking', 'items' => $items,
+            'connectors' => $connectors,
         ];
     }
 
-    private function connector(array $entry, Settings $settings): string|WP_Error
+    /** Only identifiers and display metadata leave the settings layer. */
+    public function connectorChoices(): array
+    {
+        $settings = $this->settings ?? new Settings();
+        $choices = [];
+        foreach ($this->catalog->get()['connectors'] as $provider => $requirement) {
+            $choices[$provider] = [];
+            foreach ($settings->connectors as $connector) {
+                if ($this->matchesConnector($connector, $requirement)) {
+                    $choices[$provider][] = [
+                        'id' => $connector->id, 'name' => $connector->display ?: $requirement['host'],
+                        'has_token' => is_string($connector->token) && trim($connector->token) !== '',
+                    ];
+                }
+            }
+        }
+        return $choices;
+    }
+
+    private function matchesConnector(Connector $connector, array $requirement): bool
+    {
+        // GitHub owner names are case-insensitive. Preserve the configured
+        // spelling and keep other providers' owner matching unchanged.
+        $ownerMatches = $requirement['type'] === 'github'
+            ? strcasecmp((string) $connector->owner, $requirement['owner']) === 0
+            : $connector->owner === $requirement['owner'];
+        return $connector->getType() === $requirement['type']
+            && strcasecmp((string) wp_parse_url($connector->getUrl(''), PHP_URL_HOST), $requirement['host']) === 0
+            && $ownerMatches;
+    }
+
+    private function connector(array $entry, Settings $settings, array $selected): string|WP_Error
     {
         $requirement = $this->catalog->get()['connectors'][$entry['provider']];
-        $matches = array_filter($settings->connectors, static function ($connector) use ($requirement) {
-            return $connector->getType() === $requirement['type']
-                && strtolower((string) wp_parse_url($connector->getUrl(''), PHP_URL_HOST)) === $requirement['host']
-                && $connector->owner === $requirement['owner'];
-        });
-        if (count($matches) !== 1) {
-            return $this->error('connector', sprintf('Configure exactly one connector for %s / %s in Services.', $requirement['host'], $requirement['owner']));
+        $connector = $settings->getConnectorById($selected[$entry['provider']] ?? '');
+        if (!$connector || !$this->matchesConnector($connector, $requirement)) {
+            return $this->error('connector', sprintf('The selected connector must match %s / %s. Select a compatible connector and run prerequisite checks again.', $requirement['host'], $requirement['owner']));
         }
-        $connector = reset($matches);
         if (!is_string($connector->token) || trim($connector->token) === '') {
-            return $this->error('token', sprintf('Configure an access token for %s / %s in Services.', $requirement['host'], $requirement['owner']));
+            return $this->error('token', sprintf('Configure an access token for the selected %s / %s connector in Services.', $requirement['host'], $requirement['owner']));
         }
         return $connector->id;
     }
@@ -118,7 +155,7 @@ class BundleManager
             }
             $item['status'] = 'checking';
             $this->store->save($job);
-            $connector = $this->connector($item, $settings);
+            $connector = $this->connector($item, $settings, $job['connectors']);
             if (is_wp_error($connector)) {
                 $result = $connector;
             } else {
@@ -208,7 +245,7 @@ class BundleManager
                     break;
                 }
             }
-            $connector = $this->connector($item, $settings);
+            $connector = $this->connector($item, $settings, $job['connectors']);
             if (!$result && (is_wp_error($connector) || $connector !== $item['options']['connector'])) {
                 $result = is_wp_error($connector) ? $connector : $this->error('connector_changed', 'The connector changed. Run prerequisite checks again.');
             }

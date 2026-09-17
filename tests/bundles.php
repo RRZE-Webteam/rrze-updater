@@ -37,12 +37,19 @@ class BundleStoreFixture extends JobStore {
 class BundleConnectorFixture extends ConnectorFixture {
     public array $parents = [];
     public array $denied = [];
+    public string $commit = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    public function remoteBranchExists(string $repository, string $branch): bool { return in_array($branch, ['main', 'master'], true); }
+    public function getRemoteBranches(string $repository): array|false { return ['main', 'master']; }
     public function getRemoteTag(string $repository): string|false {
+        throw new RuntimeException('Recommended installation must not query tags.');
+    }
+    public function getRemoteCommit(string $repository, string $branch): string {
+        $this->calls[] = ['commits', $branch];
         if (in_array($repository, $this->denied, true)) {
             $this->error = 'Denied access with ' . $this->token;
-            return false;
+            return '';
         }
-        return parent::getRemoteTag($repository);
+        return $this->commit;
     }
     public function getRemoteFile(string $repository, string $ref, string $file): string|bool {
         if ($file === 'style.css' && isset($this->parents[$repository])) {
@@ -64,7 +71,7 @@ class BundleInstallerFixture extends InstallerFixture {
 }
 function bundleEntry($repo, $type = 'plugin'): array {
     return ['id' => "$type/$repo", 'provider' => 'github', 'repository' => $repo,
-        'folder' => $repo, 'type' => $type, 'branch' => 'main', 'updates' => 'tags'];
+        'folder' => $repo, 'type' => $type, 'branch' => 'main', 'updates' => 'commits'];
 }
 function bundleFixture(array $entries): array {
     $settings = new Settings();
@@ -82,7 +89,7 @@ function bundleFixture(array $entries): array {
 }
 function bundleAction(array $fixture, string $action): array {
     $job = $fixture['store']->load();
-    $result = $fixture['manager']->handle($action, $job['id'] ?? '', $job['revision'] ?? -1);
+    $result = $fixture['manager']->handle($action, $job['id'] ?? '', $job['revision'] ?? -1, ['github' => 'bundle-github']);
     check(!is_wp_error($result), "Bundle action $action succeeds.");
     return $result['job'];
 }
@@ -101,7 +108,7 @@ check(count($manifest['items']) === 81, 'Complete 81-entry catalog.');
 check(count(array_filter($manifest['items'], fn($item) => $item['type'] === 'theme')) === 10, 'Ten themes, including fau-events.');
 check(count(array_unique(array_column($manifest['items'], 'id'))) === 81, 'Unique manifest entries.');
 foreach ($manifest['items'] as $item) {
-    check($item['updates'] === 'tags' && $item['repository'] === $item['folder'], 'Preserve default tags and exact folder case.');
+    check($item['updates'] === 'commits' && $item['repository'] === $item['folder'], 'Use commits and preserve exact folder case.');
     if ($item['repository'] === 'rrze-notices') {
         check($item['provider'] === 'gitlab' && $item['branch'] === 'master', 'Keep notices on GitLab master.');
     }
@@ -117,7 +124,7 @@ $job = bundleDrain($f);
 check($job['phase'] === 'ready', 'All prerequisites pass.');
 check(array_search('theme/parent', array_keys($job['items'])) < array_search('theme/child', array_keys($job['items'])), 'Parents ordered before children.');
 check(!str_contains(json_encode($job), $f['connector']->token), 'Job contains no credentials.');
-$f['connector']->tag = 'v99';
+$f['connector']->commit = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 bundleAction($f, 'install');
 $job = bundleAction($f, 'step');
 check($f['installer']->installs === 1, 'One installation per request.');
@@ -125,7 +132,7 @@ check($f['installer']->installs === 1, 'One installation per request.');
 $f['manager'] = new BundleManager($f['catalog'], $f['store'], $f['settings'], $f['installer']);
 $job = bundleDrain($f);
 check($job['phase'] === 'complete' && $f['installer']->installs === 3, 'Resume finishes the remaining items.');
-check(array_values(array_unique($f['installer']->refs)) === ['v2.0.0'], 'Use reviewed refs despite newer tags.');
+check(array_values(array_unique($f['installer']->refs)) === ['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'], 'Use reviewed commit hashes despite newer branch commits.');
 $oldJob = $job;
 bundleAction($f, 'check');
 check(is_wp_error($f['manager']->handle('install', $oldJob['id'], $oldJob['revision'])), 'Old browser job cannot start a replacement.');
@@ -141,11 +148,10 @@ check($job['items']['plugin/existing']['plan']['action'] === 'register', 'Plan e
 bundleAction($f, 'install'); bundleDrain($f);
 check($f['installer']->installs === 0 && $f['settings']->plugins[0]->localVersion === '', 'Registration keeps files and does not invent an installed ref.');
 
-foreach (['missing', 'duplicate', 'token', 'access', 'host', 'owner'] as $failure) {
+foreach (['missing', 'token', 'access', 'host', 'owner'] as $failure) {
     $f = bundleFixture([bundleEntry('denied')]);
     switch ($failure) {
         case 'missing': $f['settings']->connectors = []; break;
-        case 'duplicate': $f['settings']->connectors[] = clone $f['connector']; break;
         case 'token': $f['connector']->token = ''; break;
         case 'access': $f['connector']->denied = ['denied']; break;
         case 'host': $f['catalog']->items[0]['provider'] = 'github';
@@ -210,7 +216,7 @@ check(!$f['store']->locked && $f['installer']->installs === 0, 'Release lock on 
 // Changes between preflight and execution must not silently change the plan.
 $f = bundleFixture([bundleEntry('removed')]);
 $f['installer']->installed['plugin/removed'] = true;
-(new RepositoryManager($f['settings'], $f['installer']))->register('plugin', 'removed', ['connector' => 'bundle-github']);
+(new RepositoryManager($f['settings'], $f['installer']))->register('plugin', 'removed', ['connector' => 'bundle-github', 'updates' => 'commits']);
 bundleAction($f, 'check'); bundleDrain($f);
 unset($f['installer']->installed['plugin/removed']);
 bundleAction($f, 'install'); $job = bundleDrain($f);
@@ -242,6 +248,119 @@ bundleAction($f, 'retry'); $job = bundleDrain($f);
 check($job['phase'] === 'ready', 'Retry prerequisite checks after fixing credentials.');
 $f['catalog']->items[] = bundleEntry('new-entry');
 check(is_wp_error($f['manager']->handle('install', $job['id'], $job['revision'])), 'A changed catalog requires fresh review.');
+
+// Bundle policy tracks the listed branch and freezes the reviewed commit.
+$masterEntry = bundleEntry('master-repo');
+$masterEntry['branch'] = 'master';
+$f = bundleFixture([$masterEntry]);
+bundleAction($f, 'check'); $job = bundleDrain($f);
+check($job['phase'] === 'ready' && end($f['connector']->calls) === ['commits', 'master'], 'Resolve commits from the manifest branch, including master.');
+$f['connector']->commit = 'cccccccccccccccccccccccccccccccccccccccc';
+bundleAction($f, 'install'); bundleDrain($f);
+check($f['settings']->plugins[0]->updates === 'commits' && $f['settings']->plugins[0]->branch === 'master', 'Future updates retain commit mode and the selected branch.');
+check($f['settings']->plugins[0]->localVersion === 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'Persist the installed preflight commit, not the new branch head.');
+$f = bundleFixture([bundleEntry('no-commit')]);
+$f['connector']->commit = '';
+bundleAction($f, 'check'); $job = bundleDrain($f);
+check($job['phase'] === 'blocked' && $f['installer']->installs === 0, 'Missing commit blocks installation without falling back to tags.');
+$missingBranch = bundleEntry('no-branch');
+$missingBranch['branch'] = 'missing';
+$f = bundleFixture([$missingBranch]);
+bundleAction($f, 'check'); $job = bundleDrain($f);
+check($job['phase'] === 'blocked', 'Missing configured branch blocks preflight.');
+
+// Explicit selections distinguish otherwise identical connectors and remain
+// attached to the job through checks, execution, reloads and retries.
+class TwoProviderCatalogFixture extends BundleCatalogFixture {
+    public function get(): array {
+        $catalog = parent::get();
+        $catalog['connectors']['gitlab'] = ['type' => 'gitlab', 'host' => 'gitlab.rrze.fau.de', 'owner' => 'rrze-webteam'];
+        return $catalog;
+    }
+}
+$f = bundleFixture([bundleEntry('github-repo'), bundleEntry('gitlab-repo')]);
+$entries = $f['catalog']->items;
+$entries[1]['provider'] = 'gitlab';
+$f['catalog'] = new TwoProviderCatalogFixture($entries);
+$chosenGithub = clone $f['connector'];
+$chosenGithub->id = 'chosen-github';
+$f['connector']->token = ''; // The unselected connector must not be used.
+$chosenGitlab = new class extends BundleConnectorFixture {
+    public function getType(): string { return 'gitlab'; }
+    public function getUrl(string $repository): string { return 'https://gitlab.rrze.fau.de/rrze-webteam/' . $repository; }
+};
+$chosenGitlab->id = 'chosen-gitlab';
+$chosenGitlab->owner = 'rrze-webteam';
+$chosenGitlab->token = 'gitlab-secret';
+$f['settings']->connectors[] = $chosenGithub;
+$f['settings']->connectors[] = $chosenGitlab;
+$f['manager'] = new BundleManager($f['catalog'], $f['store'], $f['settings'], $f['installer']);
+$choices = $f['manager']->connectorChoices();
+check(count($choices['github']) === 2 && count($choices['gitlab']) === 1, 'Offer multiple compatible connectors separately by provider.');
+check(!$choices['github'][0]['has_token'] && $choices['github'][1]['has_token'], 'Expose credential presence without exposing credentials.');
+check(!str_contains(json_encode($choices), 'bundle-secret-token') && !str_contains(json_encode($choices), 'gitlab-secret'), 'Selector metadata excludes tokens.');
+check(is_wp_error($f['manager']->handle('check')), 'Selections are required before a job starts.');
+check(is_wp_error($f['manager']->handle('check', '', -1, ['github' => 'chosen-github'])), 'Require a GitLab selection as well.');
+check(is_wp_error($f['manager']->handle('check', '', -1, ['github' => [], 'gitlab' => 'chosen-gitlab'])), 'Reject malformed selection values.');
+check($f['store']->job === null, 'Invalid selections do not create a job.');
+$selection = ['github' => 'chosen-github', 'gitlab' => 'chosen-gitlab'];
+$result = $f['manager']->handle('check', '', -1, $selection + ['unrelated' => 'discard']);
+check(!is_wp_error($result) && $result['job']['connectors'] === $selection, 'Store only required provider selections.');
+$job = bundleDrain($f);
+check($job['phase'] === 'ready', 'Explicit choice removes duplicate-connector ambiguity.');
+check($job['items']['plugin/github-repo']['options']['connector'] === 'chosen-github'
+    && $job['items']['plugin/gitlab-repo']['options']['connector'] === 'chosen-gitlab', 'Use the chosen connector for each provider.');
+$f['manager'] = new BundleManager($f['catalog'], $f['store'], $f['settings'], $f['installer']);
+check($f['manager']->handle('status')['job']['connectors'] === $selection, 'Selections survive reopening.');
+// Supplying alternative IDs at installation must not change the reviewed job.
+$f['connector']->token = 'working-but-unselected';
+$chosenGithub->token = '';
+$result = $f['manager']->handle('install', $job['id'], $job['revision'], ['github' => 'bundle-github', 'gitlab' => 'chosen-gitlab']);
+check(!is_wp_error($result), 'Start reviewed job.');
+$job = bundleDrain($f);
+check($job['items']['plugin/github-repo']['status'] === 'failed', 'Never switch to another connector when the selected token becomes unavailable.');
+check($job['items']['plugin/gitlab-repo']['status'] === 'done', 'Independent selected provider still succeeds.');
+$chosenGithub->token = 'repaired';
+bundleAction($f, 'retry'); $job = bundleDrain($f);
+check($job['connectors'] === $selection && $job['items']['plugin/github-repo']['status'] === 'done', 'Installation retry keeps the selected IDs.');
+// Failed preflight retries likewise retain their selections.
+$result = $f['manager']->handle('check', $job['id'], $job['revision'], $selection);
+$chosenGitlab->token = '';
+$job = bundleDrain($f);
+check($job['phase'] === 'blocked', 'Selected missing token is a prerequisite failure.');
+$chosenGitlab->token = 'repaired';
+bundleAction($f, 'retry'); $job = bundleDrain($f);
+check($job['phase'] === 'ready' && $job['connectors'] === $selection, 'Preflight retry keeps the selected IDs.');
+$chosenGitlab->owner = 'different-group';
+bundleAction($f, 'install'); $job = bundleDrain($f);
+check($job['items']['plugin/gitlab-repo']['status'] === 'failed', 'Revalidate the selected connector’s owner before execution.');
+check($f['manager']->connectorChoices()['gitlab'] === [], 'Do not offer incompatible owners in the selector.');
+unset($f['store']->job['connectors']);
+$job = $f['store']->job;
+check(is_wp_error($f['manager']->handle('retry', $job['id'], $job['revision'])), 'Older jobs require explicit selections and fresh preflight.');
+
+// GitHub organization names are case-insensitive in selection and execution.
+foreach (['rrze-webteam', 'RRZE-WEBTEAM', 'RrZe-WeBtEaM'] as $owner) {
+    $f = bundleFixture([bundleEntry('case-matching')]);
+    $f['connector']->owner = $owner;
+    check(count($f['manager']->connectorChoices()['github']) === 1, 'Offer GitHub connectors regardless of owner capitalization.');
+    bundleAction($f, 'check'); $job = bundleDrain($f);
+    check($job['phase'] === 'ready', 'GitHub owner casing also passes server-side preflight.');
+    bundleAction($f, 'install'); $job = bundleDrain($f);
+    check($job['items']['plugin/case-matching']['status'] === 'done', 'GitHub owner casing also passes installation validation.');
+    check($f['connector']->owner === $owner, 'Matching does not rewrite stored connector settings.');
+}
+$f = bundleFixture([bundleEntry('host-case')]);
+$hostConnector = new class extends BundleConnectorFixture {
+    public function getUrl(string $repository): string { return 'https://GitHub.COM/RRZE-Webteam/' . $repository; }
+};
+$hostConnector->id = 'bundle-github';
+$hostConnector->owner = 'rrze-webteam';
+$hostConnector->token = 'fixture-token';
+$f['settings']->connectors = [$hostConnector];
+check(count($f['manager']->connectorChoices()['github']) === 1, 'Host capitalization does not exclude a matching connector.');
+$hostConnector->owner = 'different-owner';
+check($f['manager']->connectorChoices()['github'] === [], 'Different GitHub owners remain excluded.');
 
 echo 'Passed ' . ($checks - $beforeBundleChecks) . " bundle checks.\n";
 
@@ -316,6 +435,13 @@ check($bundle_response['status'] === 403, 'Mutations require POST.');
 $_SERVER['REQUEST_METHOD'] = 'POST';
 $admin->request();
 check($bundle_response['success'] && $bundle_response['data']['job']['id'] === 'second-network', 'Authorized status reads correct network.');
+$_POST['connectors'] = 'not-an-array';
+$admin->request();
+check($bundle_response['status'] === 400, 'AJAX rejects malformed connector maps.');
+$_POST['connectors'] = ['github' => ['nested']];
+$admin->request();
+check($bundle_response['status'] === 400, 'AJAX rejects nested connector IDs.');
+$_POST['connectors'] = [];
 $bundle_mods = false;
 $_POST['operation'] = 'check';
 $before = $wpdb->acquisitions;

@@ -22,7 +22,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-settings",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/cms-workflow",
@@ -31,7 +31,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "cms-workflow",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/contact-form-7",
@@ -40,7 +40,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "contact-form-7",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-cf7-redirect",
@@ -49,7 +49,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-cf7-redirect",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-cf7-save",
@@ -58,7 +58,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-cf7-save",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "theme/FAU-Einrichtungen",
@@ -67,7 +67,7 @@
       "branch": "master",
       "type": "theme",
       "folder": "FAU-Einrichtungen",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "theme/FAU-Elemental",
@@ -76,7 +76,7 @@
       "branch": "main",
       "type": "theme",
       "folder": "FAU-Elemental",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/fau-jobportal",
@@ -85,7 +85,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "fau-jobportal",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "theme/FAU-Medfak",
@@ -94,7 +94,7 @@
       "branch": "master",
       "type": "theme",
       "folder": "FAU-Medfak",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "theme/FAU-Natfak",
@@ -103,7 +103,7 @@
       "branch": "master",
       "type": "theme",
       "folder": "FAU-Natfak",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "theme/FAU-Philfak",
@@ -112,7 +112,7 @@
       "branch": "master",
       "type": "theme",
       "folder": "FAU-Philfak",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "theme/FAU-RWFak",
@@ -121,7 +121,7 @@
       "branch": "master",
       "type": "theme",
       "folder": "FAU-RWFak",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "theme/FAU-Techfak",
@@ -130,7 +130,7 @@
       "branch": "master",
       "type": "theme",
       "folder": "FAU-Techfak",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/fau-cris",
@@ -139,7 +139,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "fau-cris",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "theme/fau-events",
@@ -148,7 +148,7 @@
       "branch": "master",
       "type": "theme",
       "folder": "fau-events",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/FAU-Fehlermeldungen",
@@ -157,7 +157,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "FAU-Fehlermeldungen",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/fau-oembed",
@@ -166,7 +166,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "fau-oembed",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/fau-orga-breadcrumb",
@@ -175,7 +175,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "fau-orga-breadcrumb",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/fau-person",
@@ -184,7 +184,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "fau-person",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/FAU-Studium-Embed",
@@ -193,7 +193,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "FAU-Studium-Embed",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/fau-studium-display",
@@ -202,7 +202,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "fau-studium-display",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/FAU-Studium-Fachanteile",
@@ -211,7 +211,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "FAU-Studium-Fachanteile",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "theme/francesca-child",
@@ -220,7 +220,7 @@
       "branch": "main",
       "type": "theme",
       "folder": "francesca-child",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-highcharts",
@@ -229,7 +229,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-highcharts",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-remoter",
@@ -238,7 +238,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-remoter",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-designsystem",
@@ -247,7 +247,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-designsystem",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-jobspreader-analytics",
@@ -256,7 +256,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-jobspreader-analytics",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-log",
@@ -265,7 +265,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-log",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-search",
@@ -274,7 +274,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-search",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "theme/rrze-2019",
@@ -283,7 +283,7 @@
       "branch": "master",
       "type": "theme",
       "folder": "rrze-2019",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-ac",
@@ -292,7 +292,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-ac",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-answers",
@@ -301,7 +301,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-answers",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-appointment",
@@ -310,7 +310,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-appointment",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-autoshare",
@@ -319,7 +319,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-autoshare",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-block-control",
@@ -328,7 +328,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-block-control",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-bluesky",
@@ -337,7 +337,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-bluesky",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-cache",
@@ -346,7 +346,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-cache",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-cli",
@@ -355,7 +355,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-cli",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-cmsinfo",
@@ -364,7 +364,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-cmsinfo",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-downloads",
@@ -373,7 +373,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-downloads",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-elements",
@@ -382,7 +382,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-elements",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-elements-blocks",
@@ -391,7 +391,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-elements-blocks",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-advanced-search",
@@ -400,7 +400,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-advanced-search",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-events",
@@ -409,7 +409,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-events",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-expo",
@@ -418,7 +418,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-expo",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-faubox",
@@ -427,7 +427,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-faubox",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-faudir",
@@ -436,7 +436,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-faudir",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-formular",
@@ -445,7 +445,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-formular",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-git",
@@ -454,7 +454,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-git",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-green-office",
@@ -463,7 +463,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-green-office",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-greetings",
@@ -472,7 +472,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-greetings",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-jobs",
@@ -481,7 +481,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-jobs",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-calendar",
@@ -490,7 +490,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-calendar",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-lectures",
@@ -499,7 +499,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-lectures",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-legal",
@@ -508,7 +508,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-legal",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-literature-manager",
@@ -517,7 +517,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-literature-manager",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-multilang",
@@ -526,7 +526,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-multilang",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-notices",
@@ -535,7 +535,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-notices",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-netzwerk-audit",
@@ -544,7 +544,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-netzwerk-audit",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-newsletter",
@@ -553,7 +553,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-newsletter",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-obsidian-wizard",
@@ -562,7 +562,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-obsidian-wizard",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-post-expiration",
@@ -571,7 +571,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-post-expiration",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-preise",
@@ -580,7 +580,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-preise",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-private-site",
@@ -589,7 +589,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-private-site",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-qr",
@@ -598,7 +598,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-qr",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-ratebutton",
@@ -607,7 +607,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-ratebutton",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-research-data",
@@ -616,7 +616,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-research-data",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-rss",
@@ -625,7 +625,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-rss",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-rsvp",
@@ -634,7 +634,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-rsvp",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-rsvp-network",
@@ -643,7 +643,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-rsvp-network",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-servicekatalog",
@@ -652,7 +652,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-servicekatalog",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-siteimprove",
@@ -661,7 +661,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-siteimprove",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-sso",
@@ -670,7 +670,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-sso",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-statistik",
@@ -679,7 +679,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-statistik",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-typesettings",
@@ -688,7 +688,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-typesettings",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-univis",
@@ -697,7 +697,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-univis",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-video",
@@ -706,7 +706,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-video",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-webt",
@@ -715,7 +715,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-webt",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-wmp",
@@ -724,7 +724,7 @@
       "branch": "main",
       "type": "plugin",
       "folder": "rrze-wmp",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-wp-cron",
@@ -733,7 +733,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-wp-cron",
-      "updates": "tags"
+      "updates": "commits"
     },
     {
       "id": "plugin/rrze-xliff",
@@ -742,7 +742,7 @@
       "branch": "master",
       "type": "plugin",
       "folder": "rrze-xliff",
-      "updates": "tags"
+      "updates": "commits"
     }
   ]
 }

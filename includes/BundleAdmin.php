@@ -47,7 +47,8 @@ class BundleAdmin
             'network' => get_current_network_id(), 'nonce' => wp_create_nonce($this->nonceAction()),
             'catalog' => (new Catalog())->get(),
             'labels' => [
-                'idle' => __('Select Check prerequisites to review this bundle.', 'rrze-updater'),
+                'idle' => __('Select connectors, then check prerequisites to review this bundle.', 'rrze-updater'),
+                'selectionChanged' => __('Connector selection changed. Run prerequisite checks again to use these connectors.', 'rrze-updater'),
                 'checking' => __('Checking prerequisites…', 'rrze-updater'),
                 'ready' => __('Ready. Review the planned actions, then install the bundle.', 'rrze-updater'),
                 'blocked' => __('Prerequisites need attention. Fix the listed errors, then retry checks.', 'rrze-updater'),
@@ -71,6 +72,7 @@ class BundleAdmin
             wp_die(esc_html__('Network administration and plugin/theme installation permissions are required.', 'rrze-updater'));
         }
         $bundle = (new Catalog())->get();
+        $connectorChoices = (new BundleManager())->connectorChoices();
         $servicesUrl = network_admin_url('admin.php?page=rrze-updater-settings&tab=services');
         require __DIR__ . '/views/bundles/index.php';
     }
@@ -91,11 +93,24 @@ class BundleAdmin
             wp_send_json_error(['message' => __('File modifications are disabled on this installation.', 'rrze-updater')], 403);
             return;
         }
+        $connectors = $_POST['connectors'] ?? [];
+        if (!is_array($connectors)) {
+            wp_send_json_error(['message' => __('Invalid connector selection.', 'rrze-updater')], 400);
+            return;
+        }
+        foreach ($connectors as $provider => $id) {
+            if (!is_string($id)) {
+                wp_send_json_error(['message' => __('Invalid connector selection.', 'rrze-updater')], 400);
+                return;
+            }
+            $connectors[$provider] = sanitize_text_field(wp_unslash($id));
+        }
         try {
             $result = (new BundleManager())->handle(
                 $operation,
                 sanitize_text_field(wp_unslash($_POST['job'] ?? '')),
-                (int) ($_POST['revision'] ?? -1)
+                (int) ($_POST['revision'] ?? -1),
+                $connectors
             );
             if (is_wp_error($result)) {
                 wp_send_json_error(['message' => $result->get_error_message()], 409);

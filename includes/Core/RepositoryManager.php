@@ -251,7 +251,7 @@ class RepositoryManager
         $extension->checkForUpdates();
         if (!$extension->remoteVersion || $extension->lastError) {
             return $this->error('remote_ref_unavailable', sprintf(
-                'No usable %s ref found for %s. Check access and whether a tag/release exists. %s',
+                'No usable %s ref found for %s. Check repository access and the configured branch or update policy. %s',
                 $extension->updates, $extension->repository, (string) $extension->lastError));
         }
         $validation = $extension instanceof Plugin

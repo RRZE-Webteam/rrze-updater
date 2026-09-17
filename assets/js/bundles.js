@@ -8,6 +8,9 @@
     let busy = false;
     let paused = true;
     let loaded = false;
+    const providers = Object.keys(config.catalog.connectors);
+    const selections = () => Object.fromEntries(providers.map(provider => [provider, element(`connector-${provider}`).value]));
+    const selectionChanged = () => job && providers.some(provider => selections()[provider] !== job.connectors?.[provider]);
 
     function render() {
         const phase = job?.phase || 'idle';
@@ -36,12 +39,15 @@
         element('progress').value = completed;
         element('count').textContent = label('progress').replace('%1$s', completed).replace('%2$s', items.length);
         element('status').textContent = working && paused && !busy ? label('paused') : label(phase);
-        element('check').disabled = !loaded || busy;
+        const changed = selectionChanged();
+        if (changed && !busy) element('status').textContent = label('selectionChanged');
+        providers.forEach(provider => { element(`connector-${provider}`).disabled = !loaded || busy; });
+        element('check').disabled = !loaded || busy || providers.some(provider => !selections()[provider]);
         element('install').hidden = phase !== 'ready';
         element('resume').hidden = !working || busy;
         element('retry').hidden = !(phase === 'blocked' || (phase === 'complete' && items.some(item => item.status === 'failed')));
         element('pause').hidden = !busy;
-        ['install', 'resume', 'retry'].forEach(name => { element(name).disabled = busy; });
+        ['install', 'resume', 'retry'].forEach(name => { element(name).disabled = busy || changed; });
     }
 
     async function request(operation) {
@@ -49,13 +55,20 @@
             action: config.action, operation, nonce: config.nonce, network: config.network,
             job: job?.id || '', revision: job?.revision ?? -1,
         });
+        if (operation === 'check') {
+            Object.entries(selections()).forEach(([provider, id]) => body.set(`connectors[${provider}]`, id));
+        }
         const response = await fetch(config.url, { method: 'POST', credentials: 'same-origin', body });
         let result;
         try { result = await response.json(); } catch { throw new Error(label('networkError')); }
         if (!response.ok || !result.success) {
             throw new Error(result.data?.message || label('networkError'));
         }
+        const previousId = job?.id;
         job = result.data.job;
+        if (job?.connectors && (!loaded || previousId !== job.id)) {
+            providers.forEach(provider => { element(`connector-${provider}`).value = job.connectors[provider] || ''; });
+        }
         loaded = true;
     }
 
@@ -84,6 +97,7 @@
             render();
         }
     }
+    providers.forEach(provider => element(`connector-${provider}`).addEventListener('change', render));
     element('check').addEventListener('click', () => run('check'));
     element('install').addEventListener('click', () => run('install'));
     element('resume').addEventListener('click', () => run('resume'));

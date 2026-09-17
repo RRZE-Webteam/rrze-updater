@@ -192,16 +192,19 @@ Network administrators can open **Updater → Recommended installation** to inst
 **RRZE Standard**, a predefined bundle of 71 plugins and 10 themes. The version 1
 manifest is shipped in `includes/Bundles/standard.json`. Repository names, folder
 case and branches follow the curated list; `rrze-notices` remains on GitLab.
-Every entry currently uses tags. A missing tag is a prerequisite error, with no
-fallback to the configured branch.
+Every entry uses commits from its configured `main` or `master` branch. Preflight
+resolves the exact commit to install; tags and releases are not used by this bundle.
 
-1. Configure exactly one connector for `github.com / RRZE-Webteam` and one for
-   `gitlab.rrze.fau.de / rrze-webteam` under **Settings → Services**. Both require
-   access tokens for this bundle. Credentials are read from the existing service
-   settings and are never copied into the bundle definition or progress record.
+1. Configure connectors for `github.com / RRZE-Webteam` and
+   `gitlab.rrze.fau.de / rrze-webteam` under **Settings → Services**. On the bundle
+   page, select one GitHub connector and one GitLab connector for the process.
+   Multiple compatible connectors are supported; a sole match is preselected.
+   Both selected connectors require access tokens. Only the selected IDs are saved
+   with the job; credentials remain in service settings. Resume and retry keep
+   these IDs. Changing the selection requires new prerequisite checks.
 2. Select **Check prerequisites**. Each request checks one repository, verifies
    access, resolves its target ref and identifies installed files, conflicting
-   associations and required parent themes. Missing or ambiguous connectors,
+   associations and required parent themes. Missing or incompatible selected connectors,
    unavailable refs, missing parents and dependency cycles block installation.
 3. Review the actions and refs, then select **Install bundle**. Missing extensions
    are installed and registered; existing unmanaged extensions are registered;
@@ -213,9 +216,9 @@ fallback to the configured branch.
    is stored per network. Reopening the page reads progress without automatically
    starting installation. Failed entries can be retried independently of successes.
 
-The installation uses the refs reviewed during preflight. New tags published while
-processing do not change those refs; normal updater checks subsequently continue
-using each entry's saved update policy. Initial installation must start within one
+The installation uses the commit hashes reviewed during preflight. New commits
+pushed while processing do not change those hashes; normal updater checks
+subsequently continue tracking commits on each entry's configured branch. Initial installation must start within one
 day of preflight. Bundled parent themes are processed before their children. A
 parent outside the bundle must already be installed; it is not silently downloaded
 from WordPress.org. A failed parent prevents dependent child installation, while
