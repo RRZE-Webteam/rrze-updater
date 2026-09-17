@@ -83,12 +83,13 @@ class Theme extends Extension
             );
         }
 
-        $styleValidation = $this->validateRemoteThemeStylesheet($ref);
-        if (is_wp_error($styleValidation)) {
-            return $styleValidation;
+        $stylesheet = $this->getValidatedRemoteThemeStylesheet($ref);
+        if (is_wp_error($stylesheet)) {
+            return $stylesheet;
         }
 
-        if (!$this->hasRemoteThemeIndexTemplate($ref)) {
+        // Child themes inherit templates from the parent named in style.css.
+        if (!$this->getStylesheetHeader($stylesheet, 'Template') && !$this->hasRemoteThemeIndexTemplate($ref)) {
             $config = new Config();
             return new \WP_Error(
                 'rrze_updater_missing_theme_index_template',
@@ -104,7 +105,7 @@ class Theme extends Extension
         return true;
     }
 
-    private function validateRemoteThemeStylesheet(string $ref): bool|\WP_Error
+    private function getValidatedRemoteThemeStylesheet(string $ref): string|\WP_Error
     {
         $config = new Config();
         $styleFile = $config->getThemeMainFile();
@@ -121,8 +122,8 @@ class Theme extends Extension
             );
         }
 
-        if (preg_match('/^[\s\/\*#@]*Theme Name\s*:\s*(.+)$/mi', $content)) {
-            return true;
+        if ($this->getStylesheetHeader($content, 'Theme Name') !== '') {
+            return $content;
         }
 
         return new \WP_Error(
@@ -133,6 +134,17 @@ class Theme extends Extension
                 $styleFile
             )
         );
+    }
+
+    /** Read remote header text using the rules of WordPress's get_file_data(). */
+    private function getStylesheetHeader(string $stylesheet, string $header): string
+    {
+        $headerText = str_replace("\r", "\n", substr($stylesheet, 0, 8192));
+        $pattern = '/^(?:[ \t]*<\?(?:php)?)?[ \t\/*#@]*' . preg_quote($header, '/') . ':(.*)$/mi';
+        if (!preg_match($pattern, $headerText, $match)) {
+            return '';
+        }
+        return trim(preg_replace('/\s*(?:\*\/|\?>).*/', '', $match[1]));
     }
 
     private function hasRemoteThemeIndexTemplate(string $ref): bool

@@ -293,6 +293,58 @@ namespace {
     $runCommand->invoke($advisoryCLI, 'plugin', 'unregister', ['cli-advisory'], []);
     check(count(WP_CLI::$warnings) === 1, 'Unregister does not print stale warnings.');
 
+    class ThemeStructureConnectorFixture extends ConnectorFixture {
+        public array $files = [];
+        public function getRemoteFile(string $repository, string $ref, string $file): string|bool {
+            return $this->files[$file] ?? false;
+        }
+    }
+    $themeConnector = new ThemeStructureConnectorFixture();
+    $themeConnector->id = 'theme-structure';
+    $themeDefinition = RRZE\Updater\Core\Theme::createFromArray(['repository' => 'child']);
+    $themeDefinition->connector = $themeConnector;
+    foreach ([
+        "/*\nTheme Name: Child\nTemplate: parent-theme\n*/",
+        "/*\r\n * Theme Name: Child\r\n * Template: parent-theme\r\n */",
+        "/* Theme Name: Child */\r/* tEmPlAtE: parent-theme */",
+    ] as $stylesheet) {
+        $themeConnector->files = ['style.css' => $stylesheet];
+        check($themeDefinition->validateRemoteThemeRepository('v1') === true,
+            'Child themes inherit index templates from their parent.');
+    }
+    foreach (['', "Template:\nVersion: 1.0", 'Template:   ', '/* Template: */',
+        str_repeat(' ', 8192) . "\nTemplate: parent-theme"] as $template) {
+        $themeConnector->files = ['style.css' => "Theme Name: Standalone\n$template"];
+        errorCode($themeDefinition->validateRemoteThemeRepository('v1'), 'missing_theme_index_template');
+    }
+    foreach (['index.php', 'templates/index.html'] as $index) {
+        $themeConnector->files = ['style.css' => 'Theme Name: Standalone', $index => 'index template'];
+        check($themeDefinition->validateRemoteThemeRepository('v1') === true,
+            'Standalone classic and block themes still validate.');
+    }
+    $themeConnector->files = [];
+    errorCode($themeDefinition->validateRemoteThemeRepository('v1'), 'missing_theme_stylesheet');
+    $themeConnector->files = ['style.css' => "Theme Name:   \nTemplate: parent-theme"];
+    errorCode($themeDefinition->validateRemoteThemeRepository('v1'), 'missing_theme_name_header');
+
+    $themeSettings = new Settings();
+    $themeSettings->plugins = $themeSettings->themes = [];
+    $themeSettings->connectors = [$themeConnector];
+    $themeInstaller = new InstallerFixture();
+    $themeManager = new RepositoryManager($themeSettings, $themeInstaller);
+    $themeConnector->files = ['style.css' => "Theme Name: Child\nTemplate: parent-theme"];
+    foreach (['register', 'install'] as $action) {
+        $repository = "child-$action";
+        if ($action === 'register') {
+            $themeInstaller->installed["theme/$repository"] = true;
+        }
+        check(is_string($themeManager->$action('theme', $repository, ['connector' => 'theme-structure'])),
+            "CLI manager can $action a child theme without a local index.");
+        $storedThemes = $storage['rrze_updater']['themes'];
+        check(end($storedThemes)['repository'] === $repository, 'Save child-theme association.');
+    }
+    check($themeInstaller->installs === 1, 'Only install invokes the WordPress installer adapter.');
+
     class GithubApiFixture extends GithubConnector {
         public mixed $response;
         public array $requests = [];
