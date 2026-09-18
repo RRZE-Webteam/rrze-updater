@@ -7,7 +7,7 @@ namespace RRZE\Updater {
 namespace {
 require_once __DIR__ . '/admin-saves.php';
 
-use RRZE\Updater\{AdminIntegration, Config, Main, TokenNotice};
+use RRZE\Updater\{AdminIntegration, Config, Main, TokenNotice, UpdateProvider};
 
 // Small admin API fixtures; use WordPress's real hook dispatcher throughout.
 function esc_html($value) { return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); }
@@ -143,7 +143,10 @@ $main->loaded();
 foreach (['plugins', 'themes'] as $kind) {
     $callbacks = array_values($wp_filter['site_transient_update_' . $kind]->callbacks[10]);
     check(count($callbacks) === 2 && $callbacks[0]['function'][0] instanceof AdminIntegration
-        && $callbacks[1]['function'][0] === $main, 'Bootstrap registers presentation before update metadata at priority 10.');
+        && $callbacks[1]['function'][0] instanceof UpdateProvider, 'Bootstrap registers presentation before update metadata at priority 10.');
+    $writeCallbacks = array_values($wp_filter['pre_set_site_transient_update_' . $kind]->callbacks[10]);
+    check(count($writeCallbacks) === 1 && $writeCallbacks[0]['function'] === $callbacks[1]['function'],
+        'Transient reads and writes share the same update provider callback.');
 }
 $wp_filter = $savedAdminHooks;
 echo 'Passed ' . ($checks - $beforeAdminIntegration) . " admin integration checks.\n";

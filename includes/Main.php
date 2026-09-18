@@ -19,8 +19,6 @@ use RRZE\Updater\Upgrader\ThemeUpgraderSkin;
 
 use WP_Error;
 
-use stdClass;
-
 /**
  * The Main class for the RRZE Updater plugin.
  *
@@ -79,11 +77,7 @@ class Main
 
         (new AdminIntegration($this->settings, $this->controller, $this->config))->register();
 
-        // Set up filters and actions related to plugin and theme updates.
-        add_filter('site_transient_update_plugins', [$this, 'siteTransientUpdatePlugins']);
-        add_filter('site_transient_update_themes', [$this, 'siteTransientUpdateThemes']);
-        add_filter('pre_set_site_transient_update_plugins', [$this, 'preSetSiteTransientUpdatePlugins']);
-        add_filter('pre_set_site_transient_update_themes', [$this, 'preSetSiteTransientUpdateThemes']);
+        (new UpdateProvider($this->settings))->register();
 
         // Download authenticated repository packages only when the upgrader needs them.
         add_filter('upgrader_pre_download', [$this, 'upgraderPreDownloadFilter'], 10, 4);
@@ -98,97 +92,6 @@ class Main
         if (defined('WP_CLI') && WP_CLI) {
             CLI::registerCommands($this->settings);
         }
-    }
-
-    public function siteTransientUpdatePlugins($transient)
-    {
-        return $this->preSetSiteTransientUpdatePlugins($transient);
-    }
-
-    public function siteTransientUpdateThemes($transient)
-    {
-        return $this->preSetSiteTransientUpdateThemes($transient);
-    }
-
-    /**
-     * Filters the site transient for plugin updates before it's set.
-     *
-     * This method is a filter used to modify the site transient data for plugin updates before it's set in WordPress.
-     * It customizes the update information for RRZE Updater-managed plugins, including removing the default update response
-     * and adding a custom response to include RRZE Updater-specific data such as remote version and download URLs.
-     *
-     * @param object $transient The site transient data for plugin updates.
-     * @return object Modified site transient data for plugin updates.
-     */
-    public function preSetSiteTransientUpdatePlugins($transient)
-    {
-        if (empty($transient->checked)) {
-            return $transient;
-        }
-        foreach (get_plugins() as $pluginFile => $data) {
-            foreach ($this->settings->plugins as $extension) {
-                if ($extension->installationFolder !== dirname($pluginFile)) {
-                    continue;
-                }
-                // A managed installation must never inherit a same-slug .org offer,
-                // including during an API outage or when its Git ref is current.
-                unset($transient->response[$pluginFile], $transient->no_update[$pluginFile]);
-                $hasUpdate = $extension->connector && $extension->remoteVersion
-                    && $extension->remoteVersion !== $extension->localVersion;
-                $response = (object) [
-                    'id' => $pluginFile, 'slug' => $extension->installationFolder, 'plugin' => $pluginFile,
-                    'new_version' => $hasUpdate ? $extension->getRemoteVersionLabel() : ($data['Version'] ?? ''),
-                    'url' => $extension->connector ? $extension->connector->getUrl($extension->repository) : '',
-                    'package' => $hasUpdate ? $extension->connector->downloadRepoZip($extension->repository, $extension->remoteVersion) : '',
-                    'icons' => [], 'banners' => [], 'banners_rtl' => [], 'tested' => '',
-                    'requires_php' => '', 'compatibility' => new stdClass(),
-                ];
-                $bucket = $hasUpdate ? 'response' : 'no_update';
-                $transient->{$bucket}[$pluginFile] = $response;
-                break;
-            }
-        }
-        return $transient;
-    }
-
-    /**
-     * Filters the pre-set site transient for theme updates.
-     *
-     * This method is a filter used to modify the pre-set site transient data for theme updates. It customizes the update information
-     * for RRZE Updater-managed themes by removing the default theme update response and adding a custom response to include
-     * RRZE Updater-specific data for themes. This customization ensures that RRZE Updater-managed themes are properly
-     * handled and displayed in the WordPress admin interface during the update process. It also includes data required
-     * for enabling/disabling auto-updates links to appear correctly in the UI.
-     *
-     * @param object $transient The pre-set site transient data for theme updates.
-     * @return object Modified pre-set site transient data for theme updates.
-     */
-    public function preSetSiteTransientUpdateThemes($transient)
-    {
-        if (empty($transient->checked)) {
-            return $transient;
-        }
-        foreach (wp_get_themes() as $themeFolder => $theme) {
-            foreach ($this->settings->themes as $extension) {
-                if ($extension->installationFolder !== $themeFolder) {
-                    continue;
-                }
-                unset($transient->response[$themeFolder], $transient->no_update[$themeFolder]);
-                $hasUpdate = $extension->connector && $extension->remoteVersion
-                    && $extension->remoteVersion !== $extension->localVersion;
-                $response = [
-                    'theme' => $themeFolder,
-                    'new_version' => $hasUpdate ? $extension->getRemoteVersionLabel() : $theme->get('Version'),
-                    'url' => $extension->connector ? $extension->connector->getUrl($extension->repository) : '',
-                    'package' => $hasUpdate ? $extension->connector->downloadRepoZip($extension->repository, $extension->remoteVersion) : '',
-                    'requires' => '', 'requires_php' => '',
-                ];
-                $bucket = $hasUpdate ? 'response' : 'no_update';
-                $transient->{$bucket}[$themeFolder] = $response;
-                break;
-            }
-        }
-        return $transient;
     }
 
     /**
