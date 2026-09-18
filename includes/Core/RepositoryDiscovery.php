@@ -23,7 +23,7 @@ class RepositoryDiscovery
             // The public users endpoint omits private repositories. Authenticated
             // user listings include collaborations, so filter every result by owner.
             $path = ($account['type'] ?? '') === 'Organization' ? '/orgs/' . $owner . '/repos' : '/user/repos';
-            $query = ['per_page' => 100, 'page' => $page, 'sort' => 'full_name', 'direction' => 'asc'];
+            $query = ['per_page' => 100, 'page' => $page, 'sort' => 'updated', 'direction' => 'desc'];
         } else {
             $group = $this->request('/groups/' . $owner, [], $refresh);
             if (is_wp_error($group) && $group->get_error_code() !== 'discovery_not_found') {
@@ -42,7 +42,7 @@ class RepositoryDiscovery
             } else {
                 $path = '/groups/' . (int) $group['id'] . '/projects';
             }
-            $query = ['per_page' => 100, 'page' => $page, 'order_by' => 'path', 'sort' => 'asc', 'include_subgroups' => 'false', 'with_shared' => 'false'];
+            $query = ['per_page' => 100, 'page' => $page, 'order_by' => 'updated_at', 'sort' => 'desc', 'include_subgroups' => 'false', 'with_shared' => 'false'];
         }
         $data = $this->request($path, $query, $refresh);
         if (is_wp_error($data)) {
@@ -170,6 +170,7 @@ class RepositoryDiscovery
         return [
             'id' => $repo[$this->isGithub() ? 'name' : 'path'], 'repository' => $repo[$this->isGithub() ? 'name' : 'path'],
             'description' => (string) ($repo['description'] ?? ''),
+            'updated_at' => (string) ($repo['updated_at'] ?? $repo['last_activity_at'] ?? ''),
             'branch' => (string) ($repo['default_branch'] ?? ''),
             'visibility' => $this->isGithub() ? (!empty($repo['private']) ? 'private' : 'public') : ($repo['visibility'] ?? 'private'),
             'archived' => !empty($repo['archived']),

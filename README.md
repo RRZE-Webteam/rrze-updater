@@ -257,13 +257,19 @@ repositories belonging directly to its configured owner/namespace. GitLab shared
 projects and descendants of the configured group are excluded; configure a
 connector for a subgroup to browse it. Tokens stay on the server.
 
-1. Search, filter, and select repositories in the DataViews table. The directory
+1. Search, filter, and select repositories in the DataViews table. Repositories
+   default to most recently updated first, with an **Updated** column showing the
+   provider timestamp. You can change the sort order in the table. The directory
    loads all API pages before offering search; selections persist across table
    pages and searches. Switching connector clears the selection. Use **Refresh
    repositories** to bypass the one-minute listing cache.
-2. For each selected repository, choose a branch and installation folder. The
-   actual default branch is preselected. Branch lists load on demand, including
-   additional API pages. Each job supports up to 100 repositories.
+2. The **Installation branch** column shows the branch to install, initially the
+   repository's default branch. Use **Change branch** in a row's actions to choose
+   another branch, even before selecting the repository. The column also shows
+   the default branch when it differs. Branch choices stay in sync with the
+   selected-repository controls below, where you can also set installation folders.
+   Branch lists load on demand, including additional API pages. Each job supports
+   up to 100 repositories.
 3. Select **Review selected repositories**. The server resolves each branch to an
    immutable commit and inspects the files at that commit. It recognizes a plugin
    by a `Plugin Name:` header in a root PHP file, regardless of filename, and a

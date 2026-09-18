@@ -13,6 +13,8 @@
 .rrze-catalog ul { columns: 3 240px; }
 .rrze-dataviews { border: 1px solid #dcdcde; border-radius: 4px; margin-top: 20px; overflow-x: auto; }
 .rrze-dataviews .dataviews-wrapper { min-height: 160px; }
+.rrze-branch-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; overflow-wrap: anywhere; }
+.rrze-branch-cell small { color: #646970; }
 .rrze-selection { border-top: 1px solid #dcdcde; padding-top: 24px; margin-top: 24px; }
 .rrze-selection-row { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(160px, 1fr) minmax(160px, 1fr) auto; align-items: center; gap: 20px; padding: 16px 0; border-top: 1px solid #eee; }
 .rrze-selection-row:last-of-type { margin-bottom: 20px; }
