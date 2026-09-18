@@ -42,6 +42,9 @@ class Settings
      */
     protected $optionName;
 
+    /** The snapshot this request actually read, used to detect its own edits. */
+    private array $baseline;
+
     /**
      * Constructor to Initialize Settings
      *
@@ -92,6 +95,7 @@ class Settings
                 $this->themes[] = $themeObj;
             }
         }
+        $this->baseline = $this->asArray();
     }
 
     /**
@@ -130,9 +134,84 @@ class Settings
      */
     public function save()
     {
-        return is_multisite()
-            ? update_site_option($this->optionName, $this->asArray())
-            : update_option($this->optionName, $this->asArray());
+        global $wpdb;
+        // Every writer (cron, admin, CLI and bundles) uses this short-lived lock.
+        // Keep it separate from the bundle filesystem lock; never hold it over HTTP.
+        $scope = is_multisite() ? 'network:' . get_current_network_id() : 'site:' . get_current_blog_id();
+        $lock = 'rrze_settings_' . md5(DB_NAME . '|' . $wpdb->base_prefix . '|' . $scope);
+        if ((string) $wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, 10)', $lock)) !== '1') {
+            return false;
+        }
+        try {
+            if (is_multisite()) {
+                foreach ([$this->optionName, 'notoptions'] as $key) {
+                    wp_cache_delete(get_current_network_id() . ':' . $key, 'site-options');
+                }
+            } else {
+                foreach ([$this->optionName, 'alloptions', 'notoptions'] as $key) {
+                    wp_cache_delete($key, 'options');
+                }
+            }
+            $local = $this->asArray();
+            $latest = (new self())->asArray();
+            $merged = $latest;
+            foreach (['connectors', 'plugins', 'themes'] as $kind) {
+                $records = $this->mergeChanges(
+                    array_column($this->baseline[$kind] ?? [], null, 'id'),
+                    array_column($local[$kind] ?? [], null, 'id'),
+                    array_column($latest[$kind] ?? [], null, 'id'),
+                    true
+                );
+                if ($records) {
+                    $merged[$kind] = array_values($records);
+                } else {
+                    unset($merged[$kind]);
+                }
+            }
+            $merged['options'] = $this->mergeChanges($this->baseline['options'], $local['options'], $latest['options']);
+            $saved = is_multisite()
+                ? update_site_option($this->optionName, $merged)
+                : update_option($this->optionName, $merged);
+            if ($saved || $merged === $latest) {
+                // Keep the local baseline: this object has not adopted remote edits.
+                $this->baseline = $local;
+                return true;
+            }
+            return false;
+        } catch (\UnexpectedValueException $e) {
+            // Concurrent edits to the same value require reloading, not data loss.
+            return false;
+        } finally {
+            $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $lock));
+        }
+    }
+
+    private function mergeChanges(array $before, array $local, array $latest, bool $records = false): array
+    {
+        foreach (array_unique(array_merge(array_keys($before), array_keys($local))) as $key) {
+            $had = array_key_exists($key, $before);
+            $has = array_key_exists($key, $local);
+            $exists = array_key_exists($key, $latest);
+            if ($had === $has && (!$has || $before[$key] === $local[$key])) {
+                continue;
+            }
+            if ($has === $exists && (!$has || $local[$key] === $latest[$key])) {
+                continue;
+            }
+            if ($records && $had && $has && $exists) {
+                $latest[$key] = $this->mergeChanges($before[$key], $local[$key], $latest[$key]);
+                continue;
+            }
+            if ($had !== $exists || ($had && $before[$key] !== $latest[$key])) {
+                throw new \UnexpectedValueException('Settings changed in another request.');
+            }
+            if ($has) {
+                $latest[$key] = $local[$key];
+            } else {
+                unset($latest[$key]);
+            }
+        }
+        return $latest;
     }
 
     /**

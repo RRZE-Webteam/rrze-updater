@@ -190,3 +190,5 @@ discoveryReset(fn() => ['unexpected' => 'object']);
 check(is_wp_error($api->branches('repo')), 'Malformed branch listing is a retryable error, not an empty success.');
 
 echo 'Passed ' . ($checks - $beforeDiscovery) . " discovery/inspection/custom-job checks.\n";
+
+require __DIR__ . '/settings.php';

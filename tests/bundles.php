@@ -467,8 +467,6 @@ check(is_wp_error($f['manager']->handle('cancel')), 'Cancellation without a save
 echo 'Passed ' . ($checks - $beforeBundleChecks) . " bundle checks.\n";
 
 // Exercise the real persistence/lock adapter and the AJAX authorization boundary.
-function wp_cache_delete($key, $group) { $GLOBALS['bundle_cache_deleted'][] = [$key, $group]; }
-function get_current_network_id() { return $GLOBALS['bundle_network'] ?? 1; }
 function get_network_option($network, $key, $default = false) { return $GLOBALS['network_storage'][$network][$key] ?? $default; }
 function update_network_option($network, $key, $value) { $GLOBALS['network_storage'][$network][$key] = $value; return true; }
 function current_user_can($capability) { return $GLOBALS['bundle_caps'][$capability] ?? false; }
@@ -480,20 +478,7 @@ function check_ajax_referer($action, $field) {
 }
 function wp_send_json_error($data, $status = null) { $GLOBALS['bundle_response'] = ['success' => false, 'status' => $status, 'data' => $data]; }
 function wp_send_json_success($data) { $GLOBALS['bundle_response'] = ['success' => true, 'data' => $data]; }
-if (!defined('DB_NAME')) { define('DB_NAME', 'fixture'); }
-$wpdb = new class {
-    public string $base_prefix = 'wp_';
-    public bool $locked = false;
-    public int $acquisitions = 0;
-    public function prepare($query, $name) { return str_replace('%s', $name, $query); }
-    public function get_var($query) {
-        if (str_contains($query, 'RELEASE_LOCK')) { $this->locked = false; return '1'; }
-        if ($this->locked) { return '0'; }
-        $this->locked = true;
-        $this->acquisitions++;
-        return '1';
-    }
-};
+$wpdb = new SettingsDatabaseFixture();
 $beforeBoundaryChecks = $checks;
 $realStore = new JobStore();
 $bundle_network = 1;

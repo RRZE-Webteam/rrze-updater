@@ -41,6 +41,28 @@ namespace {
     function trailingslashit($path) { return rtrim($path, '/\\') . '/'; }
     function untrailingslashit($path) { return rtrim($path, '/\\'); }
     function wp_delete_file($path) { unlink($path); }
+    function wp_cache_delete($key, $group) { $GLOBALS['bundle_cache_deleted'][] = [$key, $group]; }
+    function get_current_network_id() { return $GLOBALS['bundle_network'] ?? 1; }
+    function get_current_blog_id() { return 1; }
+    define('DB_NAME', 'fixture');
+    class SettingsDatabaseFixture {
+        public string $base_prefix = 'wp_';
+        public array $locks = [];
+        public bool $locked = false;
+        public bool $deny = false;
+        public int $acquisitions = 0;
+        public function prepare($query, $name) { return str_replace('%s', $name, $query); }
+        public function get_var($query) {
+            preg_match('/(?:GET_LOCK|RELEASE_LOCK)\(([^,)]+)/', $query, $match);
+            $name = $match[1];
+            if (str_contains($query, 'RELEASE_LOCK')) {
+                unset($this->locks[$name]); $this->locked = !!$this->locks; return '1';
+            }
+            if ($this->deny || isset($this->locks[$name])) { return '0'; }
+            $this->locks[$name] = true; $this->locked = true; $this->acquisitions++; return '1';
+        }
+    }
+    $wpdb = new SettingsDatabaseFixture();
 
     class WP_CLI {
         public static array $commands = [];
