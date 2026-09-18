@@ -2,7 +2,7 @@
 require_once __DIR__ . '/cli.php';
 
 use RRZE\Updater\Core\{GitlabConnector, Theme};
-use RRZE\Updater\{Main, Settings, Config};
+use RRZE\Updater\{ManagedUpgrader, Settings, Config};
 
 function wp_tempnam($name) { return tempnam(sys_get_temp_dir(), 'rrze-gitlab-'); }
 function remove_query_arg($key, $url) {
@@ -64,21 +64,20 @@ foreach (['success', 'fails', 'throws'] as $outcome) {
     check(!is_file($lab->temporary), 'Installer cleans GitLab archive after ' . $outcome . '.');
 }
 // Exercise the actual WordPress pre-download hook, including old cached URLs.
-$main = (new ReflectionClass(Main::class))->newInstanceWithoutConstructor();
-$main->settings = new Settings();
-$main->settings->themes = [$definition];
-(new ReflectionProperty(Main::class, 'config'))->setValue($main, new Config());
+$settings = new Settings();
+$managed = new ManagedUpgrader($settings, new Config());
+$settings->themes = [$definition];
 $upgrader = new WP_Upgrader();
 foreach (['', '&private_token=old-cached-token'] as $legacyQuery) {
-    $path = $main->upgraderPreDownloadFilter(false, $lab->downloadRepoZip('package', 'v1') . $legacyQuery, $upgrader,
+    $path = $managed->upgraderPreDownloadFilter(false, $lab->downloadRepoZip('package', 'v1') . $legacyQuery, $upgrader,
         ['type' => 'theme', 'theme' => 'package']);
     check(is_string($path) && is_file($path), 'Managed updates intercept clean and legacy package URLs.');
     check(!str_contains(end($lab->requests)[0], 'private_token'), 'Cached tokens are never sent in URLs.');
     wp_delete_file($path);
 }
-check(is_wp_error($main->upgraderPreDownloadFilter(false, 'https://unrelated.example/archive.zip', $upgrader,
+check(is_wp_error($managed->upgraderPreDownloadFilter(false, 'https://unrelated.example/archive.zip', $upgrader,
     ['type' => 'theme', 'theme' => 'package'])), 'Unrelated packages cannot replace a managed theme.');
 $lab->fail = true;
-check(is_wp_error($main->upgraderPreDownloadFilter(false, $lab->downloadRepoZip('package', 'v1'), $upgrader,
+check(is_wp_error($managed->upgraderPreDownloadFilter(false, $lab->downloadRepoZip('package', 'v1'), $upgrader,
     ['type' => 'theme', 'theme' => 'package'])), 'Failed authenticated update does not fall back to an unauthenticated download.');
 echo 'Passed ' . ($checks - $beforeGitlab) . " GitLab credential/download checks.\n";

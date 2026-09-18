@@ -272,3 +272,4 @@ require __DIR__ . '/update-sources.php';
 require __DIR__ . '/update-outcomes.php';
 require __DIR__ . '/admin-saves.php';
 require __DIR__ . '/admin-integration.php';
+require __DIR__ . '/managed-upgrader.php';

@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/legacy-installs.php';
 
-use RRZE\Updater\{Main, Settings, UpdateProvider};
+use RRZE\Updater\{ManagedUpgrader, Settings, Config, UpdateProvider};
 use RRZE\Updater\Core\{Plugin, Theme};
 
 function wp_get_themes($args = []) { return $GLOBALS['source_test_themes'] ?? []; }
@@ -68,10 +68,9 @@ foreach (['plugins', 'themes'] as $kind) {
 $settings->plugins = [$plugin]; $settings->themes = [$theme];
 check($connector->downloads === 0, 'Projecting update metadata does not download packages.');
 $wp_filter = $savedUpdateHooks;
-$main = (new ReflectionClass(Main::class))->newInstanceWithoutConstructor();
-$main->settings = $settings;
+$managed = new ManagedUpgrader($settings, new Config());
 $plugin->connector = $connector;
 $upgrader = new WP_Upgrader();
-check(is_wp_error($main->upgraderPreDownloadFilter(false, 'https://downloads.wordpress.org/plugin/target.99.zip', $upgrader, ['plugin' => 'target/target.php'])), 'A stale or externally injected foreign package cannot bypass transient filtering.');
-check($main->upgraderPreDownloadFilter(false, 'https://downloads.wordpress.org/plugin/first.99.zip', $upgrader, ['plugin' => 'first/first.php']) === false, 'Unmanaged downloads still use core.');
+check(is_wp_error($managed->upgraderPreDownloadFilter(false, 'https://downloads.wordpress.org/plugin/target.99.zip', $upgrader, ['plugin' => 'target/target.php'])), 'A stale or externally injected foreign package cannot bypass transient filtering.');
+check($managed->upgraderPreDownloadFilter(false, 'https://downloads.wordpress.org/plugin/first.99.zip', $upgrader, ['plugin' => 'first/first.php']) === false, 'Unmanaged downloads still use core.');
 echo 'Passed ' . ($checks - $beforeUpdateSources) . " managed update source checks.\n";

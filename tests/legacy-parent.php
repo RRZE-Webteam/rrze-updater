@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/update-refs.php';
 
-use RRZE\Updater\{Main, Settings, Config};
+use RRZE\Updater\{ManagedUpgrader, Settings, Config};
 use RRZE\Updater\Core\Theme;
 use RRZE\Updater\Upgrader\ThemeUpgraderSkin;
 
@@ -29,28 +29,27 @@ $connector->id = 'parent-fixture'; $connector->owner = 'owner'; $connector->toke
 $child = Theme::createFromArray(['id' => 'child-fixture', 'connectorId' => $connector->id, 'repository' => 'child',
     'installationFolder' => 'child-custom', 'branch' => 'main', 'localVersion' => '', 'remoteVersion' => 'v1']);
 $child->connector = $connector;
-$main = (new ReflectionClass(Main::class))->newInstanceWithoutConstructor();
-(new ReflectionProperty(Main::class, 'config'))->setValue($main, new Config());
-$main->settings = new Settings();
-$main->settings->connectors = [$connector]; $main->settings->themes = [$child]; $main->settings->save();
+$settings = new Settings();
+$managed = new ManagedUpgrader($settings, new Config());
+$settings->connectors = [$connector]; $settings->themes = [$child]; $settings->save();
 $upgrader = new LegacyParentUpgraderFixture(new ParentThemeInstallerFixture('generated-child'));
 $upgrader->skin = new LegacyChildSkinFixture($child);
-add_filter('upgrader_pre_download', [$main, 'upgraderPreDownloadFilter'], 10, 4);
-add_filter('upgrader_source_selection', [$main, 'upgraderSourceSelectionFilter'], 10, 4);
-add_filter('upgrader_post_install', [$main, 'upgraderPostInstallFilter'], 10, 3);
+add_filter('upgrader_pre_download', [$managed, 'upgraderPreDownloadFilter'], 10, 4);
+add_filter('upgrader_source_selection', [$managed, 'upgraderSourceSelectionFilter'], 10, 4);
+add_filter('upgrader_post_install', [$managed, 'upgraderPostInstallFilter'], 10, 3);
 try {
     check($upgrader->install($connector->downloadRepoZip('child', 'v1')) === true, 'Legacy child install succeeds with a missing parent.');
     check($upgrader->runs === 2 && $upgrader->adapter->installedFolders === ['child-custom', 'parent-theme'], 'Core installs the parent under its own folder with empty hook_extra.');
     check(is_string($upgrader->downloadResults[0]) && $upgrader->downloadResults[1] === false, 'Only the child package uses connector credentials.');
     check($child->localVersion === 'v1' && count((new Settings())->themes) === 1, 'Parent completion does not change or create Updater associations.');
 } finally {
-    remove_filter('upgrader_pre_download', [$main, 'upgraderPreDownloadFilter'], 10);
-    remove_filter('upgrader_source_selection', [$main, 'upgraderSourceSelectionFilter'], 10);
-    remove_filter('upgrader_post_install', [$main, 'upgraderPostInstallFilter'], 10);
+    remove_filter('upgrader_pre_download', [$managed, 'upgraderPreDownloadFilter'], 10);
+    remove_filter('upgrader_source_selection', [$managed, 'upgraderSourceSelectionFilter'], 10);
+    remove_filter('upgrader_post_install', [$managed, 'upgraderPostInstallFilter'], 10);
 }
 // Even if another caller skips the download hook, consumed context cannot be reused.
-$file = $main->upgraderPreDownloadFilter(false, $connector->downloadRepoZip('child', 'v1'), $upgrader, []);
-check($main->upgraderSourceSelectionFilter('/tmp/child/', '/tmp/work/', $upgrader, []) === '/tmp/work/child-custom/', 'Verified legacy package retains its custom folder.');
-check($main->upgraderSourceSelectionFilter('/tmp/parent/', '/tmp/work/', $upgrader, []) === '/tmp/parent/', 'A second source on the reused skin does not inherit the child destination.');
+$file = $managed->upgraderPreDownloadFilter(false, $connector->downloadRepoZip('child', 'v1'), $upgrader, []);
+check($managed->upgraderSourceSelectionFilter('/tmp/child/', '/tmp/work/', $upgrader, []) === '/tmp/work/child-custom/', 'Verified legacy package retains its custom folder.');
+check($managed->upgraderSourceSelectionFilter('/tmp/parent/', '/tmp/work/', $upgrader, []) === '/tmp/parent/', 'A second source on the reused skin does not inherit the child destination.');
 wp_delete_file($file);
 echo 'Passed ' . ($checks - $beforeLegacyParent) . " legacy parent theme checks.\n";
