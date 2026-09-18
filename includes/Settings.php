@@ -55,7 +55,32 @@ class Settings
     public function __construct()
     {
         $this->optionName = (new Config())->getOptionName();
+        $this->load();
+    }
 
+    /** Discard rejected edits and adopt the current persisted registry and baseline. */
+    public function reload(): void
+    {
+        // A failed lock acquisition may leave the request's original cache primed.
+        $this->clearOptionCache();
+        $this->load();
+    }
+
+    private function clearOptionCache(): void
+    {
+        if (is_multisite()) {
+            foreach ([$this->optionName, 'notoptions'] as $key) {
+                wp_cache_delete(get_current_network_id() . ':' . $key, 'site-options');
+            }
+        } else {
+            foreach ([$this->optionName, 'alloptions', 'notoptions'] as $key) {
+                wp_cache_delete($key, 'options');
+            }
+        }
+    }
+
+    private function load(): void
+    {
         $config = is_multisite()
             ? get_site_option($this->optionName)
             : get_option($this->optionName);
@@ -143,15 +168,7 @@ class Settings
             return false;
         }
         try {
-            if (is_multisite()) {
-                foreach ([$this->optionName, 'notoptions'] as $key) {
-                    wp_cache_delete(get_current_network_id() . ':' . $key, 'site-options');
-                }
-            } else {
-                foreach ([$this->optionName, 'alloptions', 'notoptions'] as $key) {
-                    wp_cache_delete($key, 'options');
-                }
-            }
+            $this->clearOptionCache();
             $local = $this->asArray();
             $latest = (new self())->asArray();
             $merged = $latest;

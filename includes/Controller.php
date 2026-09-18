@@ -204,7 +204,10 @@ class Controller
         }
 
         $extension->checkForUpdates();
-        $this->settings->save();
+        if (!$this->saveSettings()) {
+            wp_send_json_error(['message' => end($this->messages)->get_error_message()], 409);
+            return;
+        }
 
         if ($type == 'plugin') {
             delete_site_transient('update_plugins');
@@ -265,8 +268,7 @@ class Controller
         }
 
         if ($this->isSettingsSaveRequest()) {
-            $this->postSettingsSave();
-            if ($this->isSettingsSendNowRequest()) {
+            if ($this->postSettingsSave() && $this->isSettingsSendNowRequest()) {
                 $this->sendUpdateEmailNow();
             }
         }
@@ -332,7 +334,7 @@ class Controller
         return isset($_POST['rrze-updater-send-now']);
     }
 
-    private function postSettingsSave()
+    private function postSettingsSave(): bool
     {
         if (!current_user_can('manage_options')) {
             wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
@@ -372,7 +374,9 @@ class Controller
             $this->settings->options['email_subject_prefix'] = $defaults['email_subject_prefix'];
         }
 
-        $this->settings->save();
+        if (!$this->saveSettings()) {
+            return false;
+        }
         Cron::clearSchedule();
         Cron::clearEmailSchedule();
         wp_schedule_event(time(), $this->settings->options['update_check_schedule'], $this->config->getCronActionHook());
@@ -382,6 +386,7 @@ class Controller
         }
 
         $this->messages[] = __('Settings saved.', 'rrze-updater');
+        return true;
     }
 
     private function sendUpdateEmailNow()
@@ -1307,7 +1312,7 @@ class Controller
                     unset($this->settings->connectors[$key]);
                 }
             }
-            $this->settings->save();
+            $this->saveSettings();
         }
     }
 
@@ -1359,7 +1364,10 @@ class Controller
 
         // Add the new connector to the settings and save them.
         $this->settings->connectors[] = $connector;
-        $this->settings->save();
+        if (!$this->saveSettings()) {
+            $this->display('connectors/add');
+            return;
+        }
 
         $menuSettings = $this->config->getMenuSettings();
         $settingsSlug = $menuSettings['settings_slug'] ?? 'rrze-updater-settings';
@@ -1419,7 +1427,13 @@ class Controller
         }
 
         // Save the updated settings.
-        $this->settings->save();
+        if (!$this->saveSettings()) {
+            $connector = $this->settings->getConnectorById($connectorId);
+            if (!$connector) {
+                $this->display('');
+                return;
+            }
+        }
 
         // Prepare the data for rendering.
         $data = [
@@ -1659,7 +1673,10 @@ class Controller
             $plugin->checkForUpdates();
 
             // Update the settings to reflect the latest update check.
-            $this->settings->save();
+            if (!$this->saveSettings()) {
+                $this->display('');
+                return;
+            }
 
             // If local and remote versions are different, refresh the 'update_plugins' transient.
             if ($plugin->localVersion != $plugin->remoteVersion) {
@@ -1739,11 +1756,9 @@ class Controller
                 }
             }
 
-            // Clear the site transient for plugin updates.
-            delete_site_transient('update_plugins');
-
-            // Save the updated settings.
-            $this->settings->save();
+            if ($this->saveSettings()) {
+                delete_site_transient('update_plugins');
+            }
         }
     }
 
@@ -1859,8 +1874,15 @@ class Controller
         $extension->checkForUpdates();
 
         // Save the changes and clear cached plugin updates
-        $this->settings->save();
-        delete_site_transient('update_plugins');
+        if (!$this->saveSettings()) {
+            $extension = $this->settings->getPluginById($extensionId);
+            if (!$extension) {
+                $this->display('');
+                return;
+            }
+        } else {
+            delete_site_transient('update_plugins');
+        }
 
         // Prepare the data for rendering.
         $data = [
@@ -2092,7 +2114,10 @@ class Controller
             // Check for updates for the selected theme
             $theme->checkForUpdates();
             // Save the settings to update the last checked timestamp
-            $this->settings->save();
+            if (!$this->saveSettings()) {
+                $this->display('');
+                return;
+            }
 
             // If local version is different from remote version, clear the 'update_themes' transient
             if ($theme->localVersion != $theme->remoteVersion) {
@@ -2175,11 +2200,9 @@ class Controller
                 }
             }
 
-            // Delete the update information transient for themes to trigger a recheck of theme updates
-            delete_site_transient('update_themes');
-
-            // Save the updated settings to persist the changes
-            $this->settings->save();
+            if ($this->saveSettings()) {
+                delete_site_transient('update_themes');
+            }
         }
     }
 
@@ -2254,8 +2277,15 @@ class Controller
         $extension->checkForUpdates();
 
         // Save the changes and clear cached themes updates
-        $this->settings->save();
-        delete_site_transient('update_themes');
+        if (!$this->saveSettings()) {
+            $extension = $this->settings->getThemeById($extensionId);
+            if (!$extension) {
+                $this->display('');
+                return;
+            }
+        } else {
+            delete_site_transient('update_themes');
+        }
 
         // Prepare the data for rendering.
         $data = [
@@ -2564,7 +2594,20 @@ class Controller
         }
 
         // Save the updated settings to maintain consistency.
-        $this->settings->save();
+        $this->saveSettings();
+    }
+
+    /** Never present rejected edits as persisted values to this or other consumers. */
+    private function saveSettings(): bool
+    {
+        if ($this->settings->save()) {
+            return true;
+        }
+        // Main and Controller share this object. Restore it in place, including
+        // its merge baseline, rather than leaving Main with the rejected edits.
+        $this->settings->reload();
+        $this->messages[] = new WP_Error('rrze_updater_save_failed', __('Could not save the changes. Settings may have changed in another request, or the database may be unavailable. The stored values have been reloaded; review them and try again.', 'rrze-updater'));
+        return false;
     }
 
     private function getConnectorErrorContext($extension): array {

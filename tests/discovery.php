@@ -270,3 +270,4 @@ require __DIR__ . '/legacy-installs.php';
 
 require __DIR__ . '/update-sources.php';
 require __DIR__ . '/update-outcomes.php';
+require __DIR__ . '/admin-saves.php';
