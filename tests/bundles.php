@@ -414,6 +414,56 @@ bundleAction($f, 'check'); $job = bundleDrain($f);
 $result = $f['manager']->handle('install_anyways', $job['id'], $job['revision']);
 check(is_wp_error($result) && $f['store']->job === $job && $f['installer']->installs === 0, 'No runnable entries leaves the blocked job unchanged.');
 
+// Cancellation preserves completed work and permanently stops the remaining queue.
+$f = bundleFixture([bundleEntry('finished'), bundleEntry('remaining')]);
+bundleAction($f, 'check'); bundleDrain($f); bundleAction($f, 'install');
+$beforeStep = $f['store']->load();
+$afterStep = bundleAction($f, 'step');
+$completedItem = $afterStep['items']['plugin/finished'];
+$result = $f['manager']->handle('cancel', $beforeStep['id'], $beforeStep['revision']);
+check(is_wp_error($result) && $f['store']->load() === $afterStep, 'Stale cancellation must reconcile the in-flight result first.');
+$f['store']->locked = true;
+check(is_wp_error($f['manager']->handle('cancel', $afterStep['id'], $afterStep['revision']))
+    && $f['store']->load() === $afterStep, 'Cancellation cannot race an active installation holding the lock.');
+$f['store']->locked = false;
+$cancelled = bundleAction($f, 'cancel');
+check($cancelled['phase'] === 'cancelled' && isset($cancelled['cancelled_at']), 'Save a terminal cancelled phase.');
+check($cancelled['items']['plugin/finished'] === $completedItem && $f['installer']->installs === 1, 'Keep completed installations and their results unchanged.');
+check($cancelled['items']['plugin/remaining']['status'] === 'cancelled', 'Mark remaining entries cancelled.');
+foreach (['step', 'install', 'install_anyways', 'retry'] as $action) {
+    check(is_wp_error($f['manager']->handle($action, $cancelled['id'], $cancelled['revision']))
+        && $f['store']->load() === $cancelled && $f['installer']->installs === 1,
+        "Cancelled process cannot restart through $action.");
+}
+check(bundleAction($f, 'cancel') === $cancelled, 'Repeated cancellation is idempotent.');
+check($f['manager']->handle('status')['job'] === $cancelled, 'Reloading retains cancellation.');
+bundleAction($f, 'check'); $reviewed = bundleDrain($f);
+check($reviewed['phase'] === 'ready' && $reviewed['id'] !== $cancelled['id'], 'A fresh review can follow cancellation.');
+check(is_wp_error($f['manager']->handle('cancel', $cancelled['id'], $reviewed['revision']))
+    && $f['store']->load() === $reviewed, 'An old cancellation cannot cancel a replacement job.');
+bundleAction($f, 'install'); $complete = bundleDrain($f);
+check($f['installer']->installs === 2 && $complete['items']['plugin/finished']['status'] === 'skipped', 'Fresh job recognizes completed work and only installs the remainder.');
+check(bundleAction($f, 'cancel') === $complete, 'Cancellation arriving after completion preserves the completed result.');
+
+$f = bundleFixture([bundleEntry('first'), bundleEntry('second')]);
+bundleAction($f, 'check'); bundleAction($f, 'step');
+$cancelled = bundleAction($f, 'cancel');
+check($cancelled['phase'] === 'cancelled' && $f['installer']->installs === 0
+    && count(array_filter($cancelled['items'], fn($item) => $item['status'] === 'cancelled')) === 2,
+    'Checks can be cancelled before installation.');
+$f = bundleFixture([bundleEntry('interrupted'), bundleEntry('remaining')]);
+bundleAction($f, 'check'); bundleDrain($f); bundleAction($f, 'install');
+$f['store']->job['items']['plugin/interrupted']['status'] = 'installing';
+$f['store']->job['catalog'] = 'outdated-catalog';
+unset($f['store']->job['connectors']);
+$f['settings']->connectors = [];
+$cancelled = bundleAction($f, 'cancel');
+check($cancelled['items']['plugin/interrupted']['status'] === 'interrupted'
+    && str_contains($cancelled['items']['plugin/interrupted']['message'], 'Inspect existing files'), 'An unknown filesystem outcome remains visible after cancellation.');
+check($cancelled['phase'] === 'cancelled', 'Cancellation remains available after catalog or connector changes.');
+$f = bundleFixture([]);
+check(is_wp_error($f['manager']->handle('cancel')), 'Cancellation without a saved job is rejected.');
+
 echo 'Passed ' . ($checks - $beforeBundleChecks) . " bundle checks.\n";
 
 // Exercise the real persistence/lock adapter and the AJAX authorization boundary.
@@ -502,4 +552,15 @@ check($bundle_response['status'] === 403 && $wpdb->acquisitions === $before, 'Re
 unset($bundle_caps['install_themes']);
 $admin->request();
 check($bundle_response['status'] === 403, 'Require theme installation permission as well as plugin permission.');
+$bundle_caps['install_themes'] = true;
+$bundle_mods = false;
+$bundle_network = 2;
+$realStore->save(['id' => 'cancel-with-mods-disabled', 'revision' => 1, 'phase' => 'running',
+    'items' => ['one' => ['status' => 'queued', 'message' => '']]]);
+$_POST = ['operation' => 'cancel', 'network' => 2, 'nonce' => 'rrze_updater_bundle_2',
+    'job' => 'cancel-with-mods-disabled', 'revision' => 1];
+$admin->request();
+check($bundle_response['success'] && $bundle_response['data']['job']['phase'] === 'cancelled',
+    'Authorized cancellation remains available when file modifications are disabled.');
+
 echo 'Passed ' . ($checks - $beforeBoundaryChecks) . " network/authorization/lock checks.\n";

@@ -6,6 +6,8 @@ defined('ABSPATH') || exit;
 
 use RRZE\Updater\Core\RepositoryManager;
 use RRZE\Updater\Core\Connector;
+use RRZE\Updater\Core\RepositoryDiscovery;
+use RRZE\Updater\Core\RepositoryInspector;
 use RRZE\Updater\Settings;
 use RRZE\Updater\Upgrader\RepositoryInstaller;
 use WP_Error;
@@ -20,24 +22,59 @@ class BundleManager
         private RepositoryInstaller $installer = new RepositoryInstaller()
     ) {}
 
-    public function handle(string $action, string $jobId = '', int $revision = -1, array $connectors = []): array|WP_Error
+    public function handle(string $action, string $jobId = '', int $revision = -1, array $connectors = [], array $selection = []): array|WP_Error
     {
         if ($action === 'status') {
             return ['job' => $this->store->load()];
         }
-        if (!in_array($action, ['check', 'step', 'install', 'install_anyways', 'retry'], true)) {
+        if (!in_array($action, ['check', 'check_custom', 'step', 'install', 'install_anyways', 'retry', 'cancel'], true)) {
             return $this->error('invalid_action', 'Unknown bundle action.');
         }
-        return $this->store->withLock(function () use ($action, $jobId, $revision, $connectors) {
+        return $this->store->withLock(function () use ($action, $jobId, $revision, $connectors, $selection) {
             $job = $this->store->load();
             if ($job && ($job['id'] !== $jobId || $job['revision'] !== $revision)) {
                 return $this->error('stale_job', 'The bundle changed in another request. Reload its progress before continuing.');
+            }
+            // Cancellation only changes queue state. It remains available even
+            // when credentials, the shipped catalog, or file permissions changed.
+            // The shared lock ensures an in-flight installation finishes first.
+            if ($action === 'cancel') {
+                if (!$job) {
+                    return $this->error('missing_job', 'There is no installation process to cancel.');
+                }
+                if (in_array($job['phase'], ['complete', 'cancelled'], true)) {
+                    return ['job' => $job];
+                }
+                foreach ($job['items'] as &$item) {
+                    if (in_array($item['status'], ['pending', 'checking', 'ready', 'queued'], true)) {
+                        $item['status'] = 'cancelled';
+                    } elseif ($item['status'] === 'installing') {
+                        // With the lock held, this is an interrupted request, not
+                        // an active installer. Its filesystem outcome is unknown.
+                        $item['status'] = 'interrupted';
+                        $item['message'] = __('Processing was interrupted. Inspect existing files before starting a new installation.', 'rrze-updater');
+                    }
+                }
+                unset($item);
+                $job['phase'] = 'cancelled';
+                $job['cancelled_at'] = time();
+                $job['revision']++;
+                $this->store->save($job);
+                return ['job' => $job];
+            }
+            if (($job['phase'] ?? '') === 'cancelled' && !in_array($action, ['check', 'check_custom'], true)) {
+                return $this->error('cancelled_job', 'This process was cancelled. Start a new review to install more repositories.');
             }
             // Read settings after acquiring the lock, never before a concurrent
             // installation has finished saving its association.
             $settings = $this->settings ?? new Settings();
             $repositories = new RepositoryManager($settings, $this->installer);
-            if ($action === 'check') {
+            if ($action === 'check_custom') {
+                $job = $this->newCustomJob($settings, $connectors['browse'] ?? '', $selection);
+                if (is_wp_error($job)) {
+                    return $job;
+                }
+            } elseif ($action === 'check') {
                 $selected = [];
                 foreach ($this->catalog->get()['connectors'] as $provider => $requirement) {
                     if (!isset($connectors[$provider]) || !is_string($connectors[$provider]) || trim($connectors[$provider]) === '') {
@@ -46,7 +83,7 @@ class BundleManager
                     $selected[$provider] = trim($connectors[$provider]);
                 }
                 $job = $this->newJob($selected);
-            } elseif (!$job || $job['catalog'] !== $this->catalog->fingerprint()) {
+            } elseif (!$job || (($job['source'] ?? 'recommended') !== 'custom' && $job['catalog'] !== $this->catalog->fingerprint())) {
                 return $this->error('missing_job', 'Run prerequisite checks for the current bundle first.');
             } elseif (!isset($job['connectors'])) {
                 return $this->error('selection_required', 'Select connectors and run prerequisite checks again for this older job.');
@@ -57,7 +94,21 @@ class BundleManager
                 }
             } elseif ($action === 'retry') {
                 if ($job['phase'] === 'blocked') {
-                    $job = $this->newJob($job['connectors']);
+                    if (($job['source'] ?? '') === 'custom') {
+                        $job['id'] = wp_generate_uuid4();
+                        $job['created_at'] = time();
+                        $job['phase'] = 'checking';
+                        foreach ($job['items'] as &$item) {
+                            unset($item['plan'], $item['options']);
+                            $item['status'] = 'pending';
+                            $item['message'] = '';
+                            $item['dependencies'] = [];
+                            $item['type'] = '';
+                        }
+                        unset($item);
+                    } else {
+                        $job = $this->newJob($job['connectors']);
+                    }
                 } elseif ($job['phase'] === 'complete') {
                     foreach ($job['items'] as &$item) {
                         if ($item['status'] === 'failed') {
@@ -130,7 +181,47 @@ class BundleManager
         return [
             'id' => wp_generate_uuid4(), 'revision' => 0, 'created_at' => time(),
             'catalog' => $this->catalog->fingerprint(), 'phase' => 'checking', 'items' => $items,
-            'connectors' => $connectors,
+            'connectors' => $connectors, 'source' => 'recommended',
+        ];
+    }
+
+    private function newCustomJob(Settings $settings, string $connectorId, array $selection): array|WP_Error
+    {
+        $connector = $settings->getConnectorById($connectorId);
+        if (!$connector || !in_array($connector->getType(), ['github', 'gitlab'], true) || trim((string) $connector->token) === '') {
+            return $this->error('connector', 'Select a connector with an access token.');
+        }
+        if (!$selection || count($selection) > 100) {
+            return $this->error('selection', 'Select between 1 and 100 repositories.');
+        }
+        $items = [];
+        foreach ($selection as $selected) {
+            if (!is_array($selected)) {
+                return $this->error('selection', 'Invalid repository selection.');
+            }
+            $repo = $selected['repository'] ?? null;
+            $folder = $selected['folder'] ?? $repo;
+            $branch = $selected['branch'] ?? null;
+            foreach ([$repo, $folder] as $name) {
+                if (!is_string($name) || strlen($name) > 200 || !preg_match('/\A[a-zA-Z0-9][a-zA-Z0-9._-]*\z/', $name) || str_contains($name, '..')) {
+                    return $this->error('selection', 'Repository and installation folder must be single names without path separators.');
+                }
+            }
+            if (!is_string($branch) || $branch === '' || strlen($branch) > 255 || preg_match('/[\x00-\x20\x7f]/', $branch)) {
+                return $this->error('selection', 'Select a valid branch for every repository.');
+            }
+            $id = hash('sha256', $connectorId . '/' . strtolower($repo));
+            if (isset($items[$id])) {
+                return $this->error('selection', 'A repository can only be selected once.');
+            }
+            $items[$id] = ['id' => $id, 'provider' => 'browse', 'repository' => $repo, 'folder' => $folder,
+                'branch' => $branch, 'updates' => 'commits', 'type' => '', 'status' => 'pending', 'message' => '', 'dependencies' => []];
+        }
+        return ['id' => wp_generate_uuid4(), 'revision' => 0, 'created_at' => time(), 'catalog' => '',
+            'source' => 'custom', 'phase' => 'checking', 'items' => $items, 'connectors' => ['browse' => $connectorId],
+            'requirements' => ['browse' => ['type' => $connector->getType(), 'owner' => $connector->owner,
+                'host' => (string) wp_parse_url($connector->getUrl(''), PHP_URL_HOST),
+                'apiUri' => $connector->apiUri ?? '']],
         ];
     }
 
@@ -165,11 +256,12 @@ class BundleManager
             && $ownerMatches;
     }
 
-    private function connector(array $entry, Settings $settings, array $selected): string|WP_Error
+    private function connector(array $entry, Settings $settings, array $selected, ?array $requirements = null): string|WP_Error
     {
-        $requirement = $this->catalog->get()['connectors'][$entry['provider']];
+        $requirement = ($requirements ?? $this->catalog->get()['connectors'])[$entry['provider']];
         $connector = $settings->getConnectorById($selected[$entry['provider']] ?? '');
-        if (!$connector || !$this->matchesConnector($connector, $requirement)) {
+        if (!$connector || !$this->matchesConnector($connector, $requirement)
+            || (isset($requirement['apiUri']) && ($connector->apiUri ?? '') !== $requirement['apiUri'])) {
             return $this->error('connector', sprintf('The selected connector must match %s / %s. Select a compatible connector and run prerequisite checks again.', $requirement['host'], $requirement['owner']));
         }
         if (!is_string($connector->token) || trim($connector->token) === '') {
@@ -186,7 +278,7 @@ class BundleManager
             }
             $item['status'] = 'checking';
             $this->store->save($job);
-            $connector = $this->connector($item, $settings, $job['connectors']);
+            $connector = $this->connector($item, $settings, $job['connectors'], $job['requirements'] ?? null);
             if (is_wp_error($connector)) {
                 $result = $connector;
             } else {
@@ -195,7 +287,19 @@ class BundleManager
                     'branch' => $item['branch'], 'updates' => $item['updates'],
                 ];
                 try {
-                    $result = $repositories->prepare($item['type'], $item['repository'], $item['options']);
+                    if (($job['source'] ?? '') === 'custom') {
+                        $inspection = (new RepositoryInspector())->inspect(
+                            new RepositoryDiscovery($settings->getConnectorById($connector)), $item['repository'], $item['branch']
+                        );
+                        if (is_wp_error($inspection)) {
+                            $result = $inspection;
+                        } else {
+                            $item['type'] = $inspection['type'];
+                            $result = $repositories->prepareDiscovered($item['repository'], $item['options'], $inspection);
+                        }
+                    } else {
+                        $result = $repositories->prepare($item['type'], $item['repository'], $item['options']);
+                    }
                 } catch (\Throwable $exception) {
                     $result = $this->error('check_failed', 'The repository check was interrupted. Check access and retry.');
                 }
@@ -220,6 +324,21 @@ class BundleManager
 
     private function checkDependencies(array &$job): void
     {
+        $destinations = [];
+        foreach ($job['items'] as $id => &$item) {
+            if ($item['status'] !== 'ready') {
+                continue;
+            }
+            $destination = strtolower($item['type'] . '/' . $item['folder']);
+            if (isset($destinations[$destination])) {
+                $other = $destinations[$destination];
+                $job['items'][$other]['status'] = $item['status'] = 'error';
+                $job['items'][$other]['message'] = $item['message'] = 'Multiple selected repositories use the same installation folder.';
+            } else {
+                $destinations[$destination] = $id;
+            }
+        }
+        unset($item);
         $folders = [];
         foreach ($job['items'] as $id => $item) {
             if ($item['type'] === 'theme') {
@@ -276,7 +395,7 @@ class BundleManager
                     break;
                 }
             }
-            $connector = $this->connector($item, $settings, $job['connectors']);
+            $connector = $this->connector($item, $settings, $job['connectors'], $job['requirements'] ?? null);
             if (!$result && (is_wp_error($connector) || $connector !== $item['options']['connector'])) {
                 $result = is_wp_error($connector) ? $connector : $this->error('connector_changed', 'The connector changed. Run prerequisite checks again.');
             }

@@ -91,6 +91,23 @@ class RepositoryManager
         return $this->add($type, $repository, $options, $plan['action'] === 'install', $plan);
     }
 
+    /** Build a plan from server-side inspection of an immutable discovered commit. */
+    public function prepareDiscovered(string $repository, array $options, array $inspection): array|WP_Error
+    {
+        $extension = $this->definition($inspection['type'], $repository, $options);
+        if (is_wp_error($extension)) {
+            return $extension;
+        }
+        $state = $this->localState($inspection['type'], $extension);
+        if (is_wp_error($state)) {
+            return $state;
+        }
+        return $inspection + [
+            'action' => $state['installed'] ? ($state['existing'] ? 'skip' : 'register') : 'install',
+            'checked_at' => time(),
+        ];
+    }
+
     public function unregister(string $type, string $repository, string $connectorId = ''): string|WP_Error
     {
         $this->warnings = [];

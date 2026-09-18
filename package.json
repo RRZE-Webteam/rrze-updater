@@ -12,10 +12,12 @@
     "version:dev": "node scripts/build-version.js dev",
     "version:prod": "node scripts/build-version.js prod",
     "version:release": "node scripts/build-version.js release",
-    "dev": "npm run version:dev && npm run readme",
-    "build": "npm run readme",
-    "prod": "npm run version:prod && npm run readme",
-    "release": "npm run version:release && npm run readme"
+    "dev": "npm run version:dev && npm run build",
+    "build": "npm run build:installer && npm run readme",
+    "prod": "npm run version:prod && npm run build",
+    "release": "npm run version:release && npm run build",
+    "build:installer": "node scripts/build-installer.mjs",
+    "test:php": "php tests/discovery.php"
   },
   "compatibility": {
     "wprequires": "6.8",
@@ -34,5 +36,19 @@
   },
   "license": "GNU General Public License Version 3",
   "licenseurl": "https://www.gnu.org/licenses/gpl-3.0.html",
-  "tags": "Plugin, WordPress, Updater, GitHub, GitLab, RRZE"
+  "tags": "Plugin, WordPress, Updater, GitHub, GitLab, RRZE",
+  "dependencies": {
+    "@wordpress/api-fetch": "7.19.1",
+    "@wordpress/components": "29.5.2",
+    "@wordpress/dataviews": "4.15.2",
+    "@wordpress/element": "6.19.1",
+    "@wordpress/i18n": "5.19.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  },
+  "overrides": {
+    "@babel/runtime": "7.28.4",
+    "uuid": "11.1.1"
+  }
 }
