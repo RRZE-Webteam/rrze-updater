@@ -4,7 +4,7 @@ namespace RRZE\Updater;
 
 defined('ABSPATH') || exit;
 
-use RRZE\Updater\Core\{Connector, Plugin, Theme};
+use RRZE\Updater\Core\{Connector, Plugin, Theme, RepositoryManager};
 use RRZE\Updater\Upgrader\{PluginUpgraderSkin, ThemeUpgraderSkin};
 use RRZE\Updater\ListTable\{RepoListTable, ConnListTable, PluginsListTable, ThemesListTable};
 use Plugin_Upgrader;
@@ -1747,178 +1747,60 @@ class Controller
         }
     }
 
-    /**
-     * Handle the addition of a new plugin definition.
-     *
-     * This method is responsible for processing the addition of a new plugin definition based on the
-     * data submitted through a form. It performs data validation, creates a new plugin instance,
-     * checks for available updates, and initiates the installation process if required. The method
-     * also handles error conditions and displays relevant messages.
-     * 
-     * @return void
-     */
-    protected function postPluginAdd()
+    /** Legacy forms use the same success-only registration path as CLI/bundles. */
+    private function postRepositoryAdd(string $type): void
     {
-        // Check the user's permissions.
-        if (!current_user_can('update_plugins')) {
+        $plural = $type === 'plugin' ? 'plugins' : 'themes';
+        if (!current_user_can('update_' . $plural) || !current_user_can('install_' . $plural)) {
             wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
         }
-
-        $request = $_POST['rrze-updater'] ?? '';
-        if (!$request || !is_array($request)) {
+        $request = $_POST['rrze-updater'] ?? null;
+        if (!is_array($request)) {
             return;
         }
-
-        // Data validation
-        $repository = $request['repository'] ?? '';
-        $repository = sanitize_text_field($repository);
-        if (!$repository) {
-            // Handle empty repository field with an error message.
-            $this->messages[] = new WP_Error('error', __('The Repository field must not be empty.', 'rrze-updater'));
-            $data = [
-                'connectors' => $this->settings->connectors
-            ];
-            $this->display('plugins/add', $data);
-            return;
-        } elseif ($this->settings->getPluginByRepository($repository)) {
-            // Handle duplicate repository with an error message.
-            $this->messages[] = new WP_Error('error', __('The Repository already exists.', 'rrze-updater'));
-            $data = [
-                'connectors' => $this->settings->connectors
-            ];
-            $this->display('plugins/add', $data);
+        $data = ['connectors' => $this->settings->connectors];
+        if (!wp_is_file_mod_allowed('rrze_updater_install')) {
+            $this->messages[] = new WP_Error('file_modifications_disabled', __('File modifications are disabled on this installation.', 'rrze-updater'));
+            $this->display($plural . '/add', $data);
             return;
         }
-
-        // Create a new plugin definition
-        $extension = new Plugin();
-
-        $extension->id = Utility::uniqid();
-        $extension->connectorId = $request['connectorId'];
-        $extension->connector = $this->settings->getConnectorById($extension->connectorId);
-        $extension->repository = $request['repository'];
-        $extension->branch = $request['branch'] ?: 'main';
-        $extension->installationFolder = $request['installationFolder'];
-        if (!$extension->installationFolder) {
-            $extension->installationFolder = $extension->repository;
-        }
-        $extension->updates = $request['updates'];
-        $extension->lastChecked = time();
-
-        // Add the new plugin definition to the settings
-        $this->settings->plugins[] = $extension;
-
-        $branchValidation = $extension->validateRemotePluginBranch($extension->branch);
-        if (is_wp_error($branchValidation)) {
-            $this->messages[] = $branchValidation;
-            do_action(
-                'rrze.log.error',
-                'Plugin installation failed for {repository}: {error}',
-                [
-                    'plugin' => $this->config->getLogPlugin(),
-                    'repository' => $extension->repository,
-                    'branch' => $extension->branch,
-                    'service' => $extension->connector->display ?? '',
-                    'error' => $branchValidation->get_error_message()
-                ]
-            );
-
-            $data = [
-                'connectors' => $this->settings->connectors
-            ];
-            $this->display('plugins/add', $data);
-            return;
-        }
-
-        // If updates are configured for tags or commits, check if updates are available
-        $extension->checkForUpdates();
-
-        $validation = $extension->getRemotePluginRepositoryWarning($extension->remoteVersion ?: $extension->branch);
-        if (is_wp_error($validation)) {
-            if (!Plugin::isRepositoryFileWarning($validation)) {
-                $this->messages[] = $validation;
-                do_action(
-                    'rrze.log.error',
-                    'Plugin installation failed for {repository}: {error}',
-                    [
-                        'plugin' => $this->config->getLogPlugin(),
-                        'repository' => $extension->repository,
-                        'branch' => $extension->branch,
-                        'ref' => $extension->remoteVersion ?: $extension->branch,
-                        'service' => $extension->connector->display ?? '',
-                        'error' => $validation->get_error_message()
-                    ]
-                );
-
-                $data = [
-                    'connectors' => $this->settings->connectors
-                ];
-                $this->display('plugins/add', $data);
+        foreach (['repository', 'connectorId', 'installationFolder', 'branch', 'updates'] as $field) {
+            if (isset($request[$field]) && !is_string($request[$field])) {
+                $this->messages[] = new WP_Error('invalid_request', __('Invalid repository installation request.', 'rrze-updater'));
+                $this->display($plural . '/add', $data);
                 return;
             }
-
-            $extension->lastWarning = $validation->get_error_message();
-            $this->messages[] = $validation;
-            do_action(
-                'rrze.log.warning',
-                'Plugin installation warning for {repository}: {warning}',
-                [
-                    'plugin' => $this->config->getLogPlugin(),
-                    'repository' => $extension->repository,
-                    'branch' => $extension->branch,
-                    'ref' => $extension->remoteVersion ?: $extension->branch,
-                    'service' => $extension->connector->display ?? '',
-                    'warning' => $validation->get_error_message()
-                ]
-            );
         }
-
-        // Install the plugin
-        $repoZip = $extension->connector->downloadRepoZip($request['repository'], $request['branch']);
-        if ($extension->remoteVersion) {
-            $extension->localVersion = $extension->remoteVersion;
-            $repoZip = $extension->connector->downloadRepoZip($request['repository'], $extension->remoteVersion);
+        $request = wp_unslash($request);
+        $repository = trim($request['repository'] ?? '');
+        $manager = $this->createRepositoryManager();
+        try {
+            $result = $manager->install($type, $repository, [
+                'connector' => $request['connectorId'] ?? '',
+                'folder' => ($request['installationFolder'] ?? '') ?: $repository,
+                'branch' => ($request['branch'] ?? '') ?: 'main',
+                'updates' => ($request['updates'] ?? '') ?: 'tags',
+            ]);
+        } catch (\Throwable $exception) {
+            // A failed or interrupted operation must not create an association.
+            // Do not expose transport exception text, which may contain tokens.
+            $result = new WP_Error('installation_interrupted', __('Installation was interrupted. Inspect the destination before retrying; existing files will not be overwritten.', 'rrze-updater'));
         }
-
-        if ($extension->connector->error) {
-            // Handle connector error with an error message.
-            $this->messages[] = new WP_Error('error', $extension->connector->error);
-            do_action(
-                'rrze.log.error',
-                'Plugin installation failed for {repository}: {error}',
-                array_merge(
-                    [
-                        'plugin' => $this->config->getLogPlugin(),
-                        'repository' => $extension->repository,
-                        'branch' => $extension->branch,
-                        'service' => $extension->connector->display ?? '',
-                        'error' => $extension->connector->error
-                    ],
-                    $this->getConnectorErrorContext($extension)
-                )
-            );
+        foreach ($manager->getWarnings() as $warning) {
+            $this->messages[] = new WP_Error('rrze_updater_repository_warning', $warning);
         }
+        $this->messages[] = $result;
+        $this->display($plural . (is_wp_error($result) ? '/add' : '/add-progress'), $data);
+    }
 
-        if ($repoZip) {
-            // Initialize the plugin installation process.
-            $upgrader = new Plugin_Upgrader(new PluginUpgraderSkin($extension));
-            $data = [
-                'upgrader' => $upgrader,
-                'repoZip' => $repoZip
-            ];
-            $this->display('plugins/add-progress', $data);
-            $this->settings->save();
-            $this->deleteIfLocalFile($repoZip);
-            return;
-        }
+    protected function createRepositoryManager(): RepositoryManager
+    {
+        return new RepositoryManager($this->settings);
+    }
 
-        // Prepare the data for rendering.
-        $data = [
-            'connectors' => $this->settings->connectors
-        ];
-
-        // Display the plugin add form.
-        $this->display('plugins/add', $data);
+    protected function postPluginAdd()
+    {
+        $this->postRepositoryAdd('plugin');
     }
 
     /**
@@ -2313,149 +2195,7 @@ class Controller
      */
     protected function postThemeAdd()
     {
-        // Check the user's permissions.
-        if (!current_user_can('update_themes')) {
-            wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
-        }
-
-        $request = $_POST['rrze-updater'] ?? '';
-        if (!$request || !is_array($request)) {
-            return;
-        }
-
-        // Data validation
-        $repository = $request['repository'] ?? '';
-        $repository = sanitize_text_field($repository);
-        if (!$repository) {
-            // Handle empty repository field with an error message.
-            $this->messages[] = new WP_Error('error', __('The Repository field must not be empty.', 'rrze-updater'));
-            $data = [
-                'connectors' => $this->settings->connectors
-            ];
-            $this->display('themes/add', $data);
-            return;
-        } elseif ($this->settings->getThemeByRepository($repository)) {
-            // Handle duplicate repository with an error message.
-            $this->messages[] = new WP_Error('error', __('The Repository already exists.', 'rrze-updater'));
-            $data = [
-                'connectors' => $this->settings->connectors
-            ];
-            $this->display('themes/add', $data);
-            return;
-        }
-
-        // Add a theme definition
-        $extension = new Theme();
-
-        $extension->id = Utility::uniqid();
-        $extension->connectorId = $request['connectorId'];
-        $extension->connector = $this->settings->getConnectorById($extension->connectorId);
-        $extension->repository = $request['repository'];
-        $extension->branch = $request['branch'] ?: 'main';
-        $extension->installationFolder = $request['installationFolder'];
-        if (!$extension->installationFolder) {
-            $extension->installationFolder = $extension->repository;
-        }
-        $extension->updates = $request['updates'];
-        $extension->lastChecked = time();
-
-        // Add the new theme definition to the settings
-        $this->settings->themes[] = $extension;
-
-        $branchValidation = $extension->validateRemoteThemeBranch($extension->branch);
-        if (is_wp_error($branchValidation)) {
-            $this->messages[] = $branchValidation;
-            do_action(
-                'rrze.log.error',
-                'Theme installation failed for {repository}: {error}',
-                [
-                    'plugin' => $this->config->getLogPlugin(),
-                    'repository' => $extension->repository,
-                    'branch' => $extension->branch,
-                    'service' => $extension->connector->display ?? '',
-                    'error' => $branchValidation->get_error_message()
-                ]
-            );
-
-            $data = [
-                'connectors' => $this->settings->connectors
-            ];
-            $this->display('themes/add', $data);
-            return;
-        }
-
-        // If update on tags or commits, check if there is a tag or commit available
-        $extension->checkForUpdates();
-
-        $validation = $extension->validateRemoteThemeRepository($extension->remoteVersion ?: $extension->branch);
-        if (is_wp_error($validation)) {
-            $this->messages[] = $validation;
-            do_action(
-                'rrze.log.error',
-                'Theme installation failed for {repository}: {error}',
-                [
-                    'plugin' => $this->config->getLogPlugin(),
-                    'repository' => $extension->repository,
-                    'branch' => $extension->branch,
-                    'ref' => $extension->remoteVersion ?: $extension->branch,
-                    'service' => $extension->connector->display ?? '',
-                    'error' => $validation->get_error_message()
-                ]
-            );
-
-            $data = [
-                'connectors' => $this->settings->connectors
-            ];
-            $this->display('themes/add', $data);
-            return;
-        }
-
-        // Install the theme
-        $repoZip = $extension->connector->downloadRepoZip($request['repository'], $request['branch']);
-        if ($extension->remoteVersion) {
-            $extension->localVersion = $extension->remoteVersion;
-            $repoZip = $extension->connector->downloadRepoZip($request['repository'], $extension->remoteVersion);
-        }
-
-        if ($extension->connector->error) {
-            // Handle connector error with an error message.
-            $this->messages[] = new WP_Error('error', $extension->connector->error);
-            do_action(
-                'rrze.log.error',
-                'Theme installation failed for {repository}: {error}',
-                array_merge(
-                    [
-                        'plugin' => $this->config->getLogPlugin(),
-                        'repository' => $extension->repository,
-                        'branch' => $extension->branch,
-                        'service' => $extension->connector->display ?? '',
-                        'error' => $extension->connector->error
-                    ],
-                    $this->getConnectorErrorContext($extension)
-                )
-            );
-        }
-
-        if ($repoZip) {
-            // Initialize the theme installation process.
-            $upgrader = new Theme_Upgrader(new ThemeUpgraderSkin($extension));
-            $data = [
-                'upgrader' => $upgrader,
-                'repoZip' => $repoZip
-            ];
-            $this->display('themes/add-progress', $data);
-            $this->settings->save();
-            $this->deleteIfLocalFile($repoZip);
-            return;
-        }
-
-        // Prepare the data for rendering.
-        $data = [
-            'connectors' => $this->settings->connectors
-        ];
-
-        // Display the theme add form.
-        $this->display('themes/add', $data);
+        $this->postRepositoryAdd('theme');
     }
 
     /**
@@ -2825,26 +2565,6 @@ class Controller
 
         // Save the updated settings to maintain consistency.
         $this->settings->save();
-    }
-
-    /**
-     * If $input is an existing local file path, deletes it.
-     * If it’s a URL, does nothing.
-     *
-     * @param string $input URL or file path.
-     * @return bool True if a file was deleted, false otherwise.
-     */
-    private function deleteIfLocalFile(string $input): bool
-    {
-        if (filter_var($input, FILTER_VALIDATE_URL)) {
-            return false;
-        }
-
-        if (file_exists($input) && is_file($input)) {
-            return unlink($input);
-        }
-
-        return false;
     }
 
     private function getConnectorErrorContext($extension): array {
