@@ -5,6 +5,7 @@ namespace RRZE\Updater;
 defined('ABSPATH') || exit;
 
 use RRZE\Updater\Core\Connector;
+use RRZE\Updater\Core\GitlabConnector;
 use RRZE\Updater\Core\Plugin;
 use RRZE\Updater\Core\Theme;
 
@@ -56,6 +57,31 @@ class Settings
     {
         $this->optionName = (new Config())->getOptionName();
         $this->load();
+    }
+
+    /** Seed the Updater repository during startup when no connectors exist. */
+    public function initializeDefaults(Config $config): void
+    {
+        if (!empty($this->connectors)) {
+            return;
+        }
+
+        $repository = $config->getDefaultRepository();
+        $connector = GitlabConnector::createFromArray([
+            'owner' => $repository['owner'] ?? 'rrze-webteam',
+            'type' => $repository['connector_type'] ?? 'gitlab',
+            'token' => '',
+        ]);
+        $this->connectors[] = $connector;
+        $this->plugins[] = Plugin::createFromArray([
+            'connectorId' => $connector->id,
+            'repository' => $repository['repository'] ?? 'rrze-updater',
+            'branch' => $repository['branch'] ?? 'master',
+            'installationFolder' => dirname(plugin()->getBaseName()),
+            'updates' => $repository['updates'] ?? 'commits',
+        ]);
+
+        $this->save();
     }
 
     /** Discard rejected edits and adopt the current persisted registry and baseline. */
