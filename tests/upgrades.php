@@ -50,7 +50,7 @@ foreach ([PluginUpgraderSkin::class => $plugin, ThemeUpgraderSkin::class => $the
     $skin = (new ReflectionClass($skinClass))->newInstanceWithoutConstructor();
     $skin->extension = $extension;
     $upgrader = new WP_Upgrader($skin);
-    check($main->upgraderSourceSelectionFilter('/tmp/archive/', '/tmp/work/', $upgrader, []) === '/tmp/work/' . $extension->installationFolder . '/', 'Legacy explicit installs retain their configured folder.');
+    check($main->upgraderSourceSelectionFilter('/tmp/archive/', '/tmp/work/', $upgrader, []) === '/tmp/archive/', 'A legacy skin without a verified package cannot rename a source.');
     check($main->upgraderSourceSelectionFilter('/tmp/archive/', '/tmp/work/', $upgrader, ['theme' => 'unmanaged-parent']) === '/tmp/archive/', 'Explicit core identifiers take priority over a reused custom skin.');
 }
 $wp_filesystem->fail = true;

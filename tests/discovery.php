@@ -265,3 +265,4 @@ require __DIR__ . '/registrations.php';
 require __DIR__ . '/upgrades.php';
 require __DIR__ . '/bulk-downloads.php';
 require __DIR__ . '/update-refs.php';
+require __DIR__ . '/legacy-parent.php';

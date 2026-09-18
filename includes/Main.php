@@ -891,11 +891,14 @@ class Main
         if ($package && $package['extension'] === $extension) {
             $this->currentPackage = $package;
         }
+        if ($this->downloadedPackages !== null) {
+            unset($this->downloadedPackages[$upgrader]);
+        }
         return $newSource;
     }
 
     /** Resolve exact core identifiers; display names are not unique identities. */
-    private function getManagedExtensionForUpgrade($upgrader, array $hookExtra): \RRZE\Updater\Core\Extension|false
+    private function getManagedExtensionForUpgrade($upgrader, array $hookExtra, bool $forDownload = false): \RRZE\Updater\Core\Extension|false
     {
         if (isset($hookExtra['plugin']) || isset($hookExtra['theme'])) {
             // Never fall back to a skin's old extension for an explicit target.
@@ -915,8 +918,12 @@ class Main
             $matches = array_values(array_filter($extensions, static fn($extension) => $extension->installationFolder === $folder));
             return count($matches) === 1 ? $matches[0] : false;
         }
-        // Legacy explicit installs carry their definition on our own skin before
-        // the new association is persisted. Ordinary WordPress skins do not.
+        // A legacy skin only identifies a candidate for URL verification. Source
+        // selection requires the verified download, consumed once per package.
+        // Core reuses child-theme skins for unrelated parent downloads.
+        if (!$forDownload) {
+            return $this->downloadedPackages[$upgrader]['extension'] ?? false;
+        }
         if (($upgrader->skin instanceof PluginUpgraderSkin || $upgrader->skin instanceof ThemeUpgraderSkin)
             && $upgrader->skin->extension instanceof \RRZE\Updater\Core\Extension) {
             return $upgrader->skin->extension;
@@ -1015,7 +1022,7 @@ class Main
     private function getRepositoryExtensionForUpgrade($upgrader, array $hookExtra)
     {
         // Core bulk updates provide plugin/theme identifiers without a type key.
-        $extension = $this->getManagedExtensionForUpgrade($upgrader, $hookExtra);
+        $extension = $this->getManagedExtensionForUpgrade($upgrader, $hookExtra, true);
         return $extension && ($extension->connector instanceof GithubConnector || $extension->connector instanceof GitlabConnector)
             ? $extension : false;
     }
