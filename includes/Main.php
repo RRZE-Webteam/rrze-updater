@@ -869,112 +869,55 @@ class Main
     public function upgraderSourceSelectionFilter($source, $remoteSource, $upgrader, $hookExtra)
     {
         global $wp_filesystem;
-
-        if ($upgrader->skin instanceof PluginUpgraderSkin) {
-            // Handle plugin upgrades
-            $newSource = trailingslashit($remoteSource) . trailingslashit($upgrader->skin->extension->installationFolder);
-
-            if (!$newSource) {
-                return new WP_Error();
-            }
-            if (($newSource != $source) && !$wp_filesystem->move($source, $newSource, true)) {
-                return new WP_Error();
-            }
-            $this->currentExtension = 'plugin';
-
-            return $newSource;
-        } elseif ($upgrader->skin instanceof ThemeUpgraderSkin) {
-            // Handle theme upgrades
-            $newSource = trailingslashit($remoteSource) . trailingslashit($upgrader->skin->extension->installationFolder);
-            if (!$newSource) {
-                return new WP_Error();
-            }
-            if (($newSource != $source) && !$wp_filesystem->move($source, $newSource, true)) {
-                return new WP_Error();
-            }
-            $this->currentExtension = 'theme';
-
-            return $newSource;
-        } elseif ($upgrader->skin instanceof Plugin_Upgrader_Skin) {
-            // Handle plugin upgrades (alternative)
-            $pluginFileParts = explode('/', $upgrader->skin->plugin);
-            $newSource = trailingslashit($remoteSource) . trailingslashit($pluginFileParts[0]);
-
-            if (!$newSource) {
-                return new WP_Error();
-            }
-            if (($newSource != $source) && !$wp_filesystem->move($source, $newSource, true)) {
-                return new WP_Error();
-            }
-            $this->currentExtension = 'plugin';
-
-            return $newSource;
-        } elseif ($upgrader->skin instanceof Theme_Upgrader_Skin) {
-            // Handle theme upgrades (alternative)
-            $newSource = trailingslashit($remoteSource) . trailingslashit($upgrader->skin->theme);
-            if (!$newSource) {
-                return new WP_Error();
-            }
-            if (!$wp_filesystem->move($source, $newSource, true)) {
-                return new WP_Error();
-            }
-            $this->currentExtension = 'theme';
-
-            return $newSource;
-        } elseif (
-            ($upgrader->skin instanceof Bulk_Plugin_Upgrader_Skin
-                || $upgrader->skin instanceof WP_Ajax_Upgrader_Skin)
-            && !empty($upgrader->skin->plugin_info['Name'])
-        ) {
-            // Handle bulk plugin upgrades
-            $newSource = false;
-            $installedPlugins = get_plugins();
-
-            foreach ($installedPlugins as $pluginFile => $plugin_info) {
-                if (($plugin_info['Name'] == $upgrader->skin->plugin_info['Name']) || (isset($hookExtra['plugin']) && $pluginFile == $hookExtra['plugin'])) {
-                    $pluginFileParts = explode('/', $pluginFile);
-                    $newSource = trailingslashit($remoteSource) . trailingslashit($pluginFileParts[0]);
-                    if (($newSource != $source) && !$wp_filesystem->move($source, $newSource, true)) {
-                        return new WP_Error();
-                    }
-                    break;
-                }
-            }
-
-            if (!$newSource) {
-                return new WP_Error();
-            }
-            $this->currentExtension = 'plugin';
-
-            return $newSource;
-        } elseif (
-            ($upgrader->skin instanceof Bulk_Theme_Upgrader_Skin
-                || $upgrader->skin instanceof WP_Ajax_Upgrader_Skin)
-            && !empty($upgrader->skin->theme_info['Name'])
-        ) {
-            // Handle bulk theme upgrades
-            $newSource = false;
-            $installedThemes = wp_get_themes();
-
-            foreach ($installedThemes as $themeFolder => $themeInfo) {
-                if ($themeInfo['Name'] == $upgrader->skin->theme_info['Name'] && $themeFolder == $upgrader->skin->theme_info->stylesheet) {
-                    $newSource = trailingslashit($remoteSource) . trailingslashit($themeFolder);
-                    if (($newSource != $source) && !$wp_filesystem->move($source, $newSource, true)) {
-                        return new WP_Error();
-                    }
-                    break;
-                }
-            }
-
-            if (!$newSource) {
-                return new WP_Error();
-            }
-            $this->currentExtension = 'theme';
-
-            return $newSource;
+        $this->currentExtension = '';
+        if (is_wp_error($source)) {
+            return $source;
         }
+        $extension = $this->getManagedExtensionForUpgrade($upgrader, $hookExtra);
+        if (!$extension) {
+            return $source;
+        }
+        $folder = $extension->installationFolder;
+        if (!is_string($folder) || !preg_match('/\A[a-zA-Z0-9][a-zA-Z0-9._-]*\z/', $folder) || str_contains($folder, '..')) {
+            return new WP_Error('rrze_updater_invalid_destination', __('The managed installation folder is invalid.', 'rrze-updater'));
+        }
+        $newSource = trailingslashit($remoteSource) . trailingslashit($folder);
+        if (untrailingslashit($newSource) !== untrailingslashit($source)
+            && !$wp_filesystem->move($source, $newSource, false)) {
+            return new WP_Error('rrze_updater_source_move_failed', __('Could not prepare the managed installation folder.', 'rrze-updater'));
+        }
+        $this->currentExtension = $extension instanceof Plugin ? 'plugin' : 'theme';
+        return $newSource;
+    }
 
-        return $source;
+    /** Resolve exact core identifiers; display names are not unique identities. */
+    private function getManagedExtensionForUpgrade($upgrader, array $hookExtra): \RRZE\Updater\Core\Extension|false
+    {
+        if (isset($hookExtra['plugin']) || isset($hookExtra['theme'])) {
+            // Never fall back to a skin's old extension for an explicit target.
+            if (isset($hookExtra['plugin'], $hookExtra['theme'])) {
+                return false;
+            }
+            if (isset($hookExtra['plugin'])) {
+                if (!is_string($hookExtra['plugin']) || !str_contains($hookExtra['plugin'], '/')) {
+                    return false;
+                }
+                $folder = dirname($hookExtra['plugin']);
+                $extensions = $this->settings->plugins;
+            } else {
+                $folder = $hookExtra['theme'];
+                $extensions = $this->settings->themes;
+            }
+            $matches = array_values(array_filter($extensions, static fn($extension) => $extension->installationFolder === $folder));
+            return count($matches) === 1 ? $matches[0] : false;
+        }
+        // Legacy explicit installs carry their definition on our own skin before
+        // the new association is persisted. Ordinary WordPress skins do not.
+        if (($upgrader->skin instanceof PluginUpgraderSkin || $upgrader->skin instanceof ThemeUpgraderSkin)
+            && $upgrader->skin->extension instanceof \RRZE\Updater\Core\Extension) {
+            return $upgrader->skin->extension;
+        }
+        return false;
     }
 
     public function upgraderPreDownloadFilter($reply, $package, $upgrader, $hookExtra)

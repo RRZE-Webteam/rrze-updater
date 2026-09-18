@@ -262,3 +262,4 @@ echo 'Passed ' . ($checks - $beforeCustomConsent) . " discovered registration co
 require __DIR__ . '/settings.php';
 require __DIR__ . '/gitlab.php';
 require __DIR__ . '/registrations.php';
+require __DIR__ . '/upgrades.php';
