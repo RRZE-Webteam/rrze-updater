@@ -521,7 +521,8 @@ namespace {
             check($options['clear_destination'] === false, 'Neither child nor parent overwrites files.');
             $this->adapter->installedFolders[] = $expected;
             $this->result = ['destination_name' => $expected];
-            apply_filters('upgrader_post_install', true, $options['hook_extra'] ?? [], $this->result);
+            $post = apply_filters('upgrader_post_install', true, $options['hook_extra'] ?? [], $this->result);
+            $this->result = apply_filters('upgrader_install_package_result', is_wp_error($post) ? $post : $this->result, $options['hook_extra'] ?? []);
             return $this->result;
         }
     }

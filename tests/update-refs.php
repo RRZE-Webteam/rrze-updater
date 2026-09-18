@@ -11,6 +11,11 @@ class RefPluginFixture extends BulkDownloadPluginFixture {
         return parent::getRemotePluginRepositoryWarning($ref);
     }
 }
+function finishRefInstall(Main $main, $response, array $extra, array $result) {
+    $post = $main->upgraderPostInstallFilter($response, $extra, $result);
+    $outcome = apply_filters('upgrader_install_package_result', is_wp_error($post) ? $post : $result, $extra);
+    return is_wp_error($outcome) ? $outcome : $post;
+}
 $beforeRefChecks = $checks;
 foreach (['github', 'gitlab'] as $provider) {
     foreach (['plugin', 'theme'] as $type) {
@@ -36,7 +41,7 @@ foreach (['github', 'gitlab'] as $provider) {
             check(is_string($file) && is_file($file), 'Authenticate the cached package ref independently of current metadata.');
             if ($type === 'plugin') check(end($extension->checkedRefs) === $cachedRef, 'Validate the actual package ref.');
             $main->upgraderSourceSelectionFilter('/tmp/work/package/', '/tmp/work/', $upgrader, $extra);
-            check($main->upgraderPostInstallFilter(true, $extra, ['destination_name' => 'package']) === true, 'Preserve the core post-install boolean.');
+            check(finishRefInstall($main, true, $extra, ['destination_name' => 'package']) === true, 'Preserve the core post-install boolean.');
             $fresh = new Settings();
             check($fresh->{$property}[0]->localVersion === $cachedRef && $fresh->{$property}[0]->remoteVersion === 'v2', 'Record the installed ref without overwriting the newer available ref.');
             wp_delete_file($file);
@@ -45,20 +50,20 @@ foreach (['github', 'gitlab'] as $provider) {
         $file = $main->upgraderPreDownloadFilter(false, $connector->downloadRepoZip('package', 'v3'), $upgrader, $extra);
         $main->upgraderSourceSelectionFilter('/tmp/work/package/', '/tmp/work/', $upgrader, $extra);
         $failure = new WP_Error('install_failed', 'Fixture failure');
-        check($main->upgraderPostInstallFilter($failure, $extra, ['destination_name' => 'package']) === $failure
+        check(finishRefInstall($main, $failure, $extra, ['destination_name' => 'package']) === $failure
             && $extension->localVersion === $previous, 'Failed installation does not advance the installed ref.');
         wp_delete_file($file);
         $file = $main->upgraderPreDownloadFilter(false, $connector->downloadRepoZip('package', 'v3'), $upgrader, $extra);
         $main->upgraderSourceSelectionFilter('/tmp/work/package/', '/tmp/work/', $upgrader, $extra);
         $fail_save = true;
-        check(is_wp_error($main->upgraderPostInstallFilter(true, $extra, ['destination_name' => 'package']))
+        check(is_wp_error(finishRefInstall($main, true, $extra, ['destination_name' => 'package']))
             && $extension->localVersion === $previous, 'A failed version save is reported and does not claim a successful metadata update.');
         $fail_save = false; wp_delete_file($file);
         foreach (['https://unrelated.example/archive.zip', $connector->downloadRepoZip('other-repo', 'v1'),
             $connector->downloadRepoZip('package', 'v1') . '&injected=true'] as $unrelated) {
             check(is_wp_error($main->upgraderPreDownloadFilter(false, $unrelated, $upgrader, $extra)), 'Reject noncanonical archive URLs for managed updates.');
             $main->upgraderSourceSelectionFilter('/tmp/work/package/', '/tmp/work/', $upgrader, $extra);
-            $main->upgraderPostInstallFilter(true, $extra, ['destination_name' => 'package']);
+            finishRefInstall($main, true, $extra, ['destination_name' => 'package']);
             check($extension->localVersion === $previous, 'Untracked downloads cannot reuse the preceding package ref.');
         }
     }

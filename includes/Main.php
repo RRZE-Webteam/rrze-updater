@@ -105,6 +105,7 @@ class Main
 
         // Set up a filter for post-installation actions during plugin/theme updates.
         add_filter('upgrader_post_install', [$this, 'upgraderPostInstallFilter'], 10, 3);
+        add_action('automatic_updates_complete', [$this, 'automaticUpdatesComplete']);
 
         // Set up a filter for modifying screen options.
         add_filter('set-screen-option', [$this, 'setScreenOption'], 10, 3);
@@ -837,6 +838,7 @@ class Main
     /** Authenticated package identity, scoped to each upgrader instance. */
     private ?\WeakMap $downloadedPackages = null;
     private ?array $currentPackage = null;
+    private array $automaticPackages = [];
 
     public function upgraderSourceSelectionFilter($source, $remoteSource, $upgrader, $hookExtra)
     {
@@ -862,7 +864,7 @@ class Main
         $this->currentExtension = $extension instanceof Plugin ? 'plugin' : 'theme';
         $package = $this->downloadedPackages[$upgrader] ?? null;
         if ($package && $package['extension'] === $extension) {
-            $this->currentPackage = $package;
+            $this->currentPackage = $package + ['upgrader' => $upgrader, 'automatic' => $upgrader->skin instanceof \Automatic_Upgrader_Skin];
         }
         if ($this->downloadedPackages !== null) {
             unset($this->downloadedPackages[$upgrader]);
@@ -1009,18 +1011,7 @@ class Main
             ? $extension : false;
     }
 
-    /**
-     * Add a filter for the upgrader_post_install hook.
-     *
-     * This method adds a filter to the upgrader_post_install hook, which is triggered after a plugin or theme installation/update.
-     * It allows updating the local version of the installed/updated extension in the settings object.
-     *
-     * @param int    $response     The response code (1 for success, 0 for failure).
-     * @param array  $hookExtra    Additional data about the installation/update hook.
-     * @param object $result       The result object of the installation/update operation.
-     *
-     * @return object $result      The updated result object of the installation/update operation.
-     */
+    /** Stage the verified ref; later post-install filters may still fail. */
     public function upgraderPostInstallFilter($response, $hookExtra, $result)
     {
         $package = $this->currentPackage;
@@ -1029,6 +1020,75 @@ class Main
             || ($result['destination_name'] ?? '') !== $package['extension']->installationFolder) {
             return $response;
         }
+        // Register after package preparation, so this runs after existing result
+        // filters. Nested parent-theme packages must not consume the child's ref.
+        $finish = function ($outcome, $extra) use ($package, $hookExtra, &$finish) {
+            foreach (['plugin', 'theme'] as $key) {
+                if (($hookExtra[$key] ?? null) !== ($extra[$key] ?? null)) {
+                    return $outcome;
+                }
+            }
+            if (is_array($outcome) && ($outcome['destination_name'] ?? '') !== $package['extension']->installationFolder) {
+                return $outcome;
+            }
+            remove_filter('upgrader_install_package_result', $finish, PHP_INT_MAX);
+            if (!is_array($outcome)) {
+                if (is_wp_error($outcome)) {
+                    $package['upgrader']->result = $outcome;
+                }
+                return $outcome;
+            }
+            $target = $extra[$package['type']] ?? '';
+            if ($package['automatic'] && $target !== '') {
+                // Core's fatal-error check and rollback happen after upgrade().
+                // The batch completion event contains the actual final outcome.
+                $this->automaticPackages[$package['type'] . ':' . $target] = $package;
+                return $outcome;
+            }
+            $saved = $this->saveInstalledPackage($package);
+            if (is_wp_error($saved)) {
+                // Core's callers also inspect this property after run() returns.
+                $package['upgrader']->result = $saved;
+                return $saved;
+            }
+            return $outcome;
+        };
+        add_filter('upgrader_install_package_result', $finish, PHP_INT_MAX, 2);
+        return $response;
+    }
+
+    public function automaticUpdatesComplete(array $results): void
+    {
+        $packages = $this->automaticPackages;
+        $this->automaticPackages = [];
+        foreach (['plugin', 'theme'] as $type) {
+            foreach ($results[$type] ?? [] as $update) {
+                $target = $update->item->{$type} ?? '';
+                $package = $packages[$type . ':' . $target] ?? null;
+                if (!$package) {
+                    continue;
+                }
+                $outcome = $update->result ?? false;
+                if (is_wp_error($outcome) && in_array('plugin_update_fatal_error_rollback_failed', $outcome->get_error_codes(), true)) {
+                    // Neither the new nor the previous files can be assumed intact.
+                    $package['ref'] = '';
+                } elseif ($outcome !== true) {
+                    // Successful rollback retains the previous installed ref.
+                    continue;
+                }
+                $saved = $this->saveInstalledPackage($package);
+                if (is_wp_error($saved)) {
+                    $update->result = $saved;
+                    do_action('rrze.log.error', 'Could not record the final repository update: {error}', [
+                        'plugin' => $this->config->getLogPlugin(), 'error' => $saved->get_error_message(),
+                    ]);
+                }
+            }
+        }
+    }
+
+    private function saveInstalledPackage(array $package): true|WP_Error
+    {
         $extension = $package['extension'];
         $previous = $extension->localVersion;
         $extension->localVersion = $package['ref'];
@@ -1036,8 +1096,10 @@ class Main
             $extension->localVersion = $previous;
             return new WP_Error('rrze_updater_save_failed', __('Could not save the installed repository version. Reconcile the installation before retrying.', 'rrze-updater'));
         }
-        $this->logSuccessfulUpdate($package['type'], $extension);
-        return $response;
+        if ($package['ref'] !== '') {
+            $this->logSuccessfulUpdate($package['type'], $extension);
+        }
+        return true;
     }
 
     /**

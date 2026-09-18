@@ -269,3 +269,4 @@ require __DIR__ . '/legacy-parent.php';
 require __DIR__ . '/legacy-installs.php';
 
 require __DIR__ . '/update-sources.php';
+require __DIR__ . '/update-outcomes.php';
