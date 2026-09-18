@@ -169,6 +169,7 @@ class Settings
                 }
             }
             $merged['options'] = $this->mergeChanges($this->baseline['options'], $local['options'], $latest['options']);
+            $this->assertRegistryConsistency($merged);
             $saved = is_multisite()
                 ? update_site_option($this->optionName, $merged)
                 : update_option($this->optionName, $merged);
@@ -212,6 +213,33 @@ class Settings
             }
         }
         return $latest;
+    }
+
+    /** Check relationships against the merged state while the save lock is held. */
+    private function assertRegistryConsistency(array $settings): void
+    {
+        $connectors = array_column($settings['connectors'] ?? [], null, 'id');
+        foreach (['plugins', 'themes'] as $kind) {
+            $folders = $repositories = [];
+            foreach ($settings[$kind] ?? [] as $extension) {
+                $connector = $connectors[$extension['connectorId'] ?? ''] ?? null;
+                if (!$connector) {
+                    throw new \UnexpectedValueException('A repository references a removed connector.');
+                }
+                $folder = strtolower((string) ($extension['installationFolder'] ?? ''));
+                $repository = (string) ($extension['repository'] ?? '');
+                if (($connector['type'] ?? '') === 'github') {
+                    $repository = strtolower($repository);
+                }
+                // Folder uniqueness follows preflight's case-insensitive checks.
+                // A repository may only have one association per connector/type.
+                $identity = json_encode([$extension['connectorId'], $repository]);
+                if ($folder === '' || $repository === '' || isset($folders[$folder]) || isset($repositories[$identity])) {
+                    throw new \UnexpectedValueException('Repository or installation folder has conflicting associations.');
+                }
+                $folders[$folder] = $repositories[$identity] = true;
+            }
+        }
     }
 
     /**

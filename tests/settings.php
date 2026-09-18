@@ -61,4 +61,72 @@ $result = (new RRZE\Updater\Bundles\JobStore())->withLock(function () {
     return $settings->save();
 });
 check($result === true && !$wpdb->locked, 'Settings save can run inside the separate bundle lock.');
+
+// Validate relationships after merging, not against either request's old snapshot.
+foreach ([true, false] as $multisite) {
+    foreach (['plugin', 'theme'] as $type) {
+        $property = $type === 'plugin' ? 'plugins' : 'themes';
+        $storage = [];
+        $f = bundleFixture([bundleEntry('installed-during-delete', $type)]);
+        check($f['settings']->save(), 'Seed connector for concurrent deletion.');
+        $deletion = new Settings();
+        check(!$deletion->isConnectorUsed('bundle-github'), 'Deletion request initially sees an unused connector.');
+        bundleAction($f, 'check'); bundleDrain($f);
+        bundleAction($f, 'install'); bundleDrain($f);
+        $before = $storage;
+        $deletion->connectors = [];
+        check(!$deletion->save() && $storage === $before, 'Reject stale connector deletion after a new association was saved.');
+        $fresh = new Settings();
+        check(count($fresh->$property) === 1 && is_object($fresh->{$property}[0]->connector) && !$wpdb->locked,
+            'Keep the installed extension and its connector intact and release the lock.');
+
+        // Reverse the ordering: deleting the connector first must block a stale
+        // registration, rather than resurrecting the connector or orphaning it.
+        $storage = [];
+        $f = bundleFixture([]); $f['settings']->save();
+        $registration = new Settings();
+        $deletion = new Settings(); $deletion->connectors = [];
+        check($deletion->save(), 'An unused connector can still be deleted.');
+        $installer = new InstallerFixture();
+        $installer->installed["$type/existing"] = true;
+        $plan = ['action' => 'register', 'ref' => str_repeat('a', 40), 'checked_at' => time()];
+        $options = ['connector' => 'bundle-github', 'branch' => 'main', 'updates' => 'commits'];
+        $before = $storage;
+        $result = (new RRZE\Updater\Core\RepositoryManager($registration, $installer))->applyPrepared($type, 'existing', $options, $plan);
+        check(is_wp_error($result) && $storage === $before && !(new Settings())->connectors && !(new Settings())->$property,
+            'A stale registration cannot reference or recreate a deleted connector.');
+
+        foreach ([
+            ['other-repo', 'shared-folder', false],
+            ['other-repo', 'SHARED-FOLDER', false],
+            ['same-repo', 'different-folder', false],
+            ['SAME-REPO', 'different-folder', false],
+            ['other-repo', 'different-folder', true],
+        ] as [$secondRepository, $secondFolder, $allowed]) {
+            $storage = [];
+            $f = bundleFixture([]); $f['settings']->save();
+            $first = new Settings(); $second = new Settings();
+            $installer = new InstallerFixture();
+            $installer->installed["$type/shared-folder"] = $installer->installed["$type/$secondFolder"] = true;
+            $firstManager = new RRZE\Updater\Core\RepositoryManager($first, $installer);
+            $secondManager = new RRZE\Updater\Core\RepositoryManager($second, $installer);
+            check(is_string($firstManager->applyPrepared($type, 'same-repo', $options + ['folder' => 'shared-folder'], $plan)), 'Persist the first registration.');
+            $before = $storage;
+            $result = $secondManager->applyPrepared($type, $secondRepository, $options + ['folder' => $secondFolder], $plan);
+            check(is_string($result) === $allowed, 'Concurrent registrations must have unique folders and repository identities.');
+            check(count((new Settings())->$property) === ($allowed ? 2 : 1) && !$wpdb->locked, 'Registry remains consistent after concurrent registrations.');
+            if (!$allowed) {
+                check($storage === $before && $second->$property === [], 'Rejected registration writes nothing and restores the caller state.');
+            }
+        }
+    }
+}
+$multisite = true;
+
+// Existing conflicting data can be repaired by removing the duplicate record.
+$fresh = new Settings();
+$duplicate = $fresh->themes[0]->asArray(); $duplicate['id'] = 'legacy-duplicate';
+$storage['rrze_updater']['themes'][] = $duplicate;
+$repair = new Settings(); array_pop($repair->themes);
+check($repair->save() && count((new Settings())->themes) === 2, 'Allow a save that repairs pre-existing duplicate associations.');
 echo 'Passed ' . ($checks - $beforeSettings) . " concurrent settings checks.\n";
