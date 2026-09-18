@@ -4,7 +4,7 @@ require_once __DIR__ . '/update-sources.php';
 use RRZE\Updater\{Main, Settings, Config};
 use RRZE\Updater\Core\Theme;
 
-function outcomeFixture(string $type, bool $automatic): array {
+function outcomeFixture(string $type, bool $automatic, ?string $skinClass = null): array {
     $GLOBALS['storage'] = [];
     $GLOBALS['fail_save'] = false;
     $connector = new BulkGithubPackageFixture();
@@ -20,8 +20,8 @@ function outcomeFixture(string $type, bool $automatic): array {
     $property = $type === 'plugin' ? 'plugins' : 'themes';
     $main->settings->$property = [$extension];
     $main->settings->save();
-    $skinClass = $automatic ? Automatic_Upgrader_Skin::class : WP_Upgrader_Skin::class;
-    $upgrader = new WP_Upgrader((new ReflectionClass($skinClass))->newInstanceWithoutConstructor());
+    $skinClass ??= $automatic ? Automatic_Upgrader_Skin::class : WP_Upgrader_Skin::class;
+    $upgrader = new WP_Upgrader(new $skinClass());
     $target = $type === 'plugin' ? 'package/main.php' : 'package';
     $extra = [$type => $target];
     $file = $main->upgraderPreDownloadFilter(false, $connector->downloadRepoZip('package', 'v2'), $upgrader, $extra);
@@ -31,26 +31,34 @@ function outcomeFixture(string $type, bool $automatic): array {
 }
 $beforeUpdateOutcomes = $checks;
 foreach (['plugin', 'theme'] as $type) {
-    foreach (['success', 'post-error', 'result-error', 'save-error'] as $outcome) {
-        $f = outcomeFixture($type, false);
-        $main = $f['main'];
-        add_filter('upgrader_post_install', [$main, 'upgraderPostInstallFilter'], 10, 3);
-        $failure = static fn($result) => new WP_Error('late_failure', 'Later validation failed.');
-        if ($outcome === 'post-error') add_filter('upgrader_post_install', $failure, 20);
-        if ($outcome === 'result-error') add_filter('upgrader_install_package_result', $failure, 20);
-        $result = ['destination_name' => 'package'];
-        $post = apply_filters('upgrader_post_install', true, $f['extra'], $result);
-        check((new Settings())->{$f['property']}[0]->localVersion === 'v1', 'Post-install alone cannot commit the installed ref.');
-        $fail_save = $outcome === 'save-error';
-        $final = apply_filters('upgrader_install_package_result', is_wp_error($post) ? $post : $result, $f['extra']);
-        $fail_save = false;
-        check(is_wp_error($final) === ($outcome !== 'success'), 'Final manual result includes downstream validation and save failures.');
-        if (is_wp_error($final)) check($f['upgrader']->result === $final, 'Core callers also see the final failure on the upgrader object.');
-        check((new Settings())->{$f['property']}[0]->localVersion === ($outcome === 'success' ? 'v2' : 'v1'), 'Only a successful final manual result advances the ref.');
-        remove_filter('upgrader_post_install', [$main, 'upgraderPostInstallFilter'], 10);
-        remove_filter('upgrader_post_install', $failure, 20);
-        remove_filter('upgrader_install_package_result', $failure, 20);
-        check(!has_filter('upgrader_install_package_result'), 'Per-package completion callback is removed.');
+    foreach ([WP_Upgrader_Skin::class, WP_Ajax_Upgrader_Skin::class] as $skinClass) {
+        foreach (['success', 'post-error', 'result-error', 'save-error'] as $outcome) {
+            $f = outcomeFixture($type, false, $skinClass);
+            $main = $f['main'];
+            add_filter('upgrader_post_install', [$main, 'upgraderPostInstallFilter'], 10, 3);
+            $failure = static fn($result) => new WP_Error('late_failure', 'Later validation failed.');
+            if ($outcome === 'post-error') add_filter('upgrader_post_install', $failure, 20);
+            if ($outcome === 'result-error') add_filter('upgrader_install_package_result', $failure, 20);
+            $result = ['destination_name' => 'package'];
+            $post = apply_filters('upgrader_post_install', true, $f['extra'], $result);
+            check((new Settings())->{$f['property']}[0]->localVersion === 'v1', 'Post-install alone cannot commit the installed ref.');
+            $fail_save = $outcome === 'save-error';
+            $final = apply_filters('upgrader_install_package_result', is_wp_error($post) ? $post : $result, $f['extra']);
+            $fail_save = false;
+            check(is_wp_error($final) === ($outcome !== 'success'), 'Final manual result includes downstream validation and save failures.');
+            if (is_wp_error($final)) check($f['upgrader']->result === $final, 'Core callers also see the final failure on the upgrader object.');
+            check((new Settings())->{$f['property']}[0]->localVersion === ($outcome === 'success' ? 'v2' : 'v1'), "$type/$skinClass/$outcome: only a successful final manual result advances the ref.");
+            // Manual updates must never remain queued for a background batch event.
+            $main->automaticUpdatesComplete([$type => [(object) [
+                'item' => (object) [$type => $f['target']],
+                'result' => new WP_Error('plugin_update_fatal_error_rollback_failed', 'Unrelated background result.'),
+            ]]]);
+            check((new Settings())->{$f['property']}[0]->localVersion === ($outcome === 'success' ? 'v2' : 'v1'), 'Manual completion leaves no deferred automatic-update context.');
+            remove_filter('upgrader_post_install', [$main, 'upgraderPostInstallFilter'], 10);
+            remove_filter('upgrader_post_install', $failure, 20);
+            remove_filter('upgrader_install_package_result', $failure, 20);
+            check(!has_filter('upgrader_install_package_result'), 'Per-package completion callback is removed.');
+        }
     }
     foreach (['success', 'rollback', 'rollback-failed', 'save-error', 'unrelated-result'] as $outcome) {
         $f = outcomeFixture($type, true);

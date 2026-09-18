@@ -864,7 +864,11 @@ class Main
         $this->currentExtension = $extension instanceof Plugin ? 'plugin' : 'theme';
         $package = $this->downloadedPackages[$upgrader] ?? null;
         if ($package && $package['extension'] === $extension) {
-            $this->currentPackage = $package + ['upgrader' => $upgrader, 'automatic' => $upgrader->skin instanceof \Automatic_Upgrader_Skin];
+            // Core's manual AJAX skin inherits from the automatic skin, but its
+            // requests never fire automatic_updates_complete.
+            $automatic = $upgrader->skin instanceof \Automatic_Upgrader_Skin
+                && !($upgrader->skin instanceof \WP_Ajax_Upgrader_Skin);
+            $this->currentPackage = $package + ['upgrader' => $upgrader, 'automatic' => $automatic];
         }
         if ($this->downloadedPackages !== null) {
             unset($this->downloadedPackages[$upgrader]);
