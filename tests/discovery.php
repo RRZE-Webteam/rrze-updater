@@ -192,3 +192,4 @@ check(is_wp_error($api->branches('repo')), 'Malformed branch listing is a retrya
 echo 'Passed ' . ($checks - $beforeDiscovery) . " discovery/inspection/custom-job checks.\n";
 
 require __DIR__ . '/settings.php';
+require __DIR__ . '/gitlab.php';

@@ -6,6 +6,7 @@ defined('ABSPATH') || exit;
 
 use RRZE\Updater\Core\Extension;
 use RRZE\Updater\Core\GithubConnector;
+use RRZE\Updater\Core\GitlabConnector;
 use WP_Error;
 
 /** Install using WordPress's upgrader, without HTML output or activation. */
@@ -39,7 +40,8 @@ class RepositoryInstaller
         }
         $upgrader = $this->createUpgrader($type);
         $connector = $extension->connector;
-        $package = $connector instanceof GithubConnector
+        $temporary = $connector instanceof GithubConnector || $connector instanceof GitlabConnector;
+        $package = $temporary
             ? $connector->downloadRepoZipToTempFile($extension->repository, $extension->remoteVersion)
             : $connector->downloadRepoZip($extension->repository, $extension->remoteVersion);
         if (!$package) {
@@ -66,7 +68,7 @@ class RepositoryInstaller
             $result = $upgrader->install($package, ['overwrite_package' => false]);
         } finally {
             remove_filter('upgrader_source_selection', $selectSource, 20);
-            if ($connector instanceof GithubConnector && is_file($package)) {
+            if ($temporary && is_file($package)) {
                 wp_delete_file($package);
             }
         }

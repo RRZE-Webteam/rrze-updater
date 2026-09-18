@@ -991,7 +991,7 @@ class Main
             }
         }
 
-        $extension = $this->getGithubExtensionForUpgrade($upgrader, $hookExtra);
+        $extension = $this->getRepositoryExtensionForUpgrade($upgrader, $hookExtra);
         if (!$extension) {
             return false;
         }
@@ -1001,6 +1001,11 @@ class Main
             $extension->branch ?? '',
             'main'
         ]));
+
+        // Accept old cached GitLab URLs without ever forwarding their embedded token.
+        if ($extension->connector instanceof GitlabConnector) {
+            $package = remove_query_arg('private_token', $package);
+        }
 
         foreach ($refs as $ref) {
             if ($package !== $extension->connector->downloadRepoZip($extension->repository, $ref)) {
@@ -1106,12 +1111,13 @@ class Main
         return false;
     }
 
-    private function getGithubExtensionForUpgrade($upgrader, array $hookExtra)
+    private function getRepositoryExtensionForUpgrade($upgrader, array $hookExtra)
     {
         if (
             ($upgrader->skin instanceof PluginUpgraderSkin
                 || $upgrader->skin instanceof ThemeUpgraderSkin)
-            && $upgrader->skin->extension->connector instanceof GithubConnector
+            && ($upgrader->skin->extension->connector instanceof GithubConnector
+                || $upgrader->skin->extension->connector instanceof GitlabConnector)
         ) {
             return $upgrader->skin->extension;
         }
@@ -1123,7 +1129,7 @@ class Main
             foreach ($this->settings->plugins as $extension) {
                 if (
                     $extension->installationFolder == $installationFolder
-                    && $extension->connector instanceof GithubConnector
+                    && ($extension->connector instanceof GithubConnector || $extension->connector instanceof GitlabConnector)
                 ) {
                     return $extension;
                 }
@@ -1134,7 +1140,7 @@ class Main
             foreach ($this->settings->themes as $extension) {
                 if (
                     $extension->installationFolder == $hookExtra['theme']
-                    && $extension->connector instanceof GithubConnector
+                    && ($extension->connector instanceof GithubConnector || $extension->connector instanceof GitlabConnector)
                 ) {
                     return $extension;
                 }
