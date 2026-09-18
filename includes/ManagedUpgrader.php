@@ -14,64 +14,70 @@ use RRZE\Updater\Upgrader\ThemeUpgraderSkin;
 use WP_Error;
 
 /**
- * Verifies repository packages and records their final installation outcomes.
+ * Downloads managed plugins and themes and saves the version that was installed.
  *
- * One instance handles the download, source-selection and completion hooks for
- * a request. It tracks the ref encoded in each authenticated package URL rather
- * than assuming that the latest available repository ref was installed.
- * Manual updates commit their ref after the final package result; background
- * updates wait for the batch outcome so fatal-error checks and rollbacks count.
+ * WordPress calls this class at several update steps through hooks:
+ * 1. Check the download URL, then download the ZIP using the connector's token.
+ * 2. Prepare the folder where WordPress will install the files.
+ * 3. Save the installed version only after WordPress reports success.
+ *
+ * A "ref" is the Git commit, tag or branch requested in the download URL.
+ * Background updates may restore the old files if a check fails (a rollback),
+ * so their version is saved only after those checks finish.
  */
 class ManagedUpgrader
 {
     /**
-     * Verified downloads awaiting source selection, keyed by the core upgrader.
+     * Downloads that passed our checks, stored separately for each WordPress upgrader.
      *
-     * Created on the first download attempt. Each new attempt clears the previous
-     * entry for that upgrader; successful source selection consumes its entry.
-     * Weak keys avoid retaining an upgrader solely for an unused download record.
+     * Each entry records the plugin or theme, its Git ref, and its type.
+     * Starting another download clears that upgrader's old entry. Preparing the
+     * install folder also removes the entry after passing it to $currentPackage.
+     * WeakMap removes entries automatically when their upgrader object is destroyed.
      *
      * @var \WeakMap<\WP_Upgrader, array{extension: Core\Extension, ref: string, type: 'plugin'|'theme'}>|null
      */
     private ?\WeakMap $downloadedPackages = null;
 
     /**
-     * Verified package selected for the current installation, or null.
+     * The checked download whose files are currently being installed, or null.
      *
-     * Source selection adds the originating upgrader and background-update flag.
-     * This state is reset on each source-selection attempt and consumed by the
-     * post-install hook. Manual AJAX skins are not treated as background updates.
+     * Also remembers the upgrader object and whether this is a background update.
+     * Cleared when another folder is prepared or the post-install hook reads it.
+     * A user clicking "Update" through AJAX counts as a manual update.
      *
      * @var array{extension: Core\Extension, ref: string, type: 'plugin'|'theme', upgrader: \WP_Upgrader, automatic: bool}|null
      */
     private ?array $currentPackage = null;
 
     /**
-     * Completed background packages awaiting final batch outcomes.
+     * Background updates waiting for WordPress's final success or failure report.
      *
-     * Keys are "plugin:<plugin basename>" or "theme:<stylesheet directory>".
-     * The batch-completion handler drains this queue before examining outcomes,
-     * preventing later events from reusing completed or unmatched package state.
+     * Keys identify the installation, for example "plugin:example/example.php"
+     * or "theme:example". automaticUpdatesComplete() reads and clears this list
+     * so a later report cannot save the same updates again.
      *
      * @var array<string, array{extension: Core\Extension, ref: string, type: 'plugin'|'theme', upgrader: \WP_Upgrader, automatic: bool}>
      */
     private array $automaticPackages = [];
 
     /**
-     * Receives shared dependencies without registering WordPress hooks.
+     * Stores the settings and configuration used by this class.
      *
-     * @param Settings $settings Registry shared with the other plugin components.
-     * @param Config   $config   Configuration used to identify the plugin in logs.
+     * Call register() separately to connect this object to WordPress.
+     *
+     * @param Settings $settings The same settings object used by the other plugin components.
+     * @param Config   $config   Plugin configuration, including its name in log messages.
      */
     public function __construct(
         /**
-         * Shared registry used to resolve managed targets and persist installed refs.
+         * Managed plugins, themes and connectors, including their saved versions.
          *
          * @var Settings
          */
         private readonly Settings $settings,
         /**
-         * Plugin configuration used for logging context.
+         * Configuration used to identify this plugin in log messages.
          *
          * @var Config
          */
@@ -79,10 +85,10 @@ class ManagedUpgrader
     ) {}
 
     /**
-     * Registers this instance's download, source-selection and completion hooks.
+     * Tells WordPress which methods to call during an update.
      *
-     * All four hooks run at priority 10. The temporary final-package-result
-     * callback is added separately by upgraderPostInstallFilter() when needed.
+     * These hooks use priority 10. The final result callback is added later,
+     * when upgraderPostInstallFilter() has a package to finish.
      *
      * @return void
      */
@@ -95,21 +101,21 @@ class ManagedUpgrader
     }
 
     /**
-     * Prepare the managed destination and carry forward the verified package.
+     * Prepares the downloaded files under the folder name saved in Updater settings.
      *
-     * Handles upgrader_source_selection. Unmanaged sources and earlier errors
-     * pass through. Managed sources are moved to their registered folder without
-     * overwriting an existing destination. Only a matching verified download is
-     * staged for later version persistence.
+     * Called by the upgrader_source_selection hook after WordPress unzips a package.
+     * Leaves other plugins and themes alone. For a managed update, checks the folder
+     * name and moves the files without replacing a folder that already exists.
+     * Remembers the checked download so its Git ref can be saved after installation.
      *
-     * @global \WP_Filesystem_Base $wp_filesystem Active WordPress filesystem adapter.
+     * @global \WP_Filesystem_Base $wp_filesystem WordPress's object for reading and moving files.
      *
-     * @param string|WP_Error       $source         Unpacked source directory or an earlier error.
-     * @param string                $remoteSource   Unpack working directory containing the source.
-     * @param \WP_Upgrader          $upgrader       Core upgrader processing this package.
-     * @param array<string, mixed>  $hookExtra      Core context; plugin/theme keys identify the target.
+     * @param string|WP_Error     $source       Folder containing the unzipped files, or an earlier error.
+     * @param string              $remoteSource Working folder containing the unzipped source folder.
+     * @param \WP_Upgrader        $upgrader     WordPress object running this update.
+     * @param array<string, mixed> $hookExtra    Update details; plugin or theme identifies the installation.
      *
-     * @return string|WP_Error Original or managed source path, or a validation/move error.
+     * @return string|WP_Error Folder to install from, or an error if checking or moving it failed.
      */
     public function upgraderSourceSelectionFilter($source, $remoteSource, $upgrader, $hookExtra)
     {
@@ -133,8 +139,8 @@ class ManagedUpgrader
         }
         $package = $this->downloadedPackages[$upgrader] ?? null;
         if ($package && $package['extension'] === $extension) {
-            // Core's manual AJAX skin inherits from the automatic skin, but its
-            // requests never fire automatic_updates_complete.
+            // AJAX updates reuse the background-update skin class, but are manual
+            // updates. They do not trigger automatic_updates_complete.
             $automatic = $upgrader->skin instanceof \Automatic_Upgrader_Skin
                 && !($upgrader->skin instanceof \WP_Ajax_Upgrader_Skin);
             $this->currentPackage = $package + ['upgrader' => $upgrader, 'automatic' => $automatic];
@@ -146,23 +152,25 @@ class ManagedUpgrader
     }
 
     /**
-     * Resolve exact core identifiers; display names are not unique identities.
+     * Finds the managed plugin or theme for this update.
      *
-     * An explicit plugin basename or theme stylesheet must match exactly one
-     * registry entry and takes precedence over skin state. Without identifiers,
-     * a legacy skin may supply a download candidate; source selection instead
-     * requires an already verified download for this upgrader instance.
+     * Uses a plugin path such as "example/example.php" or a theme folder name.
+     * There must be exactly one match in settings; display names are not unique.
+     * If WordPress supplies neither path, older Updater code may identify the
+     * extension through its custom skin (the object that shows update progress).
+     * That is enough to check a download URL, but choosing an install folder
+     * requires a download that has already passed our checks.
      *
-     * @param \WP_Upgrader          $upgrader       Core upgrader and its associated skin.
-     * @param array<string, mixed>  $hookExtra      Core context, optionally containing plugin or theme.
-     * @param bool                  $forDownload    Whether an unverified legacy-skin candidate is allowed.
+     * @param \WP_Upgrader        $upgrader    WordPress object running the update.
+     * @param array<string, mixed> $hookExtra   Update details, optionally including plugin or theme.
+     * @param bool                $forDownload True when checking a download; allows the older skin lookup.
      *
-     * @return Core\Extension|false Resolved extension, or false for an unknown or ambiguous target.
+     * @return Core\Extension|false Matching plugin/theme, or false if no single match can be found.
      */
     private function getManagedExtensionForUpgrade($upgrader, array $hookExtra, bool $forDownload = false): \RRZE\Updater\Core\Extension|false
     {
         if (isset($hookExtra['plugin']) || isset($hookExtra['theme'])) {
-            // Never fall back to a skin's old extension for an explicit target.
+            // Use the plugin or theme named by WordPress, not an old value in the skin.
             if (isset($hookExtra['plugin'], $hookExtra['theme'])) {
                 return false;
             }
@@ -179,9 +187,9 @@ class ManagedUpgrader
             $matches = array_values(array_filter($extensions, static fn($extension) => $extension->installationFolder === $folder));
             return count($matches) === 1 ? $matches[0] : false;
         }
-        // A legacy skin only identifies a candidate for URL verification. Source
-        // selection requires the verified download, consumed once per package.
-        // Core reuses child-theme skins for unrelated parent downloads.
+        // Older skins can tell us which repository URL to check. Moving files
+        // requires a checked download: WordPress can reuse a child theme's
+        // skin when it downloads a different parent theme.
         if (!$forDownload) {
             return $this->downloadedPackages[$upgrader]['extension'] ?? false;
         }
@@ -193,21 +201,20 @@ class ManagedUpgrader
     }
 
     /**
-     * Downloads a canonical managed archive using its connector credentials.
+     * Checks the package URL and downloads the ZIP with the connector's token.
      *
-     * Handles upgrader_pre_download and preserves earlier short-circuit replies.
-     * GitLab tokens from legacy URLs are removed before URL verification. The
-     * complete URL and encoded ref must match the connector's archive format
-     * before repository validation or authenticated download can proceed.
-     * Successful downloads record the actual package ref for source selection.
+     * Called by the upgrader_pre_download hook. Keeps a path or error returned by
+     * an earlier filter. Otherwise, checks that the URL belongs to the configured
+     * repository before using credentials. Old GitLab tokens in URLs are removed.
+     * After downloading, remembers the requested Git ref for the install step.
      *
-     * @param false|string|WP_Error     $reply      Earlier reply: false, a local archive path, or an error.
-     * @param string                    $package    Package URL or local archive path supplied by core.
-     * @param \WP_Upgrader              $upgrader   Core upgrader processing this package.
-     * @param array<string, mixed>      $hookExtra  Core context used to resolve the repository target.
+     * @param false|string|WP_Error $reply     Earlier filter result: false, a downloaded file path, or an error.
+     * @param string                $package   Download URL or local ZIP path supplied by WordPress.
+     * @param \WP_Upgrader          $upgrader  WordPress object running this update.
+     * @param array<string, mixed>  $hookExtra Update details used to find the managed plugin or theme.
      *
-     * @return false|string|WP_Error    Earlier reply, downloaded archive path, false to let core
-     *                                  handle an unmanaged package, or a verification/download error.
+     * @return false|string|WP_Error Earlier result, downloaded ZIP path, or an error.
+     *     False means WordPress should handle the download itself.
      */
     public function upgraderPreDownloadFilter($reply, $package, $upgrader, $hookExtra)
     {
@@ -223,8 +230,8 @@ class ManagedUpgrader
         if ($extension->connector instanceof GitlabConnector) {
             $package = remove_query_arg('private_token', $package);
         }
-        // Both providers put the encoded ref last in their canonical archive URL.
-        // Validate the entire reconstructed URL before sending any credentials.
+        // GitHub and GitLab put the URL-encoded Git ref at the end of the URL.
+        // Rebuild and compare the full URL before sending the connector's token.
         $prefix = $extension->connector->downloadRepoZip($extension->repository, '');
         if (!is_string($prefix) || $prefix === '' || !str_starts_with($package, $prefix)) {
             return $this->rejectUnmanagedPackage($hookExtra);
@@ -255,18 +262,18 @@ class ManagedUpgrader
     }
 
     /**
-     * Rejects a foreign package for an explicitly identified managed target.
+     * Blocks a package URL that does not belong to the managed repository.
      *
-     * Without an explicit target, the skin may have been reused for an unrelated
-     * parent-theme installation; return false so core can handle that package.
+     * If WordPress did not name a plugin or theme, let it handle the download.
+     * It may be installing a parent theme while reusing the child theme's skin.
      *
-     * @param array<string, mixed> $hookExtra Core context, optionally containing plugin or theme.
+     * @param array<string, mixed> $hookExtra Update details, optionally including plugin or theme.
      *
-     * @return false|WP_Error False for a targetless package, otherwise an untrusted-package error.
+     * @return false|WP_Error False if no plugin/theme was named; otherwise an error blocking the update.
      */
     private function rejectUnmanagedPackage(array $hookExtra): false|WP_Error
     {
-        // A skin alone may be reused for an unrelated parent-theme install.
+        // WordPress may reuse the skin while installing a different parent theme.
         if (!isset($hookExtra['plugin']) && !isset($hookExtra['theme'])) {
             return false;
         }
@@ -274,16 +281,16 @@ class ManagedUpgrader
     }
 
     /**
-     * Checks plugin repository contents at the ref that will actually be installed.
+     * Checks the plugin's repository files at the Git ref being downloaded.
      *
-     * Missing plugin-file, header or readme warnings are tolerated: the warning
-     * is assigned to the extension, a settings save is attempted, and the warning
-     * is logged. Other repository errors are logged and block the download.
+     * A missing main file, plugin header or readme is treated as a warning.
+     * Stores that warning on the plugin, tries to save it, and writes it to the log.
+     * Other repository errors are logged and stop the update.
      *
-     * @param Plugin    $extension  Managed plugin with its configured connector.
-     * @param string    $ref        Ref extracted from the verified archive URL.
+     * @param Plugin $extension Managed plugin and its connector.
+     * @param string $ref       Commit, tag or branch from the checked download URL.
      *
-     * @return true|WP_Error True when installation may proceed, otherwise the blocking error.
+     * @return true|WP_Error True to continue, or the error that stops the update.
      */
     private function validatePluginRepositoryForUpgrade(Plugin $extension, string $ref): bool|WP_Error
     {
@@ -329,38 +336,38 @@ class ManagedUpgrader
     }
 
     /**
-     * Resolves a download candidate backed by a supported repository connector.
+     * Finds the plugin or theme and checks that it uses GitHub or GitLab.
      *
-     * Supports GitHub and GitLab, including core bulk-update contexts that carry
-     * plugin/theme identifiers without a separate type key.
+     * Also works when WordPress updates several items at once and supplies
+     * plugin/theme paths without a separate type field.
      *
-     * @param \WP_Upgrader          $upgrader   Core upgrader and its associated skin.
-     * @param array<string, mixed>  $hookExtra  Core context used to identify the extension.
+     * @param \WP_Upgrader        $upgrader  WordPress object running this update.
+     * @param array<string, mixed> $hookExtra Update details used to find the plugin or theme.
      *
-     * @return Core\Extension|false Candidate with a supported connector, or false.
+     * @return Core\Extension|false Plugin/theme with a supported connector, or false.
      */
     private function getRepositoryExtensionForUpgrade($upgrader, array $hookExtra)
     {
-        // Core bulk updates provide plugin/theme identifiers without a type key.
+        // When updating several items, WordPress may omit the separate type field.
         $extension = $this->getManagedExtensionForUpgrade($upgrader, $hookExtra, true);
         return $extension && ($extension->connector instanceof GithubConnector || $extension->connector instanceof GitlabConnector)
             ? $extension : false;
     }
 
     /**
-     * Stage the verified ref; later post-install filters may still fail.
+     * Waits for the final package result before saving an installed version.
      *
-     * Handles upgrader_post_install and consumes the selected package state.
-     * A successful response with the expected destination adds a temporary
-     * upgrader_install_package_result callback at PHP_INT_MAX. That callback
-     * commits manual updates or queues background updates for batch completion.
-     * Unrelated nested package results do not consume the pending callback.
+     * Called by upgrader_post_install after WordPress copies the files. Other
+     * filters can still report an error, so this method does not save yet.
+     * Instead, it adds a temporary callback to upgrader_install_package_result
+     * at PHP_INT_MAX, a high priority that runs after lower-priority callbacks.
+     * That callback saves manual updates or remembers background updates for later.
      *
-     * @param mixed                $response  Earlier post-install response; only true stages a ref.
-     * @param array<string, mixed> $hookExtra Core context identifying the installed package.
-     * @param array<string, mixed> $result    Core installation data, including destination_name.
+     * @param mixed               $response  Earlier filter result; only true means success here.
+     * @param array<string, mixed> $hookExtra Details identifying the installed plugin or theme.
+     * @param array<string, mixed> $result    Install details; destination_name is the installed folder name.
      *
-     * @return mixed The original post-install response, unchanged.
+     * @return mixed The original response, unchanged.
      */
     public function upgraderPostInstallFilter($response, $hookExtra, $result)
     {
@@ -370,18 +377,17 @@ class ManagedUpgrader
             || ($result['destination_name'] ?? '') !== $package['extension']->installationFolder) {
             return $response;
         }
-        // Register after package preparation, so this runs after existing result
-        // filters. Nested parent-theme packages must not consume the child's ref.
         /**
-         * Finalizes the captured package and removes itself on a matching result.
+         * Handles the final result for this package, then removes this callback.
          *
-         * Package or persistence errors also update the originating upgrader's
-         * result property. Background packages wait for the batch outcome.
+         * Ignores results for other packages, such as a child theme's parent.
+         * Also puts errors on the upgrader object so WordPress callers see them.
+         * Background updates are kept for the later success or rollback report.
          *
-         * @param mixed                $outcome Core package result or an earlier filter's reply.
-         * @param array<string, mixed> $extra   Core context identifying the completed package.
+         * @param mixed               $outcome Install result or an earlier filter's result.
+         * @param array<string, mixed> $extra   Details identifying the completed plugin or theme.
          *
-         * @return mixed Original outcome, or a settings persistence error.
+         * @return mixed Original result, or an error if saving the version fails.
          */
         $finish = function ($outcome, $extra) use ($package, $hookExtra, &$finish) {
             foreach (['plugin', 'theme'] as $key) {
@@ -401,14 +407,14 @@ class ManagedUpgrader
             }
             $target = $extra[$package['type']] ?? '';
             if ($package['automatic'] && $target !== '') {
-                // Core's fatal-error check and rollback happen after upgrade().
-                // The batch completion event contains the actual final outcome.
+                // WordPress may still find a fatal error and restore the old files.
+                // Wait for automatic_updates_complete before saving this ref.
                 $this->automaticPackages[$package['type'] . ':' . $target] = $package;
                 return $outcome;
             }
             $saved = $this->saveInstalledPackage($package);
             if (is_wp_error($saved)) {
-                // Core's callers also inspect this property after run() returns.
+                // WordPress also checks the upgrader's result property after run().
                 $package['upgrader']->result = $saved;
                 return $saved;
             }
@@ -419,17 +425,19 @@ class ManagedUpgrader
     }
 
     /**
-     * Records background-update refs after core's final checks and rollbacks.
+     * Saves background-update versions after WordPress finishes its checks.
      *
-     * Handles automatic_updates_complete. Only queued plugin/theme targets are
-     * considered. Success records the downloaded ref; successful rollback keeps
-     * the previous ref; failed rollback records an empty ref because the installed
-     * files are uncertain. Persistence errors replace the update object's result
-     * and are logged. Pending state is consumed even for unmatched results.
+     * Called by automatic_updates_complete. Matches each result to an update
+     * we remembered earlier, then handles it as follows:
+     * - Success: save the downloaded Git ref.
+     * - Old files restored after an error: keep the previous ref.
+     * - Restoring the old files also failed: save an empty ref, meaning "unknown".
+     * If saving fails, put the error on the result object and write it to the log.
+     * Clears all remembered updates, including any missing from the report.
      *
-     * @param array<string, array<array-key, object>> $results Results grouped by update type.
-     *     Plugin/theme entries expose an item object with the target identifier
-     *     and a result property containing the final boolean or WP_Error.
+     * @param array<string, array<array-key, object>> $results WordPress results grouped by update type.
+     *     Each plugin/theme result has an item object identifying the installation
+     *     and a result property containing true, false or WP_Error.
      *
      * @return void
      */
@@ -446,10 +454,10 @@ class ManagedUpgrader
                 }
                 $outcome = $update->result ?? false;
                 if (is_wp_error($outcome) && in_array('plugin_update_fatal_error_rollback_failed', $outcome->get_error_codes(), true)) {
-                    // Neither the new nor the previous files can be assumed intact.
+                    // The update and the restore both failed; the installed version is unknown.
                     $package['ref'] = '';
                 } elseif ($outcome !== true) {
-                    // Successful rollback retains the previous installed ref.
+                    // A failed update, including one that restored old files, keeps the old ref.
                     continue;
                 }
                 $saved = $this->saveInstalledPackage($package);
@@ -464,16 +472,16 @@ class ManagedUpgrader
     }
 
     /**
-     * Persists the package ref and logs a successful, known installed version.
+     * Saves the installed Git ref in settings.
      *
-     * An empty ref represents an unknown installation after failed rollback and
-     * is saved without a success log. If persistence fails, the extension's
-     * in-memory localVersion is restored and an error is returned to the caller.
+     * An empty ref means we no longer know which version is installed.
+     * Only known versions get a success log message. If saving fails, restores
+     * localVersion on the settings object to its previous value and returns an error.
      *
      * @param array{extension: Core\Extension, ref: string, type: 'plugin'|'theme', upgrader: \WP_Upgrader, automatic: bool} $package
-     *     Completed package context; ref may be empty after a failed rollback.
+     *     Details of the completed update. Its ref can be empty after a failed rollback.
      *
-     * @return true|WP_Error True after persistence, or an installed-version save error.
+     * @return true|WP_Error True if saved, or an error if the settings could not be saved.
      */
     private function saveInstalledPackage(array $package): true|WP_Error
     {
@@ -491,14 +499,13 @@ class ManagedUpgrader
     }
 
     /**
-     * Logs a successful repository update.
+     * Writes a success message if informational logging is enabled.
      *
-     * Includes the repository, installed ref, branch, service and current user.
-     * A readable version is used only when the installed ref matches current
-     * remote metadata. Logger::info() honors the informational logging setting.
+     * Includes the repository, installed Git ref, branch, service and current user.
+     * Uses a readable version label only if it belongs to the ref just installed.
      *
-     * @param 'plugin'|'theme'  $type       Installed extension type.
-     * @param Core\Extension    $extension  Extension whose installed ref has been persisted.
+     * @param 'plugin'|'theme' $type      Whether a plugin or theme was updated.
+     * @param Core\Extension  $extension Plugin/theme whose installed version has been saved.
      *
      * @return void
      */
@@ -527,12 +534,12 @@ class ManagedUpgrader
     }
 
     /**
-     * Returns context for the current admin user.
+     * Gets the current user's details for the log message.
      *
-     * Falls back to ID 0 and login "unknown" when the user API is unavailable,
-     * or login "system" when no user is logged in. Both use an empty email.
+     * Uses ID 0 and login "system" when nobody is logged in. If WordPress's user
+     * function is unavailable, uses login "unknown" instead. Both use an empty email.
      *
-     * @return array{id: int, login: string, email: string} User identity for logging.
+     * @return array{id: int, login: string, email: string} User details to include in the log.
      */
     private function getCurrentAdminContext(): array
     {
@@ -561,11 +568,11 @@ class ManagedUpgrader
     }
 
     /**
-     * Returns the connector's most recent error details for download logs.
+     * Gets extra details about the connector's latest error for logging.
      *
-     * @param Core\Extension $extension Extension whose connector performed the request.
+     * @param Core\Extension $extension Plugin/theme whose connector made the request.
      *
-     * @return array<string, mixed> Connector error context, or an empty array when unavailable.
+     * @return array<string, mixed> Error details, or an empty array if none are available.
      */
     private function getConnectorErrorContext($extension): array {
         if (
