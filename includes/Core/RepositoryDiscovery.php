@@ -20,10 +20,11 @@ class RepositoryDiscovery
             if (is_wp_error($account)) {
                 return $account;
             }
-            // The public users endpoint omits private repositories. Authenticated
-            // user listings include collaborations, so filter every result by owner.
-            $path = ($account['type'] ?? '') === 'Organization' ? '/orgs/' . $owner . '/repos' : '/user/repos';
             $query = ['per_page' => 100, 'page' => $page, 'sort' => 'updated', 'direction' => 'desc'];
+            if (($account['type'] ?? '') !== 'Organization') {
+                return $this->githubPersonalRepositories($owner, $query, $refresh);
+            }
+            $path = '/orgs/' . $owner . '/repos';
         } else {
             $group = $this->request('/groups/' . $owner, [], $refresh);
             if (is_wp_error($group) && $group->get_error_code() !== 'discovery_not_found') {
@@ -48,6 +49,38 @@ class RepositoryDiscovery
         if (is_wp_error($data)) {
             return $data;
         }
+        $items = $this->repositoryItems($data);
+        return is_wp_error($items) ? $items : ['items' => $items, 'has_more' => count($data) === 100, 'page' => $page];
+    }
+
+    private function githubPersonalRepositories(string $owner, array $query, bool $refresh): array|WP_Error
+    {
+        // /user/repos only includes explicit relationships to the token owner.
+        // Public repositories of a different owner need that owner's listing.
+        $public = $this->request('/users/' . $owner . '/repos', $query + ['type' => 'owner'], $refresh);
+        if (is_wp_error($public)) {
+            return $public;
+        }
+        $publicItems = $this->repositoryItems($public);
+        if (is_wp_error($publicItems)) {
+            return $publicItems;
+        }
+        // Disjoint visibility avoids duplicate public collaborations across pages.
+        $private = $this->request('/user/repos', $query + ['visibility' => 'private'], $refresh);
+        if (is_wp_error($private)) {
+            return $private;
+        }
+        $privateItems = $this->repositoryItems($private);
+        if (is_wp_error($privateItems)) {
+            return $privateItems;
+        }
+        $privateItems = array_filter($privateItems, fn($item) => $item['visibility'] === 'private');
+        return ['items' => array_merge($publicItems, array_values($privateItems)),
+            'has_more' => count($public) === 100 || count($private) === 100, 'page' => $query['page']];
+    }
+
+    private function repositoryItems(array $data): array|WP_Error
+    {
         if (!array_is_list($data)) {
             return $this->invalidResponse();
         }
@@ -61,7 +94,7 @@ class RepositoryDiscovery
             }
             $items[] = $this->normalize($repo);
         }
-        return ['items' => $items, 'has_more' => count($data) === 100, 'page' => $page];
+        return $items;
     }
 
     public function repository(string $repository): array|WP_Error

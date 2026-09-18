@@ -44,6 +44,55 @@ $f['connector']->token = 'replacement-token';
 $GLOBALS['discovery_http'] = fn() => ['http_error' => 401];
 check(is_wp_error($api->repositories(2)), 'Replacing the token does not expose the previous token’s cached private repositories.');
 
+// A token need not belong to the configured personal owner. Public repositories
+// must be discoverable even without an explicit collaborator relationship.
+$f = bundleFixture([]); $f['connector']->owner = 'OtherPerson';
+$personal = new RepositoryDiscovery($f['connector']);
+discoveryReset(function ($url) {
+    $path = parse_url($url, PHP_URL_PATH);
+    parse_str(parse_url($url, PHP_URL_QUERY) ?? '', $query);
+    if ($path === '/users/OtherPerson') return ['type' => 'User'];
+    check(($query['sort'] ?? '') === 'updated' && ($query['direction'] ?? '') === 'desc', 'Both personal listings retain recently updated ordering.');
+    if ($path === '/users/OtherPerson/repos') {
+        check(($query['type'] ?? '') === 'owner', 'Fetch public repositories belonging to the configured personal owner.');
+        return [array_merge(githubRepo('public-without-collaboration', 'OtherPerson'), ['private' => false, 'updated_at' => '2026-09-18T12:00:00Z'])];
+    }
+    check($path === '/user/repos' && ($query['visibility'] ?? '') === 'private', 'Authenticated listing is private-only to avoid duplicate public collaborations.');
+    return [githubRepo('private-collaboration', 'OtherPerson'), githubRepo('foreign-private', 'TokenOwner'),
+        array_merge(githubRepo('public-without-collaboration', 'OtherPerson'), ['private' => false])];
+});
+$result = $personal->repositories();
+check(array_column($result['items'], 'repository') === ['public-without-collaboration', 'private-collaboration'], 'Combine owner public repositories and accessible private collaborations without foreign owners or public duplicates.');
+check($result['items'][0]['branch'] === 'develop' && $result['items'][0]['updated_at'] === '2026-09-18T12:00:00Z', 'Preserve default branch and updated timestamp.');
+$count = count($discovery_requests); $personal->repositories();
+check(count($discovery_requests) === $count, 'Both personal listings are cached.');
+$personal->repositories(1, true);
+check(count($discovery_requests) === $count + 3, 'Refresh bypasses account and both listing caches.');
+
+foreach (['public', 'private'] as $longListing) {
+    discoveryReset(function ($url) use ($longListing) {
+        $path = parse_url($url, PHP_URL_PATH);
+        parse_str(parse_url($url, PHP_URL_QUERY) ?? '', $query);
+        if ($path === '/users/OtherPerson') return ['type' => 'User'];
+        $visibility = $path === '/user/repos' ? 'private' : 'public';
+        $page = (int) $query['page'];
+        $count = $visibility === $longListing ? ($page === 1 ? 100 : 1) : ($page === 1 ? 1 : 0);
+        return array_map(fn($i) => array_merge(githubRepo("$visibility-$page-$i", 'OtherPerson'), ['private' => $visibility === 'private']), $count ? range(1, $count) : []);
+    });
+    $first = $personal->repositories(); $second = $personal->repositories(2);
+    check($first['has_more'] && !$second['has_more'] && count($first['items']) === 101 && count($second['items']) === 1,
+        "Continue pagination when only the $longListing listing has more results.");
+    check(count(array_unique(array_column(array_merge($first['items'], $second['items']), 'id'))) === 102, 'Every repository appears once across the combined pages.');
+}
+foreach (['public', 'private'] as $failedListing) {
+    discoveryReset(function ($url) use ($failedListing) {
+        $path = parse_url($url, PHP_URL_PATH);
+        if ($path === '/users/OtherPerson') return ['type' => 'User'];
+        return (($path === '/user/repos') === ($failedListing === 'private')) ? ['http_error' => 403] : [];
+    });
+    check(is_wp_error($personal->repositories()), 'Do not present a partial directory when the ' . $failedListing . ' listing fails.');
+}
+
 $gitlab = GitlabConnector::createFromArray(['id' => 'gitlab', 'owner' => 'team/subgroup', 'host' => 'gitlab.example.org', 'apiUri' => '/api/v4/projects/', 'token' => 'gitlab-secret']);
 $lab = new RepositoryDiscovery($gitlab);
 discoveryReset(function ($url, $args) {
