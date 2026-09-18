@@ -18,11 +18,6 @@ use RRZE\Updater\Core\Plugin;
 use RRZE\Updater\Upgrader\PluginUpgraderSkin;
 use RRZE\Updater\Upgrader\ThemeUpgraderSkin;
 
-use Plugin_Upgrader_Skin;
-use Theme_Upgrader_Skin;
-use Bulk_Plugin_Upgrader_Skin;
-use Bulk_Theme_Upgrader_Skin;
-use WP_Ajax_Upgrader_Skin;
 use WP_Error;
 
 use stdClass;
@@ -102,7 +97,7 @@ class Main
         add_filter('pre_set_site_transient_update_themes', [$this, 'preSetSiteTransientUpdateThemes']);
         add_filter('update_plugin_complete_actions', [$this, 'updatePluginCompleteActions'], 10, 2);
 
-        // Download authenticated GitHub packages only when the upgrader actually needs them.
+        // Download authenticated repository packages only when the upgrader needs them.
         add_filter('upgrader_pre_download', [$this, 'upgraderPreDownloadFilter'], 10, 4);
 
         // Set up a filter for modifying the source selection during plugin/theme updates.
@@ -1030,67 +1025,16 @@ class Main
 
     private function getPluginExtensionForUpgrade($upgrader, array $hookExtra): Plugin|bool
     {
-        if (
-            $upgrader->skin instanceof PluginUpgraderSkin
-            && $upgrader->skin->extension instanceof Plugin
-        ) {
-            return $upgrader->skin->extension;
-        }
-
-        if (($hookExtra['type'] ?? '') == 'plugin' && !empty($hookExtra['plugin'])) {
-            $pluginFileParts = explode('/', $hookExtra['plugin']);
-            $installationFolder = $pluginFileParts[0];
-
-            foreach ($this->settings->plugins as $extension) {
-                if (
-                    $extension instanceof Plugin
-                    && $extension->installationFolder == $installationFolder
-                ) {
-                    return $extension;
-                }
-            }
-        }
-
-        return false;
+        $extension = $this->getManagedExtensionForUpgrade($upgrader, $hookExtra);
+        return $extension instanceof Plugin ? $extension : false;
     }
 
     private function getRepositoryExtensionForUpgrade($upgrader, array $hookExtra)
     {
-        if (
-            ($upgrader->skin instanceof PluginUpgraderSkin
-                || $upgrader->skin instanceof ThemeUpgraderSkin)
-            && ($upgrader->skin->extension->connector instanceof GithubConnector
-                || $upgrader->skin->extension->connector instanceof GitlabConnector)
-        ) {
-            return $upgrader->skin->extension;
-        }
-
-        if (($hookExtra['type'] ?? '') == 'plugin' && !empty($hookExtra['plugin'])) {
-            $pluginFileParts = explode('/', $hookExtra['plugin']);
-            $installationFolder = $pluginFileParts[0];
-
-            foreach ($this->settings->plugins as $extension) {
-                if (
-                    $extension->installationFolder == $installationFolder
-                    && ($extension->connector instanceof GithubConnector || $extension->connector instanceof GitlabConnector)
-                ) {
-                    return $extension;
-                }
-            }
-        }
-
-        if (($hookExtra['type'] ?? '') == 'theme' && !empty($hookExtra['theme'])) {
-            foreach ($this->settings->themes as $extension) {
-                if (
-                    $extension->installationFolder == $hookExtra['theme']
-                    && ($extension->connector instanceof GithubConnector || $extension->connector instanceof GitlabConnector)
-                ) {
-                    return $extension;
-                }
-            }
-        }
-
-        return false;
+        // Core bulk updates provide plugin/theme identifiers without a type key.
+        $extension = $this->getManagedExtensionForUpgrade($upgrader, $hookExtra);
+        return $extension && ($extension->connector instanceof GithubConnector || $extension->connector instanceof GitlabConnector)
+            ? $extension : false;
     }
 
     /**
