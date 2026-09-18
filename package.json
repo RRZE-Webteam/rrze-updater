@@ -17,7 +17,8 @@
     "prod": "npm run version:prod && npm run build",
     "release": "npm run version:release && npm run build",
     "build:installer": "node scripts/build-installer.mjs",
-    "test:php": "php tests/discovery.php"
+    "test:php": "php tests/discovery.php",
+    "test:js": "node --test tests/installer-*.test.mjs"
   },
   "compatibility": {
     "wprequires": "6.8",

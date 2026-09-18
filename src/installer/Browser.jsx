@@ -1,3 +1,4 @@
+import { mergeRepositorySelection } from './selection.mjs';
 import { useEffect, useMemo, useState } from '@wordpress/element';
 import { Button, Modal, Notice, SelectControl, Spinner, TextControl } from '@wordpress/components';
 import { DataViews, filterSortAndPaginate } from '@wordpress/dataviews/wp';
@@ -103,8 +104,7 @@ export default function Browser({ connector, onConnector, selected, onSelected, 
     const { data, paginationInfo } = useMemo(() => filterSortAndPaginate(rows, view, fields), [rows, view, fields]);
     const editing = branchEditor?.connector === connector ? rows.find(item => item.id === branchEditor.id) : null;
     function changeSelection(ids) {
-        const byId = new Map(rows.map(item => [item.id, item]));
-        onSelected(ids.map(id => selected.find(item => item.id === id) || byId.get(id)).filter(Boolean).map(item => ({ ...item, folder: item.folder ?? item.repository })));
+        onSelected(mergeRepositorySelection(selected, rows, data, ids));
     }
     function changeItem(id, values) { onSelected(selected.map(item => item.id === id ? { ...item, ...values } : item)); }
     function changeBranch(id, branch) {
