@@ -28,6 +28,7 @@
 .rrze-status-ready, .rrze-status-done { color: #00450c; background: #e6f3e9; }
 .rrze-status-error, .rrze-status-failed { color: #8a2424; background: #fce8e8; }
 .rrze-saved { margin-top: 24px; }
+.rrze-registration-list { display: grid; gap: 16px; max-height: 45vh; overflow-y: auto; padding: 4px 12px 4px 4px; margin: 20px 0; }
 @media (max-width: 782px) {
     .rrze-installer-shell { padding: 16px; }
     .rrze-selection-row { grid-template-columns: 1fr; gap: 12px; }

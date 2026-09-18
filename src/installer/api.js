@@ -7,7 +7,7 @@ export async function request(operation, values = {}, signal) {
     for (const [key, value] of Object.entries(values)) {
         if (key === 'connectors') {
             for (const [provider, id] of Object.entries(value)) body.set(`connectors[${provider}]`, id);
-        } else body.set(key, key === 'selection' ? JSON.stringify(value) : value);
+        } else body.set(key, ['selection', 'registrations'].includes(key) ? JSON.stringify(value) : value);
     }
     const response = await apiFetch({ url: config.url, method: 'POST', body, signal, parse: false });
     const data = await response.json();

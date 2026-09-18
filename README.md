@@ -209,9 +209,12 @@ resolves the exact commit to install; tags and releases are not used by this bun
    After checks finish, **Install passing entries** can process the passing entries while
    skipping prerequisite errors and their dependents. It does not bypass validation
    or install entries that failed preflight.
-3. Review the actions and refs, then select **Install repositories**. Missing extensions
-   are installed and registered; existing unmanaged extensions are registered;
-   matching managed extensions are checked and skipped. Existing files are never
+3. Review the actions and refs, then select **Install repositories**. If any plugins
+   or themes are already installed but unmanaged, a dialog lets you choose which
+   ones to register. All checkboxes start unchecked. Leave Git-maintained installations
+   unchecked to keep them outside Updater management; the remaining queue continues.
+   Missing extensions are installed and registered; matching managed extensions
+   are checked and skipped. Existing files are never
    overwritten. Plugins remain inactive unless already active; theme availability
    and the active theme are unchanged.
 4. Keep the page open, or pause and resume later. Processing stops issuing requests
@@ -220,6 +223,10 @@ resolves the exact commit to install; tags and releases are not used by this bun
    starting installation. Failed installations can be retried independently of successes. Entries skipped
    for prerequisite errors keep their original error messages; after fixing them,
    run prerequisite checks again before installing them.
+   Registration choices are saved with the job and retained on resume/retry.
+   Declined registrations appear as **Left unmanaged** and are not retried.
+   An installed parent theme can remain unmanaged while satisfying a child theme's
+   dependency. Start a new review to change registration choices.
 
 Use **Cancel process** to stop checking or installing the remaining entries. A
 request already in progress finishes first; completed installations and
@@ -291,7 +298,8 @@ connector for a subgroup to browse it. Tokens stay on the server.
 Discovered repositories always use **commit updates** on the selected branch.
 Installation uses the reviewed commit even if new commits are pushed meanwhile.
 Plugins are not activated; themes are not enabled or activated. Existing unmanaged
-installations can be registered after review, but existing files are never
+installations are registered only when explicitly checked in the confirmation dialog.
+Unchecked installations remain unmanaged; existing files are never
 silently overwritten. Plugin dependency headers are shown for activation planning;
 the installer does not automatically fetch those plugins.
 

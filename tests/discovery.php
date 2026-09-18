@@ -240,5 +240,25 @@ check(is_wp_error($api->branches('repo')), 'Malformed branch listing is a retrya
 
 echo 'Passed ' . ($checks - $beforeDiscovery) . " discovery/inspection/custom-job checks.\n";
 
+$beforeCustomConsent = $checks;
+foreach ([false, true] as $consent) {
+    $f = bundleFixture([]);
+    $f['installer']->installed['plugin/existing-custom'] = true;
+    inspectionFixture(['*' => ['main.php' => 'Plugin Name: Existing custom plugin']]);
+    $result = customAction($f, 'check_custom', [['repository' => 'existing-custom', 'branch' => 'feature/test']]);
+    check(!is_wp_error($result), 'Start discovery review for existing installation.');
+    $job = bundleDrain($f);
+    $id = array_key_first($job['items']);
+    check($job['items'][$id]['plan']['action'] === 'register', 'Discovery identifies optional registration.');
+    $result = $f['manager']->handle('install', $job['id'], $job['revision'], [], [], $consent ? [$id] : []);
+    check(!is_wp_error($result), 'Start discovered installation with explicit registration choices.');
+    $job = bundleDrain($f);
+    check($job['items'][$id]['status'] === ($consent ? 'done' : 'registration_skipped')
+        && count($f['settings']->plugins) === ($consent ? 1 : 0) && $f['installer']->installs === 0,
+        'Discovery jobs honor opt-in without installing over existing files.');
+}
+echo 'Passed ' . ($checks - $beforeCustomConsent) . " discovered registration consent checks.\n";
+
 require __DIR__ . '/settings.php';
 require __DIR__ . '/gitlab.php';
+require __DIR__ . '/registrations.php';

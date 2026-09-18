@@ -22,7 +22,7 @@ class BundleManager
         private RepositoryInstaller $installer = new RepositoryInstaller()
     ) {}
 
-    public function handle(string $action, string $jobId = '', int $revision = -1, array $connectors = [], array $selection = []): array|WP_Error
+    public function handle(string $action, string $jobId = '', int $revision = -1, array $connectors = [], array $selection = [], array $registrations = []): array|WP_Error
     {
         if ($action === 'status') {
             return ['job' => $this->store->load()];
@@ -30,7 +30,7 @@ class BundleManager
         if (!in_array($action, ['check', 'check_custom', 'step', 'install', 'install_anyways', 'retry', 'cancel'], true)) {
             return $this->error('invalid_action', 'Unknown bundle action.');
         }
-        return $this->store->withLock(function () use ($action, $jobId, $revision, $connectors, $selection) {
+        return $this->store->withLock(function () use ($action, $jobId, $revision, $connectors, $selection, $registrations) {
             $job = $this->store->load();
             if ($job && ($job['id'] !== $jobId || $job['revision'] !== $revision)) {
                 return $this->error('stale_job', 'The bundle changed in another request. Reload its progress before continuing.');
@@ -88,13 +88,14 @@ class BundleManager
             } elseif (!isset($job['connectors'])) {
                 return $this->error('selection_required', 'Select connectors and run prerequisite checks again for this older job.');
             } elseif (in_array($action, ['install', 'install_anyways'], true)) {
-                $started = $this->startInstallation($job, $action === 'install_anyways');
+                $started = $this->startInstallation($job, $action === 'install_anyways', $registrations);
                 if (is_wp_error($started)) {
                     return $started;
                 }
             } elseif ($action === 'retry') {
                 if ($job['phase'] === 'blocked') {
                     if (($job['source'] ?? '') === 'custom') {
+                        unset($job['registrations']);
                         $job['id'] = wp_generate_uuid4();
                         $job['created_at'] = time();
                         $job['phase'] = 'checking';
@@ -134,7 +135,7 @@ class BundleManager
         });
     }
 
-    private function startInstallation(array &$job, bool $skipErrors): true|WP_Error
+    private function startInstallation(array &$job, bool $skipErrors, array $registrations): true|WP_Error
     {
         if ($job['phase'] !== ($skipErrors ? 'blocked' : 'ready')) {
             return $this->error('not_ready', 'Complete prerequisite checks before installing. Use Install anyways to skip prerequisite errors.');
@@ -142,8 +143,22 @@ class BundleManager
         if ($job['created_at'] < time() - DAY_IN_SECONDS) {
             return $this->error('expired_plan', 'The prerequisite checks are older than a day. Run them again.');
         }
+        if (!array_is_list($registrations) || count($registrations) > count($job['items'])) {
+            return $this->error('invalid_registrations', 'Select only existing, unmanaged entries from this review.');
+        }
+        foreach ($registrations as $id) {
+            if (!is_string($id) || ($job['items'][$id]['status'] ?? '') !== 'ready'
+                || ($job['items'][$id]['plan']['action'] ?? '') !== 'register') {
+                return $this->error('invalid_registrations', 'Select only existing, unmanaged entries from this review.');
+            }
+        }
+        $job['registrations'] = array_values(array_unique($registrations));
         foreach ($job['items'] as &$item) {
             $item['status'] = $item['status'] === 'ready' ? 'queued' : 'prerequisite_skipped';
+            if ($item['status'] === 'queued' && $item['plan']['action'] === 'register'
+                && !in_array($item['id'], $job['registrations'], true)) {
+                $this->skipRegistration($item);
+            }
         }
         unset($item);
         // Propagate skipped prerequisites to all dependents. Such skips must not
@@ -165,10 +180,10 @@ class BundleManager
             }
             unset($item);
         } while ($changed);
-        if (!$this->hasStatus($job, ['queued'])) {
+        if (!$this->hasStatus($job, ['queued', 'registration_skipped'])) {
             return $this->error('nothing_to_install', 'No entries can be processed. Resolve prerequisite errors and run the checks again.');
         }
-        $job['phase'] = 'running';
+        $job['phase'] = $this->hasStatus($job, ['queued']) ? 'running' : 'complete';
         return true;
     }
 
@@ -386,11 +401,16 @@ class BundleManager
             if (!in_array($item['status'], ['queued', 'installing'], true)) {
                 continue;
             }
+            // Also protect jobs queued before registration consent was introduced.
+            if ($item['plan']['action'] === 'register' && !in_array($item['id'], $job['registrations'] ?? [], true)) {
+                $this->skipRegistration($item);
+                break;
+            }
             $item['status'] = 'installing';
             $this->store->save($job);
             $result = null;
             foreach ($item['dependencies'] as $dependency) {
-                if (!in_array($job['items'][$dependency]['status'], ['done', 'skipped'], true)) {
+                if (!in_array($job['items'][$dependency]['status'], ['done', 'skipped', 'registration_skipped'], true)) {
                     $result = $this->error('dependency_failed', 'A required parent theme failed. Retry after resolving its error.');
                     break;
                 }
@@ -428,6 +448,12 @@ class BundleManager
     private function hasStatus(array $job, array $statuses): bool
     {
         return (bool) array_filter($job['items'], static fn($item) => in_array($item['status'], $statuses, true));
+    }
+
+    private function skipRegistration(array &$item): void
+    {
+        $item['status'] = 'registration_skipped';
+        $item['message'] = __('Left unmanaged. Existing files were kept; registration was not selected.', 'rrze-updater');
     }
 
     private function safeMessage(WP_Error $error, Settings $settings): string

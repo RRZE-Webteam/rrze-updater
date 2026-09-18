@@ -87,9 +87,9 @@ function bundleFixture(array $entries): array {
     $manager = new BundleManager($catalog, $store, $settings, $installer);
     return compact('settings', 'connector', 'store', 'catalog', 'installer', 'manager');
 }
-function bundleAction(array $fixture, string $action): array {
+function bundleAction(array $fixture, string $action, array $registrations = []): array {
     $job = $fixture['store']->load();
-    $result = $fixture['manager']->handle($action, $job['id'] ?? '', $job['revision'] ?? -1, ['github' => 'bundle-github']);
+    $result = $fixture['manager']->handle($action, $job['id'] ?? '', $job['revision'] ?? -1, ['github' => 'bundle-github'], [], $registrations);
     check(!is_wp_error($result), "Bundle action $action succeeds.");
     return $result['job'];
 }
@@ -145,7 +145,7 @@ $f = bundleFixture([bundleEntry('existing')]);
 $f['installer']->installed['plugin/existing'] = true;
 bundleAction($f, 'check'); $job = bundleDrain($f);
 check($job['items']['plugin/existing']['plan']['action'] === 'register', 'Plan explicitly registers unmanaged installations.');
-bundleAction($f, 'install'); bundleDrain($f);
+bundleAction($f, 'install', ['plugin/existing']); bundleDrain($f);
 check($f['installer']->installs === 0 && $f['settings']->plugins[0]->localVersion === '', 'Registration keeps files and does not invent an installed ref.');
 
 foreach (['missing', 'token', 'access', 'host', 'owner'] as $failure) {

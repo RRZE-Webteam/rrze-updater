@@ -2,6 +2,8 @@ import { createRoot, useEffect, useRef, useState } from '@wordpress/element';
 import { Button, Notice, SelectControl, Spinner, TabPanel } from '@wordpress/components';
 import { __, sprintf } from '@wordpress/i18n';
 import Browser from './Browser';
+import RegistrationDialog from './RegistrationDialog';
+import { registrationCandidates } from './registrations.mjs';
 import { request } from './api';
 import { runJob } from './job-runner.mjs';
 import '../../node_modules/@wordpress/dataviews/build-style/style.css';
@@ -14,6 +16,7 @@ const labels = {
     error: __('Check failed', 'rrze-updater'), queued: __('Queued', 'rrze-updater'), installing: __('Installing', 'rrze-updater'),
     done: __('Successful', 'rrze-updater'), skipped: __('Already managed', 'rrze-updater'), failed: __('Failed', 'rrze-updater'),
     prerequisite_skipped: __('Skipped: prerequisite error', 'rrze-updater'),
+    registration_skipped: __('Left unmanaged', 'rrze-updater'),
     cancelled: __('Cancelled', 'rrze-updater'), interrupted: __('Interrupted — inspect files', 'rrze-updater'),
     install: __('Install and register', 'rrze-updater'), register: __('Register existing installation', 'rrze-updater'), skip: __('Already managed', 'rrze-updater'),
 };
@@ -34,10 +37,16 @@ function Recommended({ connectors, onChange, onReview, disabled }) {
 }
 
 function Review({ job, busy, cancelling, onRun, onPause, onCancel, onEdit, uncertain, cancelPending }) {
+    const [registrationPrompt, setRegistrationPrompt] = useState(null);
+    const candidates = registrationCandidates(job);
+    function install(operation) {
+        if (candidates.length) setRegistrationPrompt({ operation, revision: job.revision });
+        else onRun(operation);
+    }
     const items = Object.values(job.items);
     const processed = items.filter(item => !['pending', 'checking', 'queued', 'installing', 'cancelled', 'interrupted'].includes(item.status)).length;
     const failed = items.some(item => item.status === 'failed');
-    const skipped = items.some(item => item.status === 'prerequisite_skipped');
+    const skipped = items.some(item => ['prerequisite_skipped', 'registration_skipped'].includes(item.status));
     const phaseText = {
         checking: __('Checking repository access, package structure, and prerequisites.', 'rrze-updater'),
         ready: __('Review the planned actions below, then install.', 'rrze-updater'),
@@ -51,8 +60,8 @@ function Review({ job, busy, cancelling, onRun, onPause, onCancel, onEdit, uncer
         <p role="status">{busy && <Spinner />}{cancelling ? __('Cancelling the process after the current entry finishes…', 'rrze-updater') : phaseText[job.phase]} {!busy && !cancelling && !cancelPending && active(job) && __('Paused. Resume to continue from saved progress.', 'rrze-updater')}</p>
         <div className="rrze-progress"><progress value={processed} max={items.length || 1} aria-label={__('Installation progress', 'rrze-updater')} /><span>{sprintf(__('%1$d of %2$d processed', 'rrze-updater'), processed, items.length)}</span></div>
         <div className="rrze-toolbar">
-            {job.phase === 'ready' && <Button variant="primary" disabled={busy || uncertain || cancelPending || !config.fileModifications} onClick={() => onRun('install')}>{__('Install repositories', 'rrze-updater')}</Button>}
-            {job.phase === 'blocked' && <Button variant="primary" disabled={busy || uncertain || cancelPending || !config.fileModifications || !items.some(item => item.status === 'ready')} onClick={() => onRun('install_anyways')}>{__('Install passing entries', 'rrze-updater')}</Button>}
+            {job.phase === 'ready' && <Button variant="primary" disabled={busy || uncertain || cancelPending || !config.fileModifications} onClick={() => install('install')}>{__('Install repositories', 'rrze-updater')}</Button>}
+            {job.phase === 'blocked' && <Button variant="primary" disabled={busy || uncertain || cancelPending || !config.fileModifications || !items.some(item => item.status === 'ready')} onClick={() => install('install_anyways')}>{__('Install passing entries', 'rrze-updater')}</Button>}
             {!busy && !cancelPending && active(job) && <Button variant="primary" disabled={!config.fileModifications} onClick={() => onRun('resume')}>{__('Resume', 'rrze-updater')}</Button>}
             {busy && <Button variant="secondary" disabled={cancelling} onClick={onPause}>{__('Pause after current entry', 'rrze-updater')}</Button>}
             {!['complete', 'cancelled'].includes(job.phase) && <Button variant="secondary" isDestructive disabled={cancelling} onClick={onCancel}>{cancelling ? __('Cancelling…', 'rrze-updater') : cancelPending ? __('Retry cancellation', 'rrze-updater') : __('Cancel process', 'rrze-updater')}</Button>}
@@ -61,12 +70,17 @@ function Review({ job, busy, cancelling, onRun, onPause, onCancel, onEdit, uncer
         </div>
         {!['complete', 'cancelled'].includes(job.phase) && <p className="description">{__('Cancel stops the remaining queue after the current entry finishes. Completed installations and registrations are kept.', 'rrze-updater')}</p>}
         <p className="description">{__('Keep this page open while processing. Closing it pauses further requests; an in-flight request may still finish. Installation uses the reviewed commits. Existing files are kept, and activation is unchanged.', 'rrze-updater')}</p>
-        {items.some(item => item.plan?.action === 'register') && <Notice status="warning" isDismissible={false}>{__('Registering existing files associates them with the selected repository. Their current Git version is unknown; a future update may replace them.', 'rrze-updater')}</Notice>}
+        {!!candidates.length && <Notice status="info" isDismissible={false}>{__('Some entries are already installed but unmanaged. Before installation starts, you can choose which ones to register with RRZE Updater.', 'rrze-updater')}</Notice>}
+        {registrationPrompt?.revision === job.revision && !busy && !uncertain && !cancelPending && <RegistrationDialog
+            key={`${job.id}/${job.revision}`} items={candidates} onClose={() => setRegistrationPrompt(null)}
+            onContinue={registrations => { const operation = registrationPrompt.operation; setRegistrationPrompt(null); onRun(operation, registrations); }} />}
         <div className="rrze-review-table"><table className="widefat striped"><thead><tr>
             {[__('Repository', 'rrze-updater'), __('Type / folder', 'rrze-updater'), __('Branch / updates', 'rrze-updater'), __('Planned action / commit', 'rrze-updater'), __('Status', 'rrze-updater'), __('Details', 'rrze-updater')].map(title => <th scope="col" key={title}>{title}</th>)}
         </tr></thead><tbody>{items.map(item => <tr key={item.id}>
             <th scope="row">{item.repository}</th><td>{item.type || '—'}<br />{item.folder}</td><td>{item.branch}<br />{item.updates}</td>
-            <td>{labels[item.plan?.action] || '—'}{item.plan?.ref && <><br /><code title={item.plan.ref}>{item.plan.ref.slice(0, 12)}</code></>}</td>
+            <td>{item.status === 'registration_skipped' ? __('Leave unmanaged', 'rrze-updater')
+                : item.status === 'ready' && item.plan?.action === 'register' ? __('Optional registration', 'rrze-updater')
+                : labels[item.plan?.action] || '—'}{item.plan?.ref && <><br /><code title={item.plan.ref}>{item.plan.ref.slice(0, 12)}</code></>}</td>
             <td><span className={`rrze-status rrze-status-${item.status}`}>{labels[item.status] || item.status}</span></td><td>{item.message}</td>
         </tr>)}</tbody></table></div>
     </section>;
@@ -117,10 +131,10 @@ function App() {
         }).catch(() => { if (mounted) { setError(__('Could not load saved progress. Reload before continuing.', 'rrze-updater')); setUncertain(true); } });
         return () => { mounted = false; stop.current = true; };
     }, []);
-    function run(operation) {
+    function run(operation, registrations = []) {
         return runJob(operation, {
             current, working, stop, cancelTarget, request, accept, setBusy, setError,
-            setUncertain, setCancelling, setReview, connectors, connector, selected,
+            setUncertain, setCancelling, setReview, connectors, connector, selected, registrations,
             messages: {
                 changed: __('The saved process changed. Review its progress before cancelling.', 'rrze-updater'),
                 failed: __('The request did not finish normally. Reload or resume to reconcile saved progress.', 'rrze-updater'),
@@ -133,7 +147,7 @@ function App() {
         <div className="rrze-intro"><p>{__('Install plugins and themes from your connected repositories.', 'rrze-updater')}</p><Button variant="link" href={config.servicesUrl}>{__('Manage connectors', 'rrze-updater')}</Button></div>
         {!config.fileModifications && <Notice status="warning" isDismissible={false}>{__('File modifications are disabled. You can browse repositories and view saved progress.', 'rrze-updater')}</Notice>}
         {error && <Notice status="error" isDismissible={false}>{error}</Notice>}
-        {!loaded ? (!error && <Spinner />) : review && job ? <Review job={job} busy={busy} cancelling={cancelling} uncertain={uncertain} cancelPending={!!cancelTarget.current} onRun={run} onPause={() => { stop.current = true; }} onCancel={cancel} onEdit={edit} /> :
+        {!loaded ? (!error && <Spinner />) : review && job ? <Review key={job.id} job={job} busy={busy} cancelling={cancelling} uncertain={uncertain} cancelPending={!!cancelTarget.current} onRun={run} onPause={() => { stop.current = true; }} onCancel={cancel} onEdit={edit} /> :
             <TabPanel key={tab} initialTabName={tab} onSelect={setTab} tabs={[{ name: 'recommended', title: __('Recommended bundle', 'rrze-updater') }, { name: 'browse', title: __('Browse repositories', 'rrze-updater') }]}>
                 {activeTab => activeTab.name === 'recommended'
                     ? <Recommended connectors={connectors} onChange={setConnectors} disabled={busy || uncertain || !!cancelTarget.current || !config.fileModifications} onReview={() => run('check')} />

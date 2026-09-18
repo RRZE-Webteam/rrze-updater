@@ -141,6 +141,9 @@ class RepositoryManager
             return $state;
         }
         ['existing' => $existing, 'installed' => $installed] = $state;
+        if (($prepared['action'] ?? '') === 'skip' && (!$existing || !$installed)) {
+            return $this->error('local_state_changed', 'The installed or managed state changed since review. Run prerequisite checks again before registering it.');
+        }
         if ($existing && $installed) {
             return "$repository is already registered with this configuration.";
         }

@@ -39,6 +39,7 @@ export async function runJob(operation, context) {
         } else {
             const values = { job: current.current?.id || '', revision: current.current?.revision ?? -1 };
             if (operation === 'check') values.connectors = connectors;
+            if (['install', 'install_anyways'].includes(operation)) values.registrations = context.registrations ?? [];
             if (operation === 'check_custom') {
                 values.connectors = { browse: connector };
                 values.selection = selected.map(({ repository, branch, folder }) => ({ repository, branch, folder }));

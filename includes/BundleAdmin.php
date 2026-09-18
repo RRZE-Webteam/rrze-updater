@@ -74,7 +74,7 @@ class BundleAdmin
             return;
         }
         check_ajax_referer($this->nonceAction(), 'nonce');
-        foreach (['operation', 'job', 'revision', 'connector', 'repository', 'page', 'selection'] as $field) {
+        foreach (['operation', 'job', 'revision', 'connector', 'repository', 'page', 'selection', 'registrations'] as $field) {
             if (isset($_POST[$field]) && !is_scalar($_POST[$field])) {
                 wp_send_json_error(['message' => __('Invalid request.', 'rrze-updater')], 400);
                 return;
@@ -112,11 +112,21 @@ class BundleAdmin
                 wp_send_json_error(['message' => __('Invalid repository selection.', 'rrze-updater')], 400);
                 return;
             }
+            $registrations = $_POST['registrations'] ?? '[]';
+            if (!is_string($registrations) || strlen($registrations) > 65536) {
+                wp_send_json_error(['message' => __('Invalid registration selection.', 'rrze-updater')], 400);
+                return;
+            }
+            $registrations = json_decode(wp_unslash($registrations));
+            if (!is_array($registrations) || count(array_filter($registrations, 'is_string')) !== count($registrations)) {
+                wp_send_json_error(['message' => __('Invalid registration selection.', 'rrze-updater')], 400);
+                return;
+            }
             $result = (new BundleManager())->handle(
                 $operation,
                 sanitize_text_field(wp_unslash($_POST['job'] ?? '')),
                 (int) ($_POST['revision'] ?? -1),
-                $connectors, $selection
+                $connectors, $selection, $registrations
             );
             if (is_wp_error($result)) {
                 wp_send_json_error(['message' => $result->get_error_message()], 409);
