@@ -267,3 +267,5 @@ require __DIR__ . '/bulk-downloads.php';
 require __DIR__ . '/update-refs.php';
 require __DIR__ . '/legacy-parent.php';
 require __DIR__ . '/legacy-installs.php';
+
+require __DIR__ . '/update-sources.php';

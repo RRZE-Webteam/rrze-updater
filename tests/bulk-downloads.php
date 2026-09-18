@@ -49,7 +49,7 @@ foreach ([$github, $lab] as $connector) {
         $path = $main->upgraderPreDownloadFilter(false, $connector->downloadRepoZip('package', 'v1'), $upgrader, $extra + ['type' => $type]);
         check(is_string($path) && is_file($path), 'Single-update payloads still authenticate.');
         wp_delete_file($path);
-        check($main->upgraderPreDownloadFilter(false, 'https://unrelated.example/archive.zip', $upgrader, $extra) === false, 'Never authenticate unrelated package URLs.');
+        check(is_wp_error($main->upgraderPreDownloadFilter(false, 'https://unrelated.example/archive.zip', $upgrader, $extra)), 'Reject unrelated package URLs for managed update targets.');
         check($main->upgraderPreDownloadFilter(false, $connector->downloadRepoZip('package', 'v1'), $upgrader,
             [$type => $type === 'plugin' ? 'unmanaged/main.php' : 'unmanaged']) === false, 'Unmanaged bulk updates are left to core.');
         $failureProperty = $connector instanceof BulkGithubPackageFixture ? 'downloadFails' : 'fail';

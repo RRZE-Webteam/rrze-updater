@@ -418,7 +418,7 @@ class Main
             }
         }
 
-        return $transient;
+        return $this->preSetSiteTransientUpdatePlugins($transient);
     }
 
     /**
@@ -452,7 +452,7 @@ class Main
             }
         }
 
-        return $transient;
+        return $this->preSetSiteTransientUpdateThemes($transient);
     }
 
     /**
@@ -470,45 +470,29 @@ class Main
         if (empty($transient->checked)) {
             return $transient;
         }
-
-        $plugins = get_plugins();
-        $pluginFiles = array_keys($plugins);
-
-        foreach ($pluginFiles as $pluginFile) {
+        foreach (get_plugins() as $pluginFile => $data) {
             foreach ($this->settings->plugins as $extension) {
-                $pluginFileParts = explode('/', $pluginFile);
-
-                if ($extension->installationFolder == $pluginFileParts[0]) {
-                    // This is one of our custom plugins :)
-                    if (
-                        $extension->remoteVersion
-                        && ($extension->remoteVersion != $extension->localVersion)
-                    ) {
-                        $response = new stdClass();
-                        $response->id = $pluginFile;
-                        $response->slug = $extension->installationFolder;
-                        $response->plugin = $pluginFile;
-                        $response->new_version = $extension->getRemoteVersionLabel();
-                        $response->url = $extension->connector->getUrl($extension->repository);
-                        $response->package = $extension->connector->downloadRepoZip($extension->repository, $extension->remoteVersion);
-                        $response->icons = [];
-                        $response->banners = [];
-                        $response->banners_rtl = [];
-                        $response->tested = '';
-                        $response->requires_php = '';
-                        $response->compatibility = new stdClass();
-
-                        // Adding $response to the `no_update` property is required
-                        // for the enable/disable auto-updates links to correctly appear in UI.
-                        $transient->no_update[$pluginFile] = $response;
-
-                        $transient->response[$pluginFile] = $response;
-                    }
-                    break;
+                if ($extension->installationFolder !== dirname($pluginFile)) {
+                    continue;
                 }
+                // A managed installation must never inherit a same-slug .org offer,
+                // including during an API outage or when its Git ref is current.
+                unset($transient->response[$pluginFile], $transient->no_update[$pluginFile]);
+                $hasUpdate = $extension->connector && $extension->remoteVersion
+                    && $extension->remoteVersion !== $extension->localVersion;
+                $response = (object) [
+                    'id' => $pluginFile, 'slug' => $extension->installationFolder, 'plugin' => $pluginFile,
+                    'new_version' => $hasUpdate ? $extension->getRemoteVersionLabel() : ($data['Version'] ?? ''),
+                    'url' => $extension->connector ? $extension->connector->getUrl($extension->repository) : '',
+                    'package' => $hasUpdate ? $extension->connector->downloadRepoZip($extension->repository, $extension->remoteVersion) : '',
+                    'icons' => [], 'banners' => [], 'banners_rtl' => [], 'tested' => '',
+                    'requires_php' => '', 'compatibility' => new stdClass(),
+                ];
+                $bucket = $hasUpdate ? 'response' : 'no_update';
+                $transient->{$bucket}[$pluginFile] = $response;
+                break;
             }
         }
-
         return $transient;
     }
 
@@ -529,37 +513,26 @@ class Main
         if (empty($transient->checked)) {
             return $transient;
         }
-
-        $themes = wp_get_themes();
-        $themeFolders = array_keys($themes);
-
-        foreach ($themeFolders as $themeFolder) {
+        foreach (wp_get_themes() as $themeFolder => $theme) {
             foreach ($this->settings->themes as $extension) {
-                if ($extension->installationFolder == $themeFolder) {
-                    // This is one of our custom themes :)
-                    if (
-                        $extension->remoteVersion
-                        && ($extension->remoteVersion != $extension->localVersion)
-                    ) {
-                        $response = [];
-                        $response['theme'] = $themeFolder;
-                        $response['new_version'] = $extension->getRemoteVersionLabel();
-                        $response['url'] = $extension->connector->getUrl($extension->repository);
-                        $response['package'] = $extension->connector->downloadRepoZip($extension->repository, $extension->remoteVersion);
-                        $response['requires'] = '';
-                        $response['requires_php'] = '';
-
-                        // Adding $response to the `no_update` property is required
-                        // for the enable/disable auto-updates links to correctly appear in UI.
-                        $transient->no_update[$themeFolder] = $response;
-
-                        $transient->response[$themeFolder] = $response;
-                    }
-                    break;
+                if ($extension->installationFolder !== $themeFolder) {
+                    continue;
                 }
+                unset($transient->response[$themeFolder], $transient->no_update[$themeFolder]);
+                $hasUpdate = $extension->connector && $extension->remoteVersion
+                    && $extension->remoteVersion !== $extension->localVersion;
+                $response = [
+                    'theme' => $themeFolder,
+                    'new_version' => $hasUpdate ? $extension->getRemoteVersionLabel() : $theme->get('Version'),
+                    'url' => $extension->connector ? $extension->connector->getUrl($extension->repository) : '',
+                    'package' => $hasUpdate ? $extension->connector->downloadRepoZip($extension->repository, $extension->remoteVersion) : '',
+                    'requires' => '', 'requires_php' => '',
+                ];
+                $bucket = $hasUpdate ? 'response' : 'no_update';
+                $transient->{$bucket}[$themeFolder] = $response;
+                break;
             }
         }
-
         return $transient;
     }
 
@@ -948,13 +921,13 @@ class Main
         // Both providers put the encoded ref last in their canonical archive URL.
         // Validate the entire reconstructed URL before sending any credentials.
         $prefix = $extension->connector->downloadRepoZip($extension->repository, '');
-        if (!is_string($prefix) || !str_starts_with($package, $prefix)) {
-            return false;
+        if (!is_string($prefix) || $prefix === '' || !str_starts_with($package, $prefix)) {
+            return $this->rejectUnmanagedPackage($hookExtra);
         }
         $ref = rawurldecode(substr($package, strlen($prefix)));
         if ($ref === '' || preg_match('/[\x00-\x20\x7f]/', $ref)
             || $package !== $extension->connector->downloadRepoZip($extension->repository, $ref)) {
-            return false;
+            return $this->rejectUnmanagedPackage($hookExtra);
         }
         if ($extension instanceof Plugin) {
             $validation = $this->validatePluginRepositoryForUpgrade($extension, $ref);
@@ -974,6 +947,15 @@ class Main
         $this->downloadedPackages[$upgrader] = ['extension' => $extension, 'ref' => $ref,
             'type' => $extension instanceof Plugin ? 'plugin' : 'theme'];
         return $download;
+    }
+
+    private function rejectUnmanagedPackage(array $hookExtra): false|WP_Error
+    {
+        // A skin alone may be reused for an unrelated parent-theme install.
+        if (!isset($hookExtra['plugin']) && !isset($hookExtra['theme'])) {
+            return false;
+        }
+        return new WP_Error('rrze_updater_untrusted_package', __('The package does not match the managed repository. Refresh the update information before retrying.', 'rrze-updater'));
     }
 
     private function validatePluginRepositoryForUpgrade(Plugin $extension, string $ref): bool|WP_Error

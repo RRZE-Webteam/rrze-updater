@@ -56,7 +56,7 @@ foreach (['github', 'gitlab'] as $provider) {
         $fail_save = false; wp_delete_file($file);
         foreach (['https://unrelated.example/archive.zip', $connector->downloadRepoZip('other-repo', 'v1'),
             $connector->downloadRepoZip('package', 'v1') . '&injected=true'] as $unrelated) {
-            check($main->upgraderPreDownloadFilter(false, $unrelated, $upgrader, $extra) === false, 'Authenticate only canonical archive URLs for this repository.');
+            check(is_wp_error($main->upgraderPreDownloadFilter(false, $unrelated, $upgrader, $extra)), 'Reject noncanonical archive URLs for managed updates.');
             $main->upgraderSourceSelectionFilter('/tmp/work/package/', '/tmp/work/', $upgrader, $extra);
             $main->upgraderPostInstallFilter(true, $extra, ['destination_name' => 'package']);
             check($extension->localVersion === $previous, 'Untracked downloads cannot reuse the preceding package ref.');

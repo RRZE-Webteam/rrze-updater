@@ -76,8 +76,8 @@ foreach (['', '&private_token=old-cached-token'] as $legacyQuery) {
     check(!str_contains(end($lab->requests)[0], 'private_token'), 'Cached tokens are never sent in URLs.');
     wp_delete_file($path);
 }
-check($main->upgraderPreDownloadFilter(false, 'https://unrelated.example/archive.zip', $upgrader,
-    ['type' => 'theme', 'theme' => 'package']) === false, 'Unrelated package is not downloaded with connector credentials.');
+check(is_wp_error($main->upgraderPreDownloadFilter(false, 'https://unrelated.example/archive.zip', $upgrader,
+    ['type' => 'theme', 'theme' => 'package'])), 'Unrelated packages cannot replace a managed theme.');
 $lab->fail = true;
 check(is_wp_error($main->upgraderPreDownloadFilter(false, $lab->downloadRepoZip('package', 'v1'), $upgrader,
     ['type' => 'theme', 'theme' => 'package'])), 'Failed authenticated update does not fall back to an unauthenticated download.');
