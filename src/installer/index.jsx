@@ -3,6 +3,7 @@ import { Button, Notice, SelectControl, Spinner, TabPanel } from '@wordpress/com
 import { __, sprintf } from '@wordpress/i18n';
 import Browser from './Browser';
 import { request } from './api';
+import { runJob } from './job-runner.mjs';
 import '../../node_modules/@wordpress/dataviews/build-style/style.css';
 import './style.css';
 
@@ -32,7 +33,7 @@ function Recommended({ connectors, onChange, onReview, disabled }) {
     </>;
 }
 
-function Review({ job, busy, cancelling, onRun, onPause, onCancel, onEdit, uncertain }) {
+function Review({ job, busy, cancelling, onRun, onPause, onCancel, onEdit, uncertain, cancelPending }) {
     const items = Object.values(job.items);
     const processed = items.filter(item => !['pending', 'checking', 'queued', 'installing', 'cancelled', 'interrupted'].includes(item.status)).length;
     const failed = items.some(item => item.status === 'failed');
@@ -47,16 +48,16 @@ function Review({ job, busy, cancelling, onRun, onPause, onCancel, onEdit, uncer
     };
     return <section aria-label={__('Installation review', 'rrze-updater')}>
         <h2>{job.source === 'custom' ? __('Selected repositories', 'rrze-updater') : __('Recommended bundle', 'rrze-updater')}</h2>
-        <p role="status">{busy && <Spinner />}{cancelling ? __('Cancelling the process after the current entry finishes…', 'rrze-updater') : phaseText[job.phase]} {!busy && !cancelling && active(job) && __('Paused. Resume to continue from saved progress.', 'rrze-updater')}</p>
+        <p role="status">{busy && <Spinner />}{cancelling ? __('Cancelling the process after the current entry finishes…', 'rrze-updater') : phaseText[job.phase]} {!busy && !cancelling && !cancelPending && active(job) && __('Paused. Resume to continue from saved progress.', 'rrze-updater')}</p>
         <div className="rrze-progress"><progress value={processed} max={items.length || 1} aria-label={__('Installation progress', 'rrze-updater')} /><span>{sprintf(__('%1$d of %2$d processed', 'rrze-updater'), processed, items.length)}</span></div>
         <div className="rrze-toolbar">
-            {job.phase === 'ready' && <Button variant="primary" disabled={busy || uncertain || !config.fileModifications} onClick={() => onRun('install')}>{__('Install repositories', 'rrze-updater')}</Button>}
-            {job.phase === 'blocked' && <Button variant="primary" disabled={busy || uncertain || !config.fileModifications || !items.some(item => item.status === 'ready')} onClick={() => onRun('install_anyways')}>{__('Install passing entries', 'rrze-updater')}</Button>}
-            {!busy && active(job) && <Button variant="primary" disabled={!config.fileModifications} onClick={() => onRun('resume')}>{__('Resume', 'rrze-updater')}</Button>}
+            {job.phase === 'ready' && <Button variant="primary" disabled={busy || uncertain || cancelPending || !config.fileModifications} onClick={() => onRun('install')}>{__('Install repositories', 'rrze-updater')}</Button>}
+            {job.phase === 'blocked' && <Button variant="primary" disabled={busy || uncertain || cancelPending || !config.fileModifications || !items.some(item => item.status === 'ready')} onClick={() => onRun('install_anyways')}>{__('Install passing entries', 'rrze-updater')}</Button>}
+            {!busy && !cancelPending && active(job) && <Button variant="primary" disabled={!config.fileModifications} onClick={() => onRun('resume')}>{__('Resume', 'rrze-updater')}</Button>}
             {busy && <Button variant="secondary" disabled={cancelling} onClick={onPause}>{__('Pause after current entry', 'rrze-updater')}</Button>}
-            {!['complete', 'cancelled'].includes(job.phase) && <Button variant="secondary" isDestructive disabled={cancelling} onClick={onCancel}>{cancelling ? __('Cancelling…', 'rrze-updater') : __('Cancel process', 'rrze-updater')}</Button>}
-            {((job.phase === 'complete' && failed) || job.phase === 'blocked') && <Button variant="secondary" disabled={busy || uncertain || !config.fileModifications} onClick={() => onRun('retry')}>{job.phase === 'blocked' ? __('Retry checks', 'rrze-updater') : __('Retry failed installations', 'rrze-updater')}</Button>}
-            {!active(job) && <Button variant="secondary" disabled={busy || uncertain} onClick={onEdit}>{__('Change selection / check again', 'rrze-updater')}</Button>}
+            {!['complete', 'cancelled'].includes(job.phase) && <Button variant="secondary" isDestructive disabled={cancelling} onClick={onCancel}>{cancelling ? __('Cancelling…', 'rrze-updater') : cancelPending ? __('Retry cancellation', 'rrze-updater') : __('Cancel process', 'rrze-updater')}</Button>}
+            {((job.phase === 'complete' && failed) || job.phase === 'blocked') && <Button variant="secondary" disabled={busy || uncertain || cancelPending || !config.fileModifications} onClick={() => onRun('retry')}>{job.phase === 'blocked' ? __('Retry checks', 'rrze-updater') : __('Retry failed installations', 'rrze-updater')}</Button>}
+            {!active(job) && <Button variant="secondary" disabled={busy || uncertain || cancelPending} onClick={onEdit}>{__('Change selection / check again', 'rrze-updater')}</Button>}
         </div>
         {!['complete', 'cancelled'].includes(job.phase) && <p className="description">{__('Cancel stops the remaining queue after the current entry finishes. Completed installations and registrations are kept.', 'rrze-updater')}</p>}
         <p className="description">{__('Keep this page open while processing. Closing it pauses further requests; an in-flight request may still finish. Installation uses the reviewed commits. Existing files are kept, and activation is unchanged.', 'rrze-updater')}</p>
@@ -99,20 +100,9 @@ function App() {
             setSelected(Object.values(value.items).map(item => ({ ...item, id: item.repository })));
         } else setConnectors(value.connectors || {});
     }
-    async function sync() {
-        const result = await request('status'); accept(result.job); return result.job;
-    }
-    async function persistCancellation() {
-        if (current.current?.id !== cancelTarget.current) {
-            throw new Error(__('The saved process changed. Review its progress before cancelling.', 'rrze-updater'));
-        }
-        const result = await request('cancel', { job: cancelTarget.current, revision: current.current.revision });
-        accept(result.job);
-        cancelTarget.current = null;
-    }
     function cancel() {
-        if (cancelTarget.current || !current.current) return;
-        cancelTarget.current = current.current.id;
+        if (!current.current || (cancelTarget.current && working.current)) return;
+        cancelTarget.current ??= current.current.id;
         stop.current = true;
         setCancelling(true);
         // Do not abort an installation request: wait for its saved result, then
@@ -127,49 +117,28 @@ function App() {
         }).catch(() => { if (mounted) { setError(__('Could not load saved progress. Reload before continuing.', 'rrze-updater')); setUncertain(true); } });
         return () => { mounted = false; stop.current = true; };
     }, []);
-    async function run(operation) {
-        if (working.current) return;
-        working.current = true; stop.current = false; setBusy(true); setError('');
-        try {
-            if (operation === 'cancel') {
-                await sync(); setUncertain(false);
-                await persistCancellation();
-            } else if (operation === 'resume') {
-                await sync(); setUncertain(false);
-            } else {
-                const values = { job: current.current?.id || '', revision: current.current?.revision ?? -1 };
-                if (operation === 'check') values.connectors = connectors;
-                if (operation === 'check_custom') {
-                    values.connectors = { browse: connector };
-                    values.selection = selected.map(({ repository, branch, folder }) => ({ repository, branch, folder }));
-                }
-                const result = await request(operation, values);
-                // Retrying checks creates a replacement job for the same selection.
-                if (cancelTarget.current === values.job) cancelTarget.current = result.job.id;
-                accept(result.job); setReview(true);
-            }
-            while (!stop.current && active(current.current)) {
-                const result = await request('step', { job: current.current.id, revision: current.current.revision });
-                accept(result.job);
-            }
-            if (cancelTarget.current) await persistCancellation();
-        } catch (e) {
-            stop.current = true; setUncertain(true);
-            setError(e.message || __('The request did not finish normally. Reload or resume to reconcile saved progress.', 'rrze-updater'));
-            try { const saved = await sync(); setReview(!!saved); setUncertain(false); } catch { /* Keep mutation buttons disabled until reconciliation succeeds. */ }
-        } finally { working.current = false; cancelTarget.current = null; setCancelling(false); setBusy(false); }
+    function run(operation) {
+        return runJob(operation, {
+            current, working, stop, cancelTarget, request, accept, setBusy, setError,
+            setUncertain, setCancelling, setReview, connectors, connector, selected,
+            messages: {
+                changed: __('The saved process changed. Review its progress before cancelling.', 'rrze-updater'),
+                failed: __('The request did not finish normally. Reload or resume to reconcile saved progress.', 'rrze-updater'),
+                cancelPending: __('Cancellation has not been confirmed. Retry cancellation to reconcile saved progress before continuing.', 'rrze-updater'),
+            },
+        });
     }
     function edit() { restore(job); setReview(false); }
     return <div className="rrze-installer-shell">
         <div className="rrze-intro"><p>{__('Install plugins and themes from your connected repositories.', 'rrze-updater')}</p><Button variant="link" href={config.servicesUrl}>{__('Manage connectors', 'rrze-updater')}</Button></div>
         {!config.fileModifications && <Notice status="warning" isDismissible={false}>{__('File modifications are disabled. You can browse repositories and view saved progress.', 'rrze-updater')}</Notice>}
         {error && <Notice status="error" isDismissible={false}>{error}</Notice>}
-        {!loaded ? (!error && <Spinner />) : review && job ? <Review job={job} busy={busy} cancelling={cancelling} uncertain={uncertain} onRun={run} onPause={() => { stop.current = true; }} onCancel={cancel} onEdit={edit} /> :
+        {!loaded ? (!error && <Spinner />) : review && job ? <Review job={job} busy={busy} cancelling={cancelling} uncertain={uncertain} cancelPending={!!cancelTarget.current} onRun={run} onPause={() => { stop.current = true; }} onCancel={cancel} onEdit={edit} /> :
             <TabPanel key={tab} initialTabName={tab} onSelect={setTab} tabs={[{ name: 'recommended', title: __('Recommended bundle', 'rrze-updater') }, { name: 'browse', title: __('Browse repositories', 'rrze-updater') }]}>
                 {activeTab => activeTab.name === 'recommended'
-                    ? <Recommended connectors={connectors} onChange={setConnectors} disabled={busy || uncertain || !config.fileModifications} onReview={() => run('check')} />
+                    ? <Recommended connectors={connectors} onChange={setConnectors} disabled={busy || uncertain || !!cancelTarget.current || !config.fileModifications} onReview={() => run('check')} />
                     : <Browser connector={connector} onConnector={value => { setConnector(value); setSelected([]); }} selected={selected} onSelected={setSelected}
-                        disabled={busy || uncertain} canInstall={config.fileModifications} onReview={() => run('check_custom')} />}
+                        disabled={busy || uncertain || !!cancelTarget.current} canInstall={config.fileModifications} onReview={() => run('check_custom')} />}
             </TabPanel>}
         {!review && job && <Button className="rrze-saved" variant="secondary" onClick={() => setReview(true)}>{__('Return to saved progress', 'rrze-updater')}</Button>}
     </div>;
