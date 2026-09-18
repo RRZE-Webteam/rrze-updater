@@ -861,10 +861,15 @@ class Main
      * @param array $hookExtra Additional upgrade data, such as plugin or theme information.
      * @return string|WP_Error The new source location after the upgrade or a WP_Error object on failure.
      */
+    /** Authenticated package identity, scoped to each upgrader instance. */
+    private ?\WeakMap $downloadedPackages = null;
+    private ?array $currentPackage = null;
+
     public function upgraderSourceSelectionFilter($source, $remoteSource, $upgrader, $hookExtra)
     {
         global $wp_filesystem;
         $this->currentExtension = '';
+        $this->currentPackage = null;
         if (is_wp_error($source)) {
             return $source;
         }
@@ -882,6 +887,10 @@ class Main
             return new WP_Error('rrze_updater_source_move_failed', __('Could not prepare the managed installation folder.', 'rrze-updater'));
         }
         $this->currentExtension = $extension instanceof Plugin ? 'plugin' : 'theme';
+        $package = $this->downloadedPackages[$upgrader] ?? null;
+        if ($package && $package['extension'] === $extension) {
+            $this->currentPackage = $package;
+        }
         return $newSource;
     }
 
@@ -917,71 +926,51 @@ class Main
 
     public function upgraderPreDownloadFilter($reply, $package, $upgrader, $hookExtra)
     {
+        $this->downloadedPackages ??= new \WeakMap();
+        unset($this->downloadedPackages[$upgrader]);
         if (false !== $reply || !is_string($package)) {
             return $reply;
         }
-
-        $pluginExtension = $this->getPluginExtensionForUpgrade($upgrader, $hookExtra);
-        if ($pluginExtension) {
-            $validation = $this->validatePluginRepositoryForUpgrade($pluginExtension);
-            if (is_wp_error($validation)) {
-                return $validation;
-            }
-        }
-
         $extension = $this->getRepositoryExtensionForUpgrade($upgrader, $hookExtra);
         if (!$extension) {
             return false;
         }
-
-        $refs = array_filter(array_unique([
-            $extension->remoteVersion ?? '',
-            $extension->branch ?? '',
-            'main'
-        ]));
-
-        // Accept old cached GitLab URLs without ever forwarding their embedded token.
         if ($extension->connector instanceof GitlabConnector) {
             $package = remove_query_arg('private_token', $package);
         }
-
-        foreach ($refs as $ref) {
-            if ($package !== $extension->connector->downloadRepoZip($extension->repository, $ref)) {
-                continue;
-            }
-
-            $download = $extension->connector->downloadRepoZipToTempFile($extension->repository, $ref);
-            if (!$download) {
-                do_action(
-                    'rrze.log.error',
-                    'Download failed for {repository} at ref {ref}.',
-                    array_merge(
-                        [
-                            'plugin' => $this->config->getLogPlugin(),
-                            'repository' => $extension->repository,
-                            'ref' => $ref,
-                            'service' => $extension->connector->display ?? '',
-                            'error' => $extension->connector->error ?: __('Download failed.', 'rrze-updater')
-                        ],
-                        $this->getConnectorErrorContext($extension)
-                    )
-                );
-
-                return new WP_Error(
-                    'download_failed',
-                    $extension->connector->error ?: __('Download failed.', 'rrze-updater')
-                );
-            }
-
-            return $download;
+        // Both providers put the encoded ref last in their canonical archive URL.
+        // Validate the entire reconstructed URL before sending any credentials.
+        $prefix = $extension->connector->downloadRepoZip($extension->repository, '');
+        if (!is_string($prefix) || !str_starts_with($package, $prefix)) {
+            return false;
         }
-
-        return false;
+        $ref = rawurldecode(substr($package, strlen($prefix)));
+        if ($ref === '' || preg_match('/[\x00-\x20\x7f]/', $ref)
+            || $package !== $extension->connector->downloadRepoZip($extension->repository, $ref)) {
+            return false;
+        }
+        if ($extension instanceof Plugin) {
+            $validation = $this->validatePluginRepositoryForUpgrade($extension, $ref);
+            if (is_wp_error($validation)) {
+                return $validation;
+            }
+        }
+        $download = $extension->connector->downloadRepoZipToTempFile($extension->repository, $ref);
+        if (!$download) {
+            do_action('rrze.log.error', 'Download failed for {repository} at ref {ref}.', array_merge([
+                'plugin' => $this->config->getLogPlugin(), 'repository' => $extension->repository, 'ref' => $ref,
+                'service' => $extension->connector->display ?? '',
+                'error' => $extension->connector->error ?: __('Download failed.', 'rrze-updater'),
+            ], $this->getConnectorErrorContext($extension)));
+            return new WP_Error('download_failed', $extension->connector->error ?: __('Download failed.', 'rrze-updater'));
+        }
+        $this->downloadedPackages[$upgrader] = ['extension' => $extension, 'ref' => $ref,
+            'type' => $extension instanceof Plugin ? 'plugin' : 'theme'];
+        return $download;
     }
 
-    private function validatePluginRepositoryForUpgrade(Plugin $extension): bool|WP_Error
+    private function validatePluginRepositoryForUpgrade(Plugin $extension, string $ref): bool|WP_Error
     {
-        $ref = $extension->remoteVersion ?: ($extension->branch ?: 'main');
         $validation = $extension->getRemotePluginRepositoryWarning($ref);
         if (!is_wp_error($validation)) {
             return true;
@@ -1023,12 +1012,6 @@ class Main
         return true;
     }
 
-    private function getPluginExtensionForUpgrade($upgrader, array $hookExtra): Plugin|bool
-    {
-        $extension = $this->getManagedExtensionForUpgrade($upgrader, $hookExtra);
-        return $extension instanceof Plugin ? $extension : false;
-    }
-
     private function getRepositoryExtensionForUpgrade($upgrader, array $hookExtra)
     {
         // Core bulk updates provide plugin/theme identifiers without a type key.
@@ -1051,38 +1034,21 @@ class Main
      */
     public function upgraderPostInstallFilter($response, $hookExtra, $result)
     {
-        if ($response == 1) {
-            // Check the current extension type ('plugin' or 'theme').
-            if ($this->currentExtension == 'plugin') {
-                // Iterate through the plugins in settings.
-                foreach ($this->settings->plugins as $key => $plugin) {
-                    // Check if the destination folder matches the plugin's installation folder.
-                    if ($result['destination_name'] == $plugin->installationFolder) {
-                        // Update the local version of the plugin in settings.
-                        $this->settings->plugins[$key]->localVersion = $this->settings->plugins[$key]->remoteVersion;
-                        $this->settings->save();
-                        $this->logSuccessfulUpdate('plugin', $plugin);
-                        break;
-                    }
-                }
-            }
-
-            if ($this->currentExtension == 'theme') {
-                // Iterate through the themes in settings.
-                foreach ($this->settings->themes as $key => $theme) {
-                    // Check if the destination folder matches the theme's installation folder.
-                    if ($result['destination_name'] == $theme->installationFolder) {
-                        // Update the local version of the theme in settings.
-                        $this->settings->themes[$key]->localVersion = $this->settings->themes[$key]->remoteVersion;
-                        $this->settings->save();
-                        $this->logSuccessfulUpdate('theme', $theme);
-                        break;
-                    }
-                }
-            }
+        $package = $this->currentPackage;
+        $this->currentPackage = null;
+        if ($response !== true || !$package || !is_array($result)
+            || ($result['destination_name'] ?? '') !== $package['extension']->installationFolder) {
+            return $response;
         }
-
-        return $result;
+        $extension = $package['extension'];
+        $previous = $extension->localVersion;
+        $extension->localVersion = $package['ref'];
+        if (!$this->settings->save()) {
+            $extension->localVersion = $previous;
+            return new WP_Error('rrze_updater_save_failed', __('Could not save the installed repository version. Reconcile the installation before retrying.', 'rrze-updater'));
+        }
+        $this->logSuccessfulUpdate($package['type'], $extension);
+        return $response;
     }
 
     /**
@@ -1099,8 +1065,8 @@ class Main
             'extension-type' => $type,
             'repository' => $extension->repository ?? '',
             'installation-folder' => $extension->installationFolder ?? '',
-            'version' => method_exists($extension, 'getReadableRemoteVersion') ? $extension->getReadableRemoteVersion() : ($extension->remoteVersion ?? ''),
-            'git-version' => $extension->remoteVersion ?? '',
+            'version' => $extension->localVersion === $extension->remoteVersion ? $extension->getReadableRemoteVersion() : $extension->localVersion,
+            'git-version' => $extension->localVersion ?? '',
             'branch' => $extension->branch ?? '',
             'service' => isset($extension->connector) ? $extension->connector->display : '',
             'admin-id' => $admin['id'],
