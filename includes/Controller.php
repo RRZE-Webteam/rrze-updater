@@ -953,8 +953,10 @@ class Controller
         // Use a switch statement to determine the action to perform.
         switch ($action) {
             case 'delete':
-                // If the action is 'delete', invoke the 'getRepoDelete' method to handle deletion.
-                $this->getRepoDelete();
+                // Bulk requests are verified by the list table using its own nonce.
+                if (isset($_GET['id'])) {
+                    $this->getRepoDelete();
+                }
                 break;
 
             case 'bulk-update':
@@ -983,7 +985,7 @@ class Controller
         $nonceField = $_GET['rrze-updater-nonce'] ?? '';
 
         // Verify the nonce to ensure the request is legitimate.
-        if ($nonceField && !wp_verify_nonce($nonceField, 'rrze-updater-repo-delete')) {
+        if (!is_string($nonceField) || !wp_verify_nonce($nonceField, 'rrze-updater-repo-delete')) {
             wp_die(esc_html__('Unable to submit this form, please refresh and try again.', 'rrze-updater'));
         }
 
@@ -1281,7 +1283,7 @@ class Controller
         $nonceField = $_GET['rrze-updater-nonce'] ?? '';
 
         // Verify the nonce field to ensure the request is legitimate.
-        if ($nonceField && !wp_verify_nonce($nonceField, 'rrze-updater-connector-delete')) {
+        if (!is_string($nonceField) || !wp_verify_nonce($nonceField, 'rrze-updater-connector-delete')) {
             wp_die(esc_html__('Unable to submit this form, please refresh and try again.', 'rrze-updater'));
         }
 
@@ -1590,8 +1592,10 @@ class Controller
                 break;
 
             case 'delete':
-                // Execute the method to delete the specified plugin.
-                $this->getPluginDelete();
+                // Bulk requests are verified by the list table using its own nonce.
+                if (isset($_GET['id'])) {
+                    $this->getPluginDelete();
+                }
                 break;
         }
     }
@@ -1717,7 +1721,7 @@ class Controller
         $nonceField = $_GET['rrze-updater-nonce'] ?? '';
 
         // Verify the nonce field for security purposes.
-        if ($nonceField && !wp_verify_nonce($nonceField, 'rrze-updater-plugin-delete')) {
+        if (!is_string($nonceField) || !wp_verify_nonce($nonceField, 'rrze-updater-plugin-delete')) {
             wp_die(esc_html__('Unable to submit this form, please refresh and try again.', 'rrze-updater'));
         }
 
@@ -2035,8 +2039,10 @@ class Controller
                 break;
 
             case 'delete':
-                // Perform theme deletion
-                $this->getThemeDelete();
+                // Bulk requests are verified by the list table using its own nonce.
+                if (isset($_GET['id'])) {
+                    $this->getThemeDelete();
+                }
                 break;
         }
     }
@@ -2158,7 +2164,7 @@ class Controller
         $nonceField = $_GET['rrze-updater-nonce'] ?? '';
 
         // Check if the provided nonce is valid to ensure the request's authenticity
-        if ($nonceField && !wp_verify_nonce($nonceField, 'rrze-updater-theme-delete')) {
+        if (!is_string($nonceField) || !wp_verify_nonce($nonceField, 'rrze-updater-theme-delete')) {
             wp_die(esc_html__('Unable to submit this form, please refresh and try again.', 'rrze-updater'));
         }
 

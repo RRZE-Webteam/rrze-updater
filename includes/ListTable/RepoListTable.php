@@ -280,6 +280,14 @@ class RepoListTable extends WP_List_Table
                     return;
                 }
 
+                $nonce = $_GET['_wpnonce'] ?? '';
+                if (!is_string($nonce) || !wp_verify_nonce($nonce, 'bulk-' . $this->_args['plural'])) {
+                    wp_die(esc_html__('Unable to submit this form, please refresh and try again.', 'rrze-updater'));
+                }
+                if (!current_user_can('update_plugins') || !current_user_can('update_themes')) {
+                    wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
+                }
+
                 foreach ($repos as $id) {
                     foreach ($this->listData as $key => $subary) {
                         if ($subary['id'] == $id) {

@@ -274,3 +274,4 @@ require __DIR__ . '/admin-saves.php';
 require __DIR__ . '/admin-integration.php';
 require __DIR__ . '/managed-upgrader.php';
 require __DIR__ . '/settings-defaults.php';
+require __DIR__ . '/admin-deletions.php';
