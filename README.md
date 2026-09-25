@@ -391,3 +391,16 @@ Commit and push the workflow to enable the automatic runs. Results appear in the
 pull request checks and the Actions tab. To make passing tests a merge requirement,
 add `Tests (WordPress 6.8)` and `Tests (WordPress latest)` as required status checks
 in a branch protection rule or ruleset after their first run.
+
+`.github/workflows/plugin-version.yml` adds the `Plugin version increase` check
+for pull requests targeting `main`, including pull requests retargeted to `main`.
+It compares the `Version` header in `rrze-updater.php` at the pull request's head
+with a fresh checkout of `main`. Equal, lower, missing, or malformed versions fail.
+Comparison uses PHP's `version_compare`, matching WordPress version ordering;
+plugin files are read as text and never loaded. The workflow uses pinned actions,
+read-only repository permissions, and no persisted checkout credentials.
+
+After its first run, require `Plugin version increase` in the protection rule for
+`main` and enable **Require branches to be up to date before merging**. This makes
+pull requests update and rerun their checks when another merge advances `main`,
+so two pull requests cannot reuse the same version based on an older passing check.
