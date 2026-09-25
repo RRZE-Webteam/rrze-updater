@@ -334,6 +334,7 @@ the installer does not automatically fetch those plugins.
 npm ci
 npm run build:installer
 npm run test:php
+npm run test:js
 ```
 
 `src/installer/` contains the React UI. `scripts/build-installer.mjs` builds the
@@ -349,3 +350,24 @@ GitHub/GitLab pagination and owner boundaries, package inspection, immutable ref
 retries, parent dependencies, authorization, network isolation, and file installation
 through fixtures. They do not call real services or modify installed extensions.
 Browser validation and a real installation should be tested on staging.
+
+### Continuous integration
+
+`.github/workflows/tests.yml` runs on pull requests to any branch and pushes to
+`dev`. It can also be started manually from GitHub's Actions tab once the workflow
+is on the default branch. Each run tests WordPress 6.8 and the latest release with
+PHP 8.3 and Node.js 24, running both test suites and building the installer.
+
+Actions in this test workflow are pinned to full commit SHAs verified against their
+official repositories. Update these pins deliberately when adopting newer releases;
+the adjacent comments identify the corresponding major versions.
+
+The workflow checks out this plugin inside a temporary WordPress directory and
+downloads the core files needed by the PHP fixtures. No database or additional
+repository secrets are needed. New commits cancel older runs for the same pull request
+or branch.
+
+Commit and push the workflow to enable the automatic runs. Results appear in the
+pull request checks and the Actions tab. To make passing tests a merge requirement,
+add `Tests (WordPress 6.8)` and `Tests (WordPress latest)` as required status checks
+in a branch protection rule or ruleset after their first run.
