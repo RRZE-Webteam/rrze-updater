@@ -12,6 +12,26 @@ class CronControllerFixture extends Controller {
     public function synchronizeSettings() { $this->synchronizations++; }
 }
 
+// Rehydrate real saved settings while retaining fixture-only HTTP connectors.
+class CronSettingsFixture extends Settings {
+    public array $fixtureConnectors = [];
+    public function reload(): void {
+        parent::reload();
+        foreach ($this->connectors as $key => $connector) {
+            $this->connectors[$key] = $this->fixtureConnectors[$connector->id] ?? $connector;
+        }
+        foreach (array_merge($this->plugins, $this->themes) as $extension) {
+            $extension->connector = $this->getConnectorById($extension->connectorId);
+        }
+    }
+    public static function fromSettings(Settings $settings): self {
+        $fresh = new self();
+        $fresh->fixtureConnectors = array_column($settings->connectors, null, 'id');
+        $fresh->reload();
+        return $fresh;
+    }
+}
+
 $beforeCron = $checks;
 $cronGlobalNames = ['wp_filter', 'multisite', 'bundle_network', 'fixture_blog_id', 'fixture_main_sites',
     'cron_events', 'admin_schedule_calls', 'storage', 'invalidated', 'saves'];
@@ -22,6 +42,7 @@ foreach ($cronGlobalNames as $name) {
 $config = new Config();
 $checkHook = $config->getCronActionHook();
 $emailHook = $config->getCronEmailActionHook();
+$continuationHook = $config->getCronContinuationHook();
 
 foreach ([
     ['first network', true, 1, 1, 1, true],
@@ -46,6 +67,7 @@ foreach ([
         $settings->options['email_updates_enabled'] = $emailEnabled;
         $settings->options['email_schedule'] = $network === 2 ? 'rrze_updater_weekly' : 'rrze_updater_monthly';
         check($settings->save(), 'Persist this network’s configured schedules.');
+        $settings = CronSettingsFixture::fromSettings($settings);
         $controller = new CronControllerFixture($settings);
         $otherSite = $network === 2 ? 1 : 42;
         $oldEvent = ['time' => 1234567890, 'schedule' => 'twicedaily'];
@@ -55,6 +77,7 @@ foreach ([
         ];
         if ($existingJobs) {
             $cron_events[$site][$checkHook] = $cron_events[$site][$emailHook] = $oldEvent;
+            $cron_events[$site][$continuationHook] = ['time' => 1234567890, 'schedule' => false];
         }
         $otherEvents = $cron_events[$otherSite];
         $cron = new Cron($settings, $controller);
@@ -65,6 +88,8 @@ foreach ([
             "$label registers email callbacks only on its own main site.");
         check((has_action('init', [$cron, 'activateScheduledEvents']) !== false) === $shouldRun,
             "$label activates schedules only on its own main site.");
+        check((has_action($continuationHook, [$cron, 'resumeEvents']) !== false) === $shouldRun,
+            "$label resumes queued checks only on its own main site.");
 
         do_action('init');
         if ($shouldRun) {
@@ -85,6 +110,7 @@ foreach ([
         } else {
             check(wp_get_schedule($checkHook) === false && wp_get_schedule($emailHook) === false,
                 "$label removes its stale jobs without recreating them.");
+            check(wp_next_scheduled($continuationHook) === false, 'Subsite cleanup also removes stale single continuation events.');
         }
 
         // The real update callback uses a fixture connector: no HTTP or file changes.

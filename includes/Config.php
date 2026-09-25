@@ -17,6 +17,7 @@ class Config {
             ],
             'cron' => [
                 'action_hook' => 'rrze_updater_check_for_updates',
+                'continuation_hook' => 'rrze_updater_continue_update_checks',
                 'email_action_hook' => 'rrze_updater_send_update_email',
                 'schedule' => 'twicedaily',
                 'minimum_check_interval' => HOUR_IN_SECONDS,
@@ -219,6 +220,10 @@ class Config {
 
     public function getCronActionHook(): string {
         return (string) $this->get('cron.action_hook');
+    }
+
+    public function getCronContinuationHook(): string {
+        return (string) $this->get('cron.continuation_hook');
     }
 
     public function getCronSchedule(): string {

@@ -7,9 +7,11 @@ use RRZE\Updater\Core\{Plugin, Theme};
 function absint($value) { return abs((int) $value); }
 function sanitize_email($value) { return filter_var($value, FILTER_SANITIZE_EMAIL); }
 function wp_verify_nonce($nonce, $action) { return $nonce === $action; }
-function wp_clear_scheduled_hook($hook) {
+function wp_clear_scheduled_hook($hook, $args = [], $wpError = false) {
     $GLOBALS['admin_schedule_calls'][] = ['clear', $hook];
+    if (($GLOBALS['cron_schedule_failure'] ?? '') === 'clear') return new WP_Error('fixture_cron', 'Cannot clear event.');
     unset($GLOBALS['cron_events'][get_current_blog_id()][$hook]);
+    return 1;
 }
 function wp_schedule_event($time, $schedule, $hook) {
     $GLOBALS['admin_schedule_calls'][] = ['schedule', $schedule, $hook];
@@ -18,6 +20,12 @@ function wp_schedule_event($time, $schedule, $hook) {
 }
 function wp_get_schedule($hook) { return $GLOBALS['cron_events'][get_current_blog_id()][$hook]['schedule'] ?? false; }
 function wp_next_scheduled($hook) { return $GLOBALS['cron_events'][get_current_blog_id()][$hook]['time'] ?? false; }
+function wp_schedule_single_event($time, $hook, $args = [], $wpError = false) {
+    $GLOBALS['admin_schedule_calls'][] = ['single', $time, $hook];
+    if (($GLOBALS['cron_schedule_failure'] ?? '') === 'single') return new WP_Error('fixture_cron', 'Cannot schedule event.');
+    $GLOBALS['cron_events'][get_current_blog_id()][$hook] = ['time' => $time, 'schedule' => false];
+    return true;
+}
 
 class AdminSaveConnectorFixture extends LegacyInstallConnectorFixture {
     public function asArray(): array { return RRZE\Updater\Core\GithubConnector::createFromArray(parent::asArray())->asArray(); }
@@ -97,7 +105,7 @@ foreach (['connector', 'plugin', 'theme', 'settings'] as $kind) {
             $property = $kind === 'plugin' ? 'plugins' : 'themes';
             check($data[$kind]->branch === $settings->{$property}[0]->branch, 'Repository form shows the persisted branch.');
         }
-        if ($kind === 'settings' && $outcome === 'success') check(count($admin_schedule_calls) === 3, 'Successful general settings save updates schedules.');
+        if ($kind === 'settings' && $outcome === 'success') check(count($admin_schedule_calls) === 4, 'Successful general settings save clears recurring and continuation jobs before scheduling again.');
         if ($outcome !== 'success') {
             $settings->options['info_logging_enabled'] = !$settings->options['info_logging_enabled'];
             check($settings->save(), 'Reload also restores a usable merge baseline for later saves.');

@@ -102,6 +102,10 @@ defined('ABSPATH') || exit;
     .rrze-updater-check-actions {
         text-align: right;
     }
+
+    .rrze-updater-check-actions [hidden] {
+        display: none;
+    }
 </style>
 <h2>
     <?php esc_html_e('Updater', 'rrze-updater'); ?>
@@ -129,9 +133,11 @@ require __DIR__ . '/../partials/bulk-delete-confirm.php';
 <div class="rrze-updater-check-backdrop" id="rrze-updater-check-backdrop" role="dialog" aria-modal="true" aria-labelledby="rrze-updater-check-title">
     <div class="rrze-updater-check-dialog">
         <h2 id="rrze-updater-check-title"><?php esc_html_e('Auf Updates prüfen', 'rrze-updater'); ?></h2>
-        <p id="rrze-updater-check-summary"></p>
+        <p id="rrze-updater-check-summary" role="status" aria-live="polite"></p>
         <div class="rrze-updater-check-list" id="rrze-updater-check-list"></div>
         <div class="rrze-updater-check-actions">
+            <button type="button" class="button" id="rrze-updater-check-stop" hidden><?php esc_html_e('Stop process', 'rrze-updater'); ?></button>
+            <button type="button" class="button button-primary" id="rrze-updater-check-resume" hidden><?php esc_html_e('Resume', 'rrze-updater'); ?></button>
             <button type="button" class="button" id="rrze-updater-check-close" disabled><?php esc_html_e('Schließen', 'rrze-updater'); ?></button>
         </div>
     </div>
@@ -148,6 +154,9 @@ require __DIR__ . '/../partials/bulk-delete-confirm.php';
         var list = document.getElementById('rrze-updater-check-list');
         var summary = document.getElementById('rrze-updater-check-summary');
         var closeButton = document.getElementById('rrze-updater-check-close');
+        var stopButton = document.getElementById('rrze-updater-check-stop');
+        var resumeButton = document.getElementById('rrze-updater-check-resume');
+        var runner = null;
         var hasRun = false;
 
         function getRepositoryText(item) {
@@ -202,14 +211,32 @@ require __DIR__ . '/../partials/bulk-delete-confirm.php';
             summary.textContent = text;
         }
 
-        function setControlsRunning(isRunning) {
-            startButton.disabled = isRunning;
-            closeButton.disabled = isRunning;
+        function updateProgress(progress) {
+            var busy = progress.status === 'running' || progress.status === 'stopping';
+            startButton.disabled = busy || progress.status === 'stopped';
+            closeButton.disabled = busy;
+            stopButton.hidden = !busy;
+            stopButton.disabled = progress.status === 'stopping';
+            resumeButton.hidden = progress.status !== 'stopped';
+
+            if (progress.status === 'stopping') {
+                setSummary(<?php echo wp_json_encode(__('Stopping after the current repository check finishes…', 'rrze-updater')); ?>);
+            } else if (progress.status === 'stopped') {
+                setSummary(<?php echo wp_json_encode(__('Process stopped. %1$d of %2$d repositories checked. Resume continues with the remaining repositories.', 'rrze-updater')); ?>
+                    .replace('%1$d', progress.completed).replace('%2$d', progress.total));
+                resumeButton.focus();
+            } else if (progress.status === 'complete') {
+                setSummary(progress.total
+                    ? <?php echo wp_json_encode(__('Prüfung abgeschlossen. Schließen lädt die Übersicht neu.', 'rrze-updater')); ?>
+                    : <?php echo wp_json_encode(__('Keine Repositories vorhanden.', 'rrze-updater')); ?>);
+                closeButton.focus();
+            } else {
+                setSummary((progress.completed + 1) + ' / ' + progress.total);
+            }
         }
 
         function openDialog() {
             backdrop.classList.add('is-active');
-            closeButton.focus();
         }
 
         function closeDialog() {
@@ -270,20 +297,11 @@ require __DIR__ . '/../partials/bulk-delete-confirm.php';
         }
 
         function checkItem(index) {
-            var item;
-            var listItem;
-
-            if (index >= items.length) {
-                setSummary(<?php echo wp_json_encode(__('Prüfung abgeschlossen. Schließen lädt die Übersicht neu.', 'rrze-updater')); ?>);
-                setControlsRunning(false);
-                return;
-            }
-
-            item = items[index];
-            listItem = createListItem(item);
+            var item = items[index];
+            var listItem = createListItem(item);
             setSummary((index + 1) + ' / ' + items.length);
 
-            fetch(ajaxUrl, {
+            return fetch(ajaxUrl, {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: {
@@ -297,16 +315,6 @@ require __DIR__ . '/../partials/bulk-delete-confirm.php';
                 })
                 .catch(function handleError() {
                     setListItemStatus(listItem, item, <?php echo wp_json_encode(__('Fehler bei der Prüfung', 'rrze-updater')); ?>, 'error');
-                })
-                .finally(function scheduleNextCheck() {
-                    if ((index + 1) >= items.length) {
-                        checkItem(index + 1);
-                        return;
-                    }
-
-                    window.setTimeout(function runNextCheck() {
-                        checkItem(index + 1);
-                    }, delaySeconds * 1000);
                 });
         }
 
@@ -319,21 +327,23 @@ require __DIR__ . '/../partials/bulk-delete-confirm.php';
             list.innerHTML = '';
             openDialog();
 
-            if (!items.length) {
-                setSummary(<?php echo wp_json_encode(__('Keine Repositories vorhanden.', 'rrze-updater')); ?>);
-                setControlsRunning(false);
-                return;
-            }
-
-            setControlsRunning(true);
-            checkItem(0);
+            runner = window.rrzeUpdaterCreateCheckRunner({
+                total: items.length,
+                delay: delaySeconds * 1000,
+                check: checkItem,
+                onChange: updateProgress
+            });
+            runner.resume();
+            if (items.length) stopButton.focus();
         }
 
-        if (!startButton || !backdrop || !list || !summary || !closeButton) {
+        if (!startButton || !backdrop || !list || !summary || !closeButton || !stopButton || !resumeButton) {
             return;
         }
 
         startButton.addEventListener('click', startCheck);
         closeButton.addEventListener('click', closeDialog);
+        stopButton.addEventListener('click', function () { runner.stop(); });
+        resumeButton.addEventListener('click', function () { runner.resume(); stopButton.focus(); });
     }());
 </script>

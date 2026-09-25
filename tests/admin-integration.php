@@ -26,6 +26,8 @@ function get_current_screen() { return $GLOBALS['admin_screen'] ?? null; }
 function self_admin_url($path = '') { return '/wp-admin/' . $path; }
 function network_admin_url($path = '') { return '/wp-admin/network/' . $path; }
 function wp_nonce_url($url, $action = '-1') { return $url . '&_wpnonce=' . rawurlencode($action); }
+function plugins_url($path, $plugin = '') { return '/wp-content/plugins/rrze-updater/' . $path; }
+function wp_enqueue_script(...$args) { $GLOBALS['admin_enqueued_scripts'][] = $args; }
 function _get_list_table($class) { return new class { public function get_column_count() { return 5; } }; }
 function adminOutput(callable $callback): string {
     ob_start();
@@ -66,6 +68,13 @@ foreach ([false, true] as $multisite) {
         'rrze-updater-themes' => 'themesListScreenOptions', 'rrze-updater-settings' => 'settingsScreenOptions'] as $slug => $method) {
         check(has_action('load-page-' . $slug, [$controller, $method]) === 10, 'Page retains its screen-option callback.');
     }
+    check(has_action('load-page-rrze-updater', [$admin, 'enqueueUpdateCheckScript']) === 10,
+        'The overview loads its check runner before rendering the dialog.');
+    $admin_enqueued_scripts = [];
+    $admin->enqueueUpdateCheckScript();
+    check($admin_enqueued_scripts[0][0] === 'rrze-updater-check-runner'
+        && str_ends_with($admin_enqueued_scripts[0][1], '/assets/js/update-check-runner.js')
+        && $admin_enqueued_scripts[0][4] === false, 'The runner is enqueued in the header before the inline dialog script.');
     check(apply_filters('set-screen-option', false, $config->getScreenOptionPerPage(), 37) === 37, 'Updater screen option is saved.');
     check(apply_filters('set-screen-option', false, 'unrelated', 37) === false, 'Other screen options are untouched.');
 

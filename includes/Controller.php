@@ -2568,7 +2568,7 @@ class Controller
      * the WordPress installation. Settings for plugins or themes that are no longer installed
      * are removed to maintain an accurate configuration.
      * 
-     * @return void
+     * @return bool Whether the synchronized settings were saved.
      */
     public function synchronizeSettings()
     {
@@ -2600,7 +2600,7 @@ class Controller
         }
 
         // Save the updated settings to maintain consistency.
-        $this->saveSettings();
+        return $this->saveSettings();
     }
 
     /** Never present rejected edits as persisted values to this or other consumers. */

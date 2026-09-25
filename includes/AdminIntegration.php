@@ -205,9 +205,17 @@ class AdminIntegration
         );
 
         add_action("load-$repoPage", [$this->controller, 'repoListScreenOptions']);
+        add_action("load-$repoPage", [$this, 'enqueueUpdateCheckScript']);
         add_action("load-$pluginsPage", [$this->controller, 'pluginsListScreenOptions']);
         add_action("load-$themesPage", [$this->controller, 'themesListScreenOptions']);
         add_action("load-$settingsPage", [$this->controller, 'settingsScreenOptions']);
+    }
+
+    public function enqueueUpdateCheckScript(): void
+    {
+        $root = dirname(__DIR__);
+        wp_enqueue_script('rrze-updater-check-runner', plugins_url('assets/js/update-check-runner.js', $root . '/rrze-updater.php'),
+            [], (string) filemtime($root . '/assets/js/update-check-runner.js'), false);
     }
 
     private function getRepositoryUpdatesBadge(): string

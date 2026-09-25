@@ -78,6 +78,25 @@ RRZE Updater automatically checks for new updates. To manually check for new upd
 - Click "Check for Updates".
 - The pending update will then appear in the WordPress plugin or theme overview.
 
+The main **Updater** overview also offers **Check for updates** (**Auf Updates prüfen**)
+for all managed repositories. **Stop process** lets the current repository request
+finish and save its result, then stops issuing further requests. **Resume** continues
+with the remaining repositories while the dialog stays open. **Close** reloads the
+overview with the saved results; starting another manual check begins a new pass.
+
+Scheduled checks run on each network's main site, processing one repository per
+cron request and saving each result immediately. Remaining work is persisted in
+the `rrze_updater_check_batch` option. The configured delay is applied between
+requests, without keeping a PHP worker asleep. Continuations depend on normal
+WordPress cron execution (site traffic or a system cron invoking WP-Cron), so the
+delay is a minimum rather than an exact execution time.
+
+An interrupted check or failed result save stays queued while other repositories
+continue. After three unsuccessful attempts in one cycle, that repository is
+reported through the RRZE error log and deferred to the next regular cycle.
+Missing continuation events are repaired on the next main-site request. Scheduled
+checks run independently of the overview's manual checks.
+
 ## Report Errors
 Errors can be logged as issues in GitLab. Alternatively, issues and inquiries can be sent to webmaster@fau.de with the subject "RRZE Updater Plugin".
 
