@@ -4,7 +4,7 @@ namespace RRZE\Updater;
 
 defined('ABSPATH') || exit;
 
-use RRZE\Updater\Core\{Connector, Plugin, Theme};
+use RRZE\Updater\Core\{Connector, Plugin, Theme, RepositoryManager};
 use RRZE\Updater\Upgrader\{PluginUpgraderSkin, ThemeUpgraderSkin};
 use RRZE\Updater\ListTable\{RepoListTable, ConnListTable, PluginsListTable, ThemesListTable};
 use Plugin_Upgrader;
@@ -204,7 +204,10 @@ class Controller
         }
 
         $extension->checkForUpdates();
-        $this->settings->save();
+        if (!$this->saveSettings()) {
+            wp_send_json_error(['message' => end($this->messages)->get_error_message()], 409);
+            return;
+        }
 
         if ($type == 'plugin') {
             delete_site_transient('update_plugins');
@@ -265,8 +268,7 @@ class Controller
         }
 
         if ($this->isSettingsSaveRequest()) {
-            $this->postSettingsSave();
-            if ($this->isSettingsSendNowRequest()) {
+            if ($this->postSettingsSave() && $this->isSettingsSendNowRequest()) {
                 $this->sendUpdateEmailNow();
             }
         }
@@ -332,7 +334,7 @@ class Controller
         return isset($_POST['rrze-updater-send-now']);
     }
 
-    private function postSettingsSave()
+    private function postSettingsSave(): bool
     {
         if (!current_user_can('manage_options')) {
             wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
@@ -372,7 +374,9 @@ class Controller
             $this->settings->options['email_subject_prefix'] = $defaults['email_subject_prefix'];
         }
 
-        $this->settings->save();
+        if (!$this->saveSettings()) {
+            return false;
+        }
         Cron::clearSchedule();
         Cron::clearEmailSchedule();
         wp_schedule_event(time(), $this->settings->options['update_check_schedule'], $this->config->getCronActionHook());
@@ -382,6 +386,7 @@ class Controller
         }
 
         $this->messages[] = __('Settings saved.', 'rrze-updater');
+        return true;
     }
 
     private function sendUpdateEmailNow()
@@ -604,20 +609,8 @@ class Controller
         );
     }
 
-    private function isPluginRepositoryFileWarning(WP_Error $warning): bool {
-        return in_array(
-            $warning->get_error_code(),
-            [
-                'rrze_updater_missing_plugin_main_file',
-                'rrze_updater_missing_plugin_name_header',
-                'rrze_updater_missing_plugin_readme'
-            ],
-            true
-        );
-    }
-
     private function getRepositoryRefLabel(array $repo, $extension): string {
-        if ($extension && ($extension->updates ?? '') == 'tags') {
+        if ($extension && in_array($extension->updates ?? '', ['tags', 'releases'], true)) {
             return (string) (($extension->remoteVersion ?? '') ?: __('Release tag not checked yet', 'rrze-updater'));
         }
 
@@ -960,8 +953,10 @@ class Controller
         // Use a switch statement to determine the action to perform.
         switch ($action) {
             case 'delete':
-                // If the action is 'delete', invoke the 'getRepoDelete' method to handle deletion.
-                $this->getRepoDelete();
+                // Bulk requests are verified by the list table using its own nonce.
+                if (isset($_GET['id'])) {
+                    $this->getRepoDelete();
+                }
                 break;
 
             case 'bulk-update':
@@ -990,7 +985,7 @@ class Controller
         $nonceField = $_GET['rrze-updater-nonce'] ?? '';
 
         // Verify the nonce to ensure the request is legitimate.
-        if ($nonceField && !wp_verify_nonce($nonceField, 'rrze-updater-repo-delete')) {
+        if (!is_string($nonceField) || !wp_verify_nonce($nonceField, 'rrze-updater-repo-delete')) {
             wp_die(esc_html__('Unable to submit this form, please refresh and try again.', 'rrze-updater'));
         }
 
@@ -1288,7 +1283,7 @@ class Controller
         $nonceField = $_GET['rrze-updater-nonce'] ?? '';
 
         // Verify the nonce field to ensure the request is legitimate.
-        if ($nonceField && !wp_verify_nonce($nonceField, 'rrze-updater-connector-delete')) {
+        if (!is_string($nonceField) || !wp_verify_nonce($nonceField, 'rrze-updater-connector-delete')) {
             wp_die(esc_html__('Unable to submit this form, please refresh and try again.', 'rrze-updater'));
         }
 
@@ -1319,7 +1314,7 @@ class Controller
                     unset($this->settings->connectors[$key]);
                 }
             }
-            $this->settings->save();
+            $this->saveSettings();
         }
     }
 
@@ -1371,7 +1366,10 @@ class Controller
 
         // Add the new connector to the settings and save them.
         $this->settings->connectors[] = $connector;
-        $this->settings->save();
+        if (!$this->saveSettings()) {
+            $this->display('connectors/add');
+            return;
+        }
 
         $menuSettings = $this->config->getMenuSettings();
         $settingsSlug = $menuSettings['settings_slug'] ?? 'rrze-updater-settings';
@@ -1431,7 +1429,13 @@ class Controller
         }
 
         // Save the updated settings.
-        $this->settings->save();
+        if (!$this->saveSettings()) {
+            $connector = $this->settings->getConnectorById($connectorId);
+            if (!$connector) {
+                $this->display('');
+                return;
+            }
+        }
 
         // Prepare the data for rendering.
         $data = [
@@ -1588,8 +1592,10 @@ class Controller
                 break;
 
             case 'delete':
-                // Execute the method to delete the specified plugin.
-                $this->getPluginDelete();
+                // Bulk requests are verified by the list table using its own nonce.
+                if (isset($_GET['id'])) {
+                    $this->getPluginDelete();
+                }
                 break;
         }
     }
@@ -1671,7 +1677,10 @@ class Controller
             $plugin->checkForUpdates();
 
             // Update the settings to reflect the latest update check.
-            $this->settings->save();
+            if (!$this->saveSettings()) {
+                $this->display('');
+                return;
+            }
 
             // If local and remote versions are different, refresh the 'update_plugins' transient.
             if ($plugin->localVersion != $plugin->remoteVersion) {
@@ -1712,7 +1721,7 @@ class Controller
         $nonceField = $_GET['rrze-updater-nonce'] ?? '';
 
         // Verify the nonce field for security purposes.
-        if ($nonceField && !wp_verify_nonce($nonceField, 'rrze-updater-plugin-delete')) {
+        if (!is_string($nonceField) || !wp_verify_nonce($nonceField, 'rrze-updater-plugin-delete')) {
             wp_die(esc_html__('Unable to submit this form, please refresh and try again.', 'rrze-updater'));
         }
 
@@ -1751,186 +1760,66 @@ class Controller
                 }
             }
 
-            // Clear the site transient for plugin updates.
-            delete_site_transient('update_plugins');
-
-            // Save the updated settings.
-            $this->settings->save();
+            if ($this->saveSettings()) {
+                delete_site_transient('update_plugins');
+            }
         }
     }
 
-    /**
-     * Handle the addition of a new plugin definition.
-     *
-     * This method is responsible for processing the addition of a new plugin definition based on the
-     * data submitted through a form. It performs data validation, creates a new plugin instance,
-     * checks for available updates, and initiates the installation process if required. The method
-     * also handles error conditions and displays relevant messages.
-     * 
-     * @return void
-     */
-    protected function postPluginAdd()
+    /** Legacy forms use the same success-only registration path as CLI/bundles. */
+    private function postRepositoryAdd(string $type): void
     {
-        // Check the user's permissions.
-        if (!current_user_can('update_plugins')) {
+        $plural = $type === 'plugin' ? 'plugins' : 'themes';
+        if (!current_user_can('update_' . $plural) || !current_user_can('install_' . $plural)) {
             wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
         }
-
-        $request = $_POST['rrze-updater'] ?? '';
-        if (!$request || !is_array($request)) {
+        $request = $_POST['rrze-updater'] ?? null;
+        if (!is_array($request)) {
             return;
         }
-
-        // Data validation
-        $repository = $request['repository'] ?? '';
-        $repository = sanitize_text_field($repository);
-        if (!$repository) {
-            // Handle empty repository field with an error message.
-            $this->messages[] = new WP_Error('error', __('The Repository field must not be empty.', 'rrze-updater'));
-            $data = [
-                'connectors' => $this->settings->connectors
-            ];
-            $this->display('plugins/add', $data);
-            return;
-        } elseif ($this->settings->getPluginByRepository($repository)) {
-            // Handle duplicate repository with an error message.
-            $this->messages[] = new WP_Error('error', __('The Repository already exists.', 'rrze-updater'));
-            $data = [
-                'connectors' => $this->settings->connectors
-            ];
-            $this->display('plugins/add', $data);
+        $data = ['connectors' => $this->settings->connectors];
+        if (!wp_is_file_mod_allowed('rrze_updater_install')) {
+            $this->messages[] = new WP_Error('file_modifications_disabled', __('File modifications are disabled on this installation.', 'rrze-updater'));
+            $this->display($plural . '/add', $data);
             return;
         }
-
-        // Create a new plugin definition
-        $extension = new Plugin();
-
-        $extension->id = Utility::uniqid();
-        $extension->connectorId = $request['connectorId'];
-        $extension->connector = $this->settings->getConnectorById($extension->connectorId);
-        $extension->repository = $request['repository'];
-        $extension->branch = $request['branch'] ?: 'main';
-        $extension->installationFolder = $request['installationFolder'];
-        if (!$extension->installationFolder) {
-            $extension->installationFolder = $extension->repository;
-        }
-        $extension->updates = $request['updates'];
-        $extension->lastChecked = time();
-
-        // Add the new plugin definition to the settings
-        $this->settings->plugins[] = $extension;
-
-        $branchValidation = $extension->validateRemotePluginBranch($extension->branch);
-        if (is_wp_error($branchValidation)) {
-            $this->messages[] = $branchValidation;
-            do_action(
-                'rrze.log.error',
-                'Plugin installation failed for {repository}: {error}',
-                [
-                    'plugin' => $this->config->getLogPlugin(),
-                    'repository' => $extension->repository,
-                    'branch' => $extension->branch,
-                    'service' => $extension->connector->display ?? '',
-                    'error' => $branchValidation->get_error_message()
-                ]
-            );
-
-            $data = [
-                'connectors' => $this->settings->connectors
-            ];
-            $this->display('plugins/add', $data);
-            return;
-        }
-
-        // If updates are configured for tags or commits, check if updates are available
-        $extension->checkForUpdates();
-
-        $validation = $extension->getRemotePluginRepositoryWarning($extension->remoteVersion ?: $extension->branch);
-        if (is_wp_error($validation)) {
-            if (!$this->isPluginRepositoryFileWarning($validation)) {
-                $this->messages[] = $validation;
-                do_action(
-                    'rrze.log.error',
-                    'Plugin installation failed for {repository}: {error}',
-                    [
-                        'plugin' => $this->config->getLogPlugin(),
-                        'repository' => $extension->repository,
-                        'branch' => $extension->branch,
-                        'ref' => $extension->remoteVersion ?: $extension->branch,
-                        'service' => $extension->connector->display ?? '',
-                        'error' => $validation->get_error_message()
-                    ]
-                );
-
-                $data = [
-                    'connectors' => $this->settings->connectors
-                ];
-                $this->display('plugins/add', $data);
+        foreach (['repository', 'connectorId', 'installationFolder', 'branch', 'updates'] as $field) {
+            if (isset($request[$field]) && !is_string($request[$field])) {
+                $this->messages[] = new WP_Error('invalid_request', __('Invalid repository installation request.', 'rrze-updater'));
+                $this->display($plural . '/add', $data);
                 return;
             }
-
-            $extension->lastWarning = $validation->get_error_message();
-            $this->messages[] = $validation;
-            do_action(
-                'rrze.log.warning',
-                'Plugin installation warning for {repository}: {warning}',
-                [
-                    'plugin' => $this->config->getLogPlugin(),
-                    'repository' => $extension->repository,
-                    'branch' => $extension->branch,
-                    'ref' => $extension->remoteVersion ?: $extension->branch,
-                    'service' => $extension->connector->display ?? '',
-                    'warning' => $validation->get_error_message()
-                ]
-            );
         }
-
-        // Install the plugin
-        $repoZip = $extension->connector->downloadRepoZip($request['repository'], $request['branch']);
-        if ($extension->remoteVersion) {
-            $extension->localVersion = $extension->remoteVersion;
-            $repoZip = $extension->connector->downloadRepoZip($request['repository'], $extension->remoteVersion);
+        $request = wp_unslash($request);
+        $repository = trim($request['repository'] ?? '');
+        $manager = $this->createRepositoryManager();
+        try {
+            $result = $manager->install($type, $repository, [
+                'connector' => $request['connectorId'] ?? '',
+                'folder' => ($request['installationFolder'] ?? '') ?: $repository,
+                'branch' => ($request['branch'] ?? '') ?: 'main',
+                'updates' => ($request['updates'] ?? '') ?: 'tags',
+            ]);
+        } catch (\Throwable $exception) {
+            // A failed or interrupted operation must not create an association.
+            // Do not expose transport exception text, which may contain tokens.
+            $result = new WP_Error('installation_interrupted', __('Installation was interrupted. Inspect the destination before retrying; existing files will not be overwritten.', 'rrze-updater'));
         }
-
-        if ($extension->connector->error) {
-            // Handle connector error with an error message.
-            $this->messages[] = new WP_Error('error', $extension->connector->error);
-            do_action(
-                'rrze.log.error',
-                'Plugin installation failed for {repository}: {error}',
-                array_merge(
-                    [
-                        'plugin' => $this->config->getLogPlugin(),
-                        'repository' => $extension->repository,
-                        'branch' => $extension->branch,
-                        'service' => $extension->connector->display ?? '',
-                        'error' => $extension->connector->error
-                    ],
-                    $this->getConnectorErrorContext($extension)
-                )
-            );
+        foreach ($manager->getWarnings() as $warning) {
+            $this->messages[] = new WP_Error('rrze_updater_repository_warning', $warning);
         }
+        $this->messages[] = $result;
+        $this->display($plural . (is_wp_error($result) ? '/add' : '/add-progress'), $data);
+    }
 
-        if ($repoZip) {
-            // Initialize the plugin installation process.
-            $upgrader = new Plugin_Upgrader(new PluginUpgraderSkin($extension));
-            $data = [
-                'upgrader' => $upgrader,
-                'repoZip' => $repoZip
-            ];
-            $this->display('plugins/add-progress', $data);
-            $this->settings->save();
-            $this->deleteIfLocalFile($repoZip);
-            return;
-        }
+    protected function createRepositoryManager(): RepositoryManager
+    {
+        return new RepositoryManager($this->settings);
+    }
 
-        // Prepare the data for rendering.
-        $data = [
-            'connectors' => $this->settings->connectors
-        ];
-
-        // Display the plugin add form.
-        $this->display('plugins/add', $data);
+    protected function postPluginAdd()
+    {
+        $this->postRepositoryAdd('plugin');
     }
 
     /**
@@ -1989,8 +1878,15 @@ class Controller
         $extension->checkForUpdates();
 
         // Save the changes and clear cached plugin updates
-        $this->settings->save();
-        delete_site_transient('update_plugins');
+        if (!$this->saveSettings()) {
+            $extension = $this->settings->getPluginById($extensionId);
+            if (!$extension) {
+                $this->display('');
+                return;
+            }
+        } else {
+            delete_site_transient('update_plugins');
+        }
 
         // Prepare the data for rendering.
         $data = [
@@ -2143,8 +2039,10 @@ class Controller
                 break;
 
             case 'delete':
-                // Perform theme deletion
-                $this->getThemeDelete();
+                // Bulk requests are verified by the list table using its own nonce.
+                if (isset($_GET['id'])) {
+                    $this->getThemeDelete();
+                }
                 break;
         }
     }
@@ -2222,7 +2120,10 @@ class Controller
             // Check for updates for the selected theme
             $theme->checkForUpdates();
             // Save the settings to update the last checked timestamp
-            $this->settings->save();
+            if (!$this->saveSettings()) {
+                $this->display('');
+                return;
+            }
 
             // If local version is different from remote version, clear the 'update_themes' transient
             if ($theme->localVersion != $theme->remoteVersion) {
@@ -2263,7 +2164,7 @@ class Controller
         $nonceField = $_GET['rrze-updater-nonce'] ?? '';
 
         // Check if the provided nonce is valid to ensure the request's authenticity
-        if ($nonceField && !wp_verify_nonce($nonceField, 'rrze-updater-theme-delete')) {
+        if (!is_string($nonceField) || !wp_verify_nonce($nonceField, 'rrze-updater-theme-delete')) {
             wp_die(esc_html__('Unable to submit this form, please refresh and try again.', 'rrze-updater'));
         }
 
@@ -2305,11 +2206,9 @@ class Controller
                 }
             }
 
-            // Delete the update information transient for themes to trigger a recheck of theme updates
-            delete_site_transient('update_themes');
-
-            // Save the updated settings to persist the changes
-            $this->settings->save();
+            if ($this->saveSettings()) {
+                delete_site_transient('update_themes');
+            }
         }
     }
 
@@ -2325,149 +2224,7 @@ class Controller
      */
     protected function postThemeAdd()
     {
-        // Check the user's permissions.
-        if (!current_user_can('update_themes')) {
-            wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
-        }
-
-        $request = $_POST['rrze-updater'] ?? '';
-        if (!$request || !is_array($request)) {
-            return;
-        }
-
-        // Data validation
-        $repository = $request['repository'] ?? '';
-        $repository = sanitize_text_field($repository);
-        if (!$repository) {
-            // Handle empty repository field with an error message.
-            $this->messages[] = new WP_Error('error', __('The Repository field must not be empty.', 'rrze-updater'));
-            $data = [
-                'connectors' => $this->settings->connectors
-            ];
-            $this->display('themes/add', $data);
-            return;
-        } elseif ($this->settings->getThemeByRepository($repository)) {
-            // Handle duplicate repository with an error message.
-            $this->messages[] = new WP_Error('error', __('The Repository already exists.', 'rrze-updater'));
-            $data = [
-                'connectors' => $this->settings->connectors
-            ];
-            $this->display('themes/add', $data);
-            return;
-        }
-
-        // Add a theme definition
-        $extension = new Theme();
-
-        $extension->id = Utility::uniqid();
-        $extension->connectorId = $request['connectorId'];
-        $extension->connector = $this->settings->getConnectorById($extension->connectorId);
-        $extension->repository = $request['repository'];
-        $extension->branch = $request['branch'] ?: 'main';
-        $extension->installationFolder = $request['installationFolder'];
-        if (!$extension->installationFolder) {
-            $extension->installationFolder = $extension->repository;
-        }
-        $extension->updates = $request['updates'];
-        $extension->lastChecked = time();
-
-        // Add the new theme definition to the settings
-        $this->settings->themes[] = $extension;
-
-        $branchValidation = $extension->validateRemoteThemeBranch($extension->branch);
-        if (is_wp_error($branchValidation)) {
-            $this->messages[] = $branchValidation;
-            do_action(
-                'rrze.log.error',
-                'Theme installation failed for {repository}: {error}',
-                [
-                    'plugin' => $this->config->getLogPlugin(),
-                    'repository' => $extension->repository,
-                    'branch' => $extension->branch,
-                    'service' => $extension->connector->display ?? '',
-                    'error' => $branchValidation->get_error_message()
-                ]
-            );
-
-            $data = [
-                'connectors' => $this->settings->connectors
-            ];
-            $this->display('themes/add', $data);
-            return;
-        }
-
-        // If update on tags or commits, check if there is a tag or commit available
-        $extension->checkForUpdates();
-
-        $validation = $extension->validateRemoteThemeRepository($extension->remoteVersion ?: $extension->branch);
-        if (is_wp_error($validation)) {
-            $this->messages[] = $validation;
-            do_action(
-                'rrze.log.error',
-                'Theme installation failed for {repository}: {error}',
-                [
-                    'plugin' => $this->config->getLogPlugin(),
-                    'repository' => $extension->repository,
-                    'branch' => $extension->branch,
-                    'ref' => $extension->remoteVersion ?: $extension->branch,
-                    'service' => $extension->connector->display ?? '',
-                    'error' => $validation->get_error_message()
-                ]
-            );
-
-            $data = [
-                'connectors' => $this->settings->connectors
-            ];
-            $this->display('themes/add', $data);
-            return;
-        }
-
-        // Install the theme
-        $repoZip = $extension->connector->downloadRepoZip($request['repository'], $request['branch']);
-        if ($extension->remoteVersion) {
-            $extension->localVersion = $extension->remoteVersion;
-            $repoZip = $extension->connector->downloadRepoZip($request['repository'], $extension->remoteVersion);
-        }
-
-        if ($extension->connector->error) {
-            // Handle connector error with an error message.
-            $this->messages[] = new WP_Error('error', $extension->connector->error);
-            do_action(
-                'rrze.log.error',
-                'Theme installation failed for {repository}: {error}',
-                array_merge(
-                    [
-                        'plugin' => $this->config->getLogPlugin(),
-                        'repository' => $extension->repository,
-                        'branch' => $extension->branch,
-                        'service' => $extension->connector->display ?? '',
-                        'error' => $extension->connector->error
-                    ],
-                    $this->getConnectorErrorContext($extension)
-                )
-            );
-        }
-
-        if ($repoZip) {
-            // Initialize the theme installation process.
-            $upgrader = new Theme_Upgrader(new ThemeUpgraderSkin($extension));
-            $data = [
-                'upgrader' => $upgrader,
-                'repoZip' => $repoZip
-            ];
-            $this->display('themes/add-progress', $data);
-            $this->settings->save();
-            $this->deleteIfLocalFile($repoZip);
-            return;
-        }
-
-        // Prepare the data for rendering.
-        $data = [
-            'connectors' => $this->settings->connectors
-        ];
-
-        // Display the theme add form.
-        $this->display('themes/add', $data);
+        $this->postRepositoryAdd('theme');
     }
 
     /**
@@ -2526,8 +2283,15 @@ class Controller
         $extension->checkForUpdates();
 
         // Save the changes and clear cached themes updates
-        $this->settings->save();
-        delete_site_transient('update_themes');
+        if (!$this->saveSettings()) {
+            $extension = $this->settings->getThemeById($extensionId);
+            if (!$extension) {
+                $this->display('');
+                return;
+            }
+        } else {
+            delete_site_transient('update_themes');
+        }
 
         // Prepare the data for rendering.
         $data = [
@@ -2804,7 +2568,7 @@ class Controller
      * the WordPress installation. Settings for plugins or themes that are no longer installed
      * are removed to maintain an accurate configuration.
      * 
-     * @return void
+     * @return bool Whether the synchronized settings were saved.
      */
     public function synchronizeSettings()
     {
@@ -2836,26 +2600,19 @@ class Controller
         }
 
         // Save the updated settings to maintain consistency.
-        $this->settings->save();
+        return $this->saveSettings();
     }
 
-    /**
-     * If $input is an existing local file path, deletes it.
-     * If it’s a URL, does nothing.
-     *
-     * @param string $input URL or file path.
-     * @return bool True if a file was deleted, false otherwise.
-     */
-    private function deleteIfLocalFile(string $input): bool
+    /** Never present rejected edits as persisted values to this or other consumers. */
+    private function saveSettings(): bool
     {
-        if (filter_var($input, FILTER_VALIDATE_URL)) {
-            return false;
+        if ($this->settings->save()) {
+            return true;
         }
-
-        if (file_exists($input) && is_file($input)) {
-            return unlink($input);
-        }
-
+        // Main and Controller share this object. Restore it in place, including
+        // its merge baseline, rather than leaving Main with the rejected edits.
+        $this->settings->reload();
+        $this->messages[] = new WP_Error('rrze_updater_save_failed', __('Could not save the changes. Settings may have changed in another request, or the database may be unavailable. The stored values have been reloaded; review them and try again.', 'rrze-updater'));
         return false;
     }
 

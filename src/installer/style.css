@@ -1,0 +1,36 @@
+#rrze-installer { max-width: 1500px; }
+.rrze-installer-shell { margin-top: 20px; padding: 24px; background: #fff; border: 1px solid #dcdcde; border-radius: 4px; }
+.rrze-intro, .rrze-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; }
+.rrze-intro { justify-content: space-between; }
+.rrze-intro p { margin: 0; font-size: 15px; }
+.rrze-installer-shell .components-tab-panel__tabs { border-bottom: 1px solid #dcdcde; margin-bottom: 24px; }
+.rrze-installer-shell .components-tab-panel__tabs-item.is-active { box-shadow: inset 0 -3px var(--wp-admin-theme-color, #2271b1); }
+.rrze-toolbar > .components-base-control { min-width: 260px; max-width: 100%; }
+.rrze-toolbar h3 { margin: 0; }
+.rrze-toolbar:has(> .components-base-control) { align-items: flex-end; }
+.rrze-catalog { margin-top: 24px; }
+.rrze-catalog summary { cursor: pointer; }
+.rrze-catalog ul { columns: 3 240px; }
+.rrze-dataviews { border: 1px solid #dcdcde; border-radius: 4px; margin-top: 20px; overflow-x: auto; }
+.rrze-dataviews .dataviews-wrapper { min-height: 160px; }
+.rrze-branch-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; overflow-wrap: anywhere; }
+.rrze-branch-cell small { color: #646970; }
+.rrze-selection { border-top: 1px solid #dcdcde; padding-top: 24px; margin-top: 24px; }
+.rrze-selection-row { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(160px, 1fr) minmax(160px, 1fr) auto; align-items: center; gap: 20px; padding: 16px 0; border-top: 1px solid #eee; }
+.rrze-selection-row:last-of-type { margin-bottom: 20px; }
+.rrze-selection-row > strong, .rrze-review-table td { overflow-wrap: anywhere; }
+.rrze-progress { display: flex; align-items: center; gap: 16px; margin: 20px 0; }
+.rrze-progress progress { width: min(420px, 65%); height: 12px; accent-color: var(--wp-admin-theme-color, #2271b1); }
+.rrze-review-table { overflow-x: auto; margin-top: 20px; }
+.rrze-review-table table { min-width: 850px; }
+.rrze-review-table th, .rrze-review-table td { padding: 12px; }
+.rrze-status { display: inline-block; padding: 3px 8px; border-radius: 3px; background: #f0f0f1; }
+.rrze-status-ready, .rrze-status-done { color: #00450c; background: #e6f3e9; }
+.rrze-status-error, .rrze-status-failed { color: #8a2424; background: #fce8e8; }
+.rrze-saved { margin-top: 24px; }
+.rrze-registration-list { display: grid; gap: 16px; max-height: 45vh; overflow-y: auto; padding: 4px 12px 4px 4px; margin: 20px 0; }
+@media (max-width: 782px) {
+    .rrze-installer-shell { padding: 16px; }
+    .rrze-selection-row { grid-template-columns: 1fr; gap: 12px; }
+    .rrze-toolbar > .components-base-control { min-width: 0; width: 100%; }
+}

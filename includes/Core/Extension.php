@@ -78,7 +78,7 @@ class Extension
     public $remoteReadableVersion;
 
     /**
-     * Type of updates to check ('tags' or 'commits').
+     * Type of updates to check ('tags', 'commits' or 'releases').
      *
      * @var string
      */
@@ -163,20 +163,25 @@ class Extension
      */
     public function checkForUpdates()
     {
-        // Check the type of updates ('tags' or 'commits').
+        // Check the configured update policy.
         // Query the connector object to get the remote version based on the update type.
         // Update 'lastChecked', 'lastWarning', 'lastError', and 'remoteVersion' properties accordingly.
 
-        if ($this->updates != 'tags' && $this->updates != 'commits') {
+        if (!in_array($this->updates, ['tags', 'commits', 'releases'], true)) {
             return;
         }
 
         $this->lastChecked = time();
+        $this->connector->error = '';
+        $this->connector->warning = '';
 
         $remoteVersion = false;
         switch ($this->updates) {
             case 'tags':
                 $remoteVersion = $this->connector->getRemoteTag($this->repository);
+                break;
+            case 'releases':
+                $remoteVersion = $this->connector->getRemoteRelease($this->repository);
                 break;
             case 'commits':
                 $remoteVersion = $this->connector->getRemoteCommit($this->repository, $this->branch);

@@ -14,6 +14,20 @@ function writeJson(filePath, obj) {
     fs.writeFileSync(filePath, out, 'utf8');
 }
 
+function setPackageLockVersion(pluginRoot, newVersion) {
+    var filePath = path.join(pluginRoot, 'package-lock.json');
+    if (!fs.existsSync(filePath)) {
+        return;
+    }
+
+    var lock = readJson(filePath);
+    lock.version = newVersion;
+    if (lock.packages && lock.packages['']) {
+        lock.packages[''].version = newVersion;
+    }
+    writeJson(filePath, lock);
+}
+
 function parseSemver(version) {
     var m = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/);
     if (!m) {
@@ -237,6 +251,7 @@ function main() {
 
     pkg.version = next;
     writeJson(packagePath, pkg);
+    setPackageLockVersion(pluginRoot, next);
 
     setReadmeTxtVersion(pluginRoot, next);
     setPluginVersion(pluginRoot, pkg, next);
