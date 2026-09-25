@@ -44,7 +44,12 @@ namespace {
     function wp_delete_file($path) { unlink($path); }
     function wp_cache_delete($key, $group) { $GLOBALS['bundle_cache_deleted'][] = [$key, $group]; }
     function get_current_network_id() { return $GLOBALS['bundle_network'] ?? 1; }
-    function get_current_blog_id() { return 1; }
+    function get_current_blog_id() { return $GLOBALS['fixture_blog_id'] ?? 1; }
+    function get_main_site_id($networkId = null) {
+        return is_multisite()
+            ? ($GLOBALS['fixture_main_sites'][$networkId ?? get_current_network_id()] ?? 1)
+            : get_current_blog_id();
+    }
     define('DB_NAME', 'fixture');
     class SettingsDatabaseFixture {
         public string $base_prefix = 'wp_';

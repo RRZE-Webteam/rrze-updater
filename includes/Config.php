@@ -20,7 +20,6 @@ class Config {
                 'email_action_hook' => 'rrze_updater_send_update_email',
                 'schedule' => 'twicedaily',
                 'minimum_check_interval' => HOUR_IN_SECONDS,
-                'main_blog_id' => 1,
             ],
             'http' => [
                 'invalid_token_transient' => 'rrze_updater_invalid_tokens',
@@ -234,8 +233,9 @@ class Config {
         return (int) $this->get('cron.minimum_check_interval');
     }
 
+    /** Schedule jobs on the current network's main site (or the single site). */
     public function getCronMainBlogId(): int {
-        return (int) $this->get('cron.main_blog_id');
+        return get_main_site_id();
     }
 
     public function getUserAgent(): string

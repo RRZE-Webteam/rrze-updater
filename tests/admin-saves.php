@@ -7,8 +7,17 @@ use RRZE\Updater\Core\{Plugin, Theme};
 function absint($value) { return abs((int) $value); }
 function sanitize_email($value) { return filter_var($value, FILTER_SANITIZE_EMAIL); }
 function wp_verify_nonce($nonce, $action) { return $nonce === $action; }
-function wp_clear_scheduled_hook($hook) { $GLOBALS['admin_schedule_calls'][] = ['clear', $hook]; }
-function wp_schedule_event($time, $schedule, $hook) { $GLOBALS['admin_schedule_calls'][] = ['schedule', $schedule, $hook]; return true; }
+function wp_clear_scheduled_hook($hook) {
+    $GLOBALS['admin_schedule_calls'][] = ['clear', $hook];
+    unset($GLOBALS['cron_events'][get_current_blog_id()][$hook]);
+}
+function wp_schedule_event($time, $schedule, $hook) {
+    $GLOBALS['admin_schedule_calls'][] = ['schedule', $schedule, $hook];
+    $GLOBALS['cron_events'][get_current_blog_id()][$hook] = ['time' => $time, 'schedule' => $schedule];
+    return true;
+}
+function wp_get_schedule($hook) { return $GLOBALS['cron_events'][get_current_blog_id()][$hook]['schedule'] ?? false; }
+function wp_next_scheduled($hook) { return $GLOBALS['cron_events'][get_current_blog_id()][$hook]['time'] ?? false; }
 
 class AdminSaveConnectorFixture extends LegacyInstallConnectorFixture {
     public function asArray(): array { return RRZE\Updater\Core\GithubConnector::createFromArray(parent::asArray())->asArray(); }

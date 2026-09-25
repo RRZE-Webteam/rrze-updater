@@ -34,7 +34,7 @@ class Cron
         $blogId = get_current_blog_id();
         $actionHook = $this->getActionHook();
 
-        // Check if this is not the main blog (blogId != 1).
+        // Only the current network's main site runs its scheduled jobs.
         if ($blogId != $this->getMainBlogId()) {
             // If there is a scheduled hook, clear it for non-main blogs.
             if (wp_get_schedule($actionHook) !== false) {
@@ -46,7 +46,7 @@ class Cron
             return;
         }
 
-        // Initialize the settings and controller for the main blog.
+        // Initialize the settings and controller for this network's main site.
         $this->settings = $settings;
         $this->controller = $controller;
 
