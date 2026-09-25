@@ -39,6 +39,7 @@ class GithubDownloadTransportFixture {
 class GithubDownloadFixture extends GithubConnector {
     public GithubDownloadTransportFixture $transport;
     public bool $limited = false;
+    public int $quotaChecks = 0;
     public array $requestArgs = [];
     public array $logs = [];
 
@@ -76,7 +77,7 @@ class GithubDownloadFixture extends GithubConnector {
         return ['body' => $response->body];
     }
 
-    public function isRateLimitReached(): bool { return $this->limited; }
+    public function isRateLimitReached(): bool { $this->quotaChecks++; return $this->limited; }
     protected function logError(string $message, array $context = []) { $this->logs[] = [$message, $context]; }
 }
 
@@ -152,8 +153,11 @@ check(!is_file($githubDownload->transport->temporary) && !has_action($archiveHoo
 $githubDownload = new GithubDownloadFixture();
 $githubDownload->limited = true;
 $githubDownload->transport->responses = [[]];
-check($githubDownload->downloadRepoZipToTempFile('package') === false
-    && !is_file($githubDownload->transport->temporary), 'Rate-limit rejection cleans the downloaded file.');
+$path = $githubDownload->downloadRepoZipToTempFile('package');
+check(is_string($path) && file_get_contents($path) === 'archive-fixture',
+    'Keep a successful download even when the API quota has been exhausted.');
+check($githubDownload->quotaChecks === 0, 'Successful downloads never make an additional quota request.');
+wp_delete_file($path);
 
 $githubDownload = new GithubDownloadFixture();
 $GLOBALS['fail_tempnam'] = true;

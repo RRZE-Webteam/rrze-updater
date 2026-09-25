@@ -351,6 +351,26 @@ retries, parent dependencies, authorization, network isolation, and file install
 through fixtures. They do not call real services or modify installed extensions.
 Browser validation and a real installation should be tested on staging.
 
+### Updating translations
+
+Regenerate the translation template and merge it into the German catalogs with WP-CLI:
+
+```sh
+wp i18n make-pot . languages/rrze-updater.pot --exclude=node_modules,tests,build
+wp i18n update-po languages/rrze-updater.pot languages
+```
+
+Translate the new entries in both `.po` files, then compile the PHP and JavaScript catalogs:
+
+```sh
+wp i18n make-mo languages
+wp i18n make-json languages --no-purge --extensions=jsx --use-map=scripts/i18n-map.json
+```
+
+The map combines installer source strings into the catalog for `build/installer.js`.
+Add new installer source files to this map when they introduce translatable strings.
+Commit the POT, PO, MO, and JSON files together so installations receive the compiled translations.
+
 ### Continuous integration
 
 `.github/workflows/tests.yml` runs on pull requests to any branch and pushes to

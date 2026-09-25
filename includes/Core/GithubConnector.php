@@ -127,7 +127,7 @@ class GithubConnector extends Connector
         );
 
         $ret = false;
-        if (is_array($response) && count($response) > 0 && !$this->isRateLimitReached()) {
+        if (is_array($response) && count($response) > 0) {
             $ret = $response[0]->sha;
         }
         return $ret;
@@ -217,7 +217,7 @@ class GithubConnector extends Connector
         );
 
         $ret = false;
-        if (is_array($response) && count($response) > 0 && !$this->isRateLimitReached()) {
+        if (is_array($response) && count($response) > 0) {
             $ret = $response[0]->name;
         }
         return $ret;
@@ -230,7 +230,7 @@ class GithubConnector extends Connector
         $response = $this->api($url, ['headers' => $this->getHeaders()], [
             'logContext' => $this->getRepositoryLogContext($repository, 'releases/latest'),
         ]);
-        if (!is_object($response) || $this->isRateLimitReached()
+        if (!is_object($response)
             || !empty($response->draft) || !empty($response->prerelease)) {
             return false;
         }
@@ -341,7 +341,8 @@ class GithubConnector extends Connector
                 'logContext' => $this->getRepositoryLogContext($repository, 'zipball', $branch),
             ]);
             clearstatcache(true, $dest);
-            if (!$response || $this->isRateLimitReached() || !is_file($dest) || filesize($dest) === 0) {
+            // A successful response remains usable even if it consumed the last API request.
+            if (!$response || !is_file($dest) || filesize($dest) === 0) {
                 $this->error = $this->error ?: __('Could not download ZIP archive.', 'rrze-updater');
                 return false;
             }
@@ -422,7 +423,11 @@ class GithubConnector extends Connector
             'headers' => $this->getHeaders()
         ];
         $response = $this->api('https://' . $this->getApiHost() . '/rate_limit', $getArgs);
-        if (isset($response->resources->core->remaining) && $response->resources->core->remaining > 1) {
+        $core = $response->resources->core ?? null;
+        if (!isset($core->remaining, $core->limit, $core->reset)) {
+            return false;
+        }
+        if ($core->remaining > 0) {
             $this->warning = sprintf(
                 /* translators: 1: API rate limit, 2: API rate left, 3: API rate reset */
                 __('GitHub API Rate Limit: %1$s (%2$s left). It\'ll be reset %3$s.', 'rrze-updater'),
@@ -433,12 +438,12 @@ class GithubConnector extends Connector
                     esc_html_x('in %s', 'Human time difference', 'rrze-updater'),
                     human_time_diff(
                         $response->resources->core->reset,
-                        get_the_time('U')
+                        time()
                     )
                 )
             );
             return false;
-        } elseif (isset($response->resources->core->reset)) {
+        } else {
             $this->error = sprintf(
                 /* translators: %s: API rate limit time availabelity */
                 __('GitHub API Rate Limit is reached! It\'ll be available %s.', 'rrze-updater'),
@@ -447,7 +452,7 @@ class GithubConnector extends Connector
                     esc_html_x('in %s', 'Human time difference', 'rrze-updater'),
                     human_time_diff(
                         $response->resources->core->reset,
-                        get_the_time('U')
+                        time()
                     )
                 )
             );
@@ -460,7 +465,32 @@ class GithubConnector extends Connector
             );
             return true;
         }
-        return false;
+    }
+
+    /** GitHub also reports primary and secondary throttling with HTTP 403. */
+    protected function isRateLimitResponse($response, array $getArgs): bool
+    {
+        if (parent::isRateLimitResponse($response, $getArgs)) {
+            return true;
+        }
+        if ((int) wp_remote_retrieve_response_code($response) !== 403) {
+            return false;
+        }
+        if ((string) wp_remote_retrieve_header($response, 'x-ratelimit-remaining') === '0'
+            || wp_remote_retrieve_header($response, 'retry-after') !== '') {
+            return true;
+        }
+        $body = wp_remote_retrieve_body($response);
+        // WordPress streams error responses too. Inspect only a small error body,
+        // never a successful archive, when secondary throttling has no headers.
+        if ($body === '' && !empty($getArgs['stream']) && !empty($getArgs['filename'])
+            && is_readable($getArgs['filename'])) {
+            $body = file_get_contents($getArgs['filename'], false, null, 0, 4096);
+        }
+        $decoded = json_decode((string) $body, true);
+        $message = is_string($decoded['message'] ?? null) ? strtolower($decoded['message']) : '';
+        return str_contains($message, 'api rate limit exceeded')
+            || str_contains($message, 'secondary rate limit');
     }
 
     private function getGithubSettings(): array

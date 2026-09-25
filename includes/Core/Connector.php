@@ -256,8 +256,9 @@ abstract class Connector
             return false;
         }
         if (!in_array($code, $allowedCodes, false)) {
-            $error = isset($httpErrors[$code]) ? $httpErrors[$code] : 'HTTP error ' . $code;
-            if (in_array((int) $code, [401, 403], true)) {
+            $rateLimited = $this->isRateLimitResponse($response, $getArgs);
+            $error = $rateLimited ? $httpErrors['429'] : ($httpErrors[$code] ?? 'HTTP error ' . $code);
+            if (!$rateLimited && in_array((int) $code, [401, 403], true)) {
                 TokenNotice::record($this, (int) $code);
             }
             $this->errorData = array_merge(
@@ -290,6 +291,12 @@ abstract class Connector
         }
 
         return $response;
+    }
+
+    /** Whether an unsuccessful response indicates throttling rather than rejected credentials. */
+    protected function isRateLimitResponse($response, array $getArgs): bool
+    {
+        return (int) wp_remote_retrieve_response_code($response) === 429;
     }
 
     /**

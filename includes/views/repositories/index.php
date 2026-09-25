@@ -222,7 +222,10 @@ require __DIR__ . '/../partials/bulk-delete-confirm.php';
             if (progress.status === 'stopping') {
                 setSummary(<?php echo wp_json_encode(__('Stopping after the current repository check finishes…', 'rrze-updater')); ?>);
             } else if (progress.status === 'stopped') {
-                setSummary(<?php echo wp_json_encode(__('Process stopped. %1$d of %2$d repositories checked. Resume continues with the remaining repositories.', 'rrze-updater')); ?>
+                setSummary(<?php
+                    /* translators: 1: Number of repositories checked, 2: Total number of repositories. */
+                    echo wp_json_encode(__('Process stopped. %1$d of %2$d repositories checked. Resume continues with the remaining repositories.', 'rrze-updater'));
+                ?>
                     .replace('%1$d', progress.completed).replace('%2$d', progress.total));
                 resumeButton.focus();
             } else if (progress.status === 'complete') {

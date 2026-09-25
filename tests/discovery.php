@@ -10,11 +10,16 @@ function wp_remote_get($url, $args) {
     $GLOBALS['discovery_requests'][] = [$url, $args];
     $data = ($GLOBALS['discovery_http'])($url, $args);
     if (is_wp_error($data)) return $data;
+    if (isset($data['raw_response'])) return $data['raw_response'];
     if (isset($data['http_error'])) return ['code' => $data['http_error'], 'body' => '{"message":"private service detail"}'];
     return ['code' => 200, 'body' => json_encode($data)];
 }
 function wp_remote_retrieve_response_code($response) { return is_wp_error($response) ? '' : $response['code']; }
 function wp_remote_retrieve_body($response) { return $response['body']; }
+function wp_remote_retrieve_headers($response) { return $response['headers'] ?? []; }
+function wp_remote_retrieve_header($response, $header) { return wp_remote_retrieve_headers($response)[$header] ?? ''; }
+function wp_remote_retrieve_response_message($response) { return $response['message'] ?? ''; }
+function wp_json_encode($value) { return json_encode($value); }
 function discoveryReset(callable $handler): void {
     $GLOBALS['discovery_cache'] = $GLOBALS['discovery_requests'] = [];
     $GLOBALS['discovery_http'] = $handler;
@@ -278,3 +283,4 @@ require __DIR__ . '/admin-deletions.php';
 require __DIR__ . '/cron.php';
 require __DIR__ . '/cron-batches.php';
 require __DIR__ . '/github-downloads.php';
+require __DIR__ . '/github-rate-limits.php';

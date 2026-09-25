@@ -4,6 +4,7 @@ namespace RRZE\Updater {
         $GLOBALS['defaults_plugin_reads']++;
         return new class {
             public function getBasename(): string { return $GLOBALS['defaults_basename']; }
+            public function getVersion(): string { return '2.5.17'; }
         };
     }
 }
