@@ -277,3 +277,4 @@ require __DIR__ . '/settings-defaults.php';
 require __DIR__ . '/admin-deletions.php';
 require __DIR__ . '/cron.php';
 require __DIR__ . '/cron-batches.php';
+require __DIR__ . '/github-downloads.php';

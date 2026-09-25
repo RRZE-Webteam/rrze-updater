@@ -280,23 +280,6 @@ class GithubConnector extends Connector
 
     public function downloadRepoZipToTempFile(string $repository, string $branch = 'main'): string|bool
     {
-        $url = $this->getRepoZipUrl($repository, $branch);
-
-        $response = $this->api(
-            $url,
-            [
-                'headers' => $this->getHeaders()
-            ],
-            [
-                'jsonDecodeBody' => false,
-                'logContext' => $this->getRepositoryLogContext($repository, 'zipball', $branch)
-            ]
-        );
-
-        if (!$response || $this->isRateLimitReached()) {
-            return false;
-        }
-
         if (!function_exists('wp_tempnam')) {
             require_once ABSPATH . 'wp-admin/includes/file.php';
         }
@@ -315,21 +298,61 @@ class GithubConnector extends Connector
             return false;
         }
 
-        if (false === file_put_contents($dest, $response['body'])) {
-            @unlink($dest);
-            $this->error = __('Could not write ZIP archive to temporary file.', 'rrze-updater');
-            $this->logError(
-                'Could not write ZIP archive for {repository} to temporary file.',
-                [
-                    'repository' => $repository,
-                    'ref' => $branch,
-                    'error' => $this->error
-                ]
-            );
-            return false;
-        }
+        // GitHub redirects zipballs to codeload, using a temporary URL for private
+        // repositories. Scope this hook to our file and never forward the API token.
+        $apiHost = $this->getApiHost();
+        $redirect = static function ($location, &$headers, $data, $options) use ($dest, $apiHost): void {
+            if (($options['filename'] ?? null) !== $dest) {
+                return;
+            }
+            $parts = wp_parse_url($location);
+            $host = strtolower($parts['host'] ?? '');
+            if (strtolower($parts['scheme'] ?? '') !== 'https'
+                || !in_array($host, [$apiHost, 'codeload.github.com'], true)
+                || isset($parts['user']) || isset($parts['pass'])
+                || (isset($parts['port']) && $parts['port'] !== 443)) {
+                throw new \WpOrg\Requests\Exception(
+                    __('GitHub archive redirected to an unsupported or insecure URL.', 'rrze-updater'),
+                    'rrze_updater_unsafe_archive_redirect'
+                );
+            }
+            if ($host !== $apiHost) {
+                foreach (array_keys($headers) as $name) {
+                    if (strcasecmp($name, 'Authorization') === 0) {
+                        unset($headers[$name]);
+                    }
+                }
+            }
+        };
+        add_action('requests-requests.before_redirect', $redirect, 10, 4);
 
-        return $dest;
+        $complete = false;
+        try {
+            $response = $this->api($this->getRepoZipUrl($repository, $branch), [
+                'headers' => $this->getHeaders(),
+                'stream' => true,
+                'filename' => $dest,
+                'timeout' => 300,
+                'sslverify' => true,
+                'reject_unsafe_urls' => true,
+                'redirection' => 5,
+            ], [
+                'jsonDecodeBody' => false,
+                'logContext' => $this->getRepositoryLogContext($repository, 'zipball', $branch),
+            ]);
+            clearstatcache(true, $dest);
+            if (!$response || $this->isRateLimitReached() || !is_file($dest) || filesize($dest) === 0) {
+                $this->error = $this->error ?: __('Could not download ZIP archive.', 'rrze-updater');
+                return false;
+            }
+            $complete = true;
+            return $dest;
+        } finally {
+            remove_action('requests-requests.before_redirect', $redirect, 10);
+            if (!$complete && is_file($dest)) {
+                wp_delete_file($dest);
+            }
+        }
     }
 
     private function getRepoZipUrl(string $repository, string $branch = 'main'): string

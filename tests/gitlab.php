@@ -4,7 +4,7 @@ require_once __DIR__ . '/cli.php';
 use RRZE\Updater\Core\{GitlabConnector, Theme};
 use RRZE\Updater\{ManagedUpgrader, Settings, Config};
 
-function wp_tempnam($name) { return tempnam(sys_get_temp_dir(), 'rrze-gitlab-'); }
+function wp_tempnam($name) { return !empty($GLOBALS['fail_tempnam']) ? false : tempnam(sys_get_temp_dir(), 'rrze-archive-'); }
 function remove_query_arg($key, $url) {
     $parts = explode('?', $url, 2);
     parse_str($parts[1] ?? '', $query);

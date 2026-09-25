@@ -70,6 +70,12 @@ The steps are the same for themes.
 - (Optional) Choose whether existing plugin files should be overwritten.
 - Confirm by clicking "Install Plugin".
 
+GitHub ZIP downloads stream over HTTPS directly to a temporary file, avoiding a
+complete archive in PHP memory. Certificate verification stays enabled. Archive
+redirects are restricted to GitHub's API and codeload hosts, and the API token is
+not sent to codeload. Failed or empty downloads remove the temporary file;
+WordPress still validates the archive during installation.
+
 ## Check a Plugin or Theme for Updates
 RRZE Updater automatically checks for new updates. To manually check for new updates, proceed as follows:
 
