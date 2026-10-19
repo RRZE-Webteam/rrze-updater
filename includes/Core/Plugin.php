@@ -45,6 +45,16 @@ class Plugin extends Extension
         )));
     }
 
+    /** File conventions are advisory; WordPress validates the actual package. */
+    public static function isRepositoryFileWarning(\WP_Error $warning): bool
+    {
+        return in_array($warning->get_error_code(), [
+            'rrze_updater_missing_plugin_main_file',
+            'rrze_updater_missing_plugin_name_header',
+            'rrze_updater_missing_plugin_readme',
+        ], true);
+    }
+
     public function validateRemotePluginRepository(string $ref): bool|\WP_Error
     {
         return $this->getRemotePluginRepositoryWarning($ref) ?: true;

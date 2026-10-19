@@ -1,0 +1,67 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests (WordPress ${{ matrix.wordpress }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        wordpress: ['6.8', 'latest']
+    defaults:
+      run:
+        working-directory: wordpress/wp-content/plugins/rrze-updater
+
+    steps:
+      - name: Check out plugin
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: wordpress/wp-content/plugins/rrze-updater
+          persist-credentials: false
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: wp-cli
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: wordpress/wp-content/plugins/rrze-updater/package-lock.json
+
+      # Tests load core classes directly; no WordPress installation or database is needed.
+      - name: Download WordPress core fixtures
+        env:
+          WP_CORE_VERSION: ${{ matrix.wordpress }}
+        run: wp core download --version="$WP_CORE_VERSION" --path="$GITHUB_WORKSPACE/wordpress" --skip-content
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Run PHP tests
+        run: npm run test:php
+
+      - name: Run JavaScript tests
+        run: npm run test:js
+
+      - name: Build installer
+        run: npm run build:installer

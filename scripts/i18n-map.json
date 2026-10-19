@@ -1,0 +1,6 @@
+{
+  "src/installer/api.js": "build/installer.js",
+  "src/installer/Browser.jsx": "build/installer.js",
+  "src/installer/index.jsx": "build/installer.js",
+  "src/installer/RegistrationDialog.jsx": "build/installer.js"
+}

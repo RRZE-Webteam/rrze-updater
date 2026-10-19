@@ -132,7 +132,8 @@ $searchTheme = add_query_arg(['s' => $extension->repository], self_admin_url('th
                         <?php
                         $updates = [
                             ['value' => 'commits', 'display' => __('Commits', 'rrze-updater')],
-                            ['value' => 'tags', 'display' => __('Tags', 'rrze-updater')]
+                            ['value' => 'tags', 'display' => __('Tags', 'rrze-updater')],
+                            ['value' => 'releases', 'display' => __('Releases', 'rrze-updater')]
                         ];
 
                         foreach ($updates as $update) {

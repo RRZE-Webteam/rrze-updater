@@ -152,13 +152,9 @@ class GitlabConnector extends Connector
             rawurlencode($branch)
         );
 
-        if ($this->token) {
-            $url = $this->addPrivateToken($url);
-        }
-
         $response = $this->api(
             $url,
-            [],
+            $this->requestArgs(),
             [
                 'logContext' => $this->getRepositoryLogContext($repository, 'commits', $branch)
             ]
@@ -180,13 +176,9 @@ class GitlabConnector extends Connector
             rawurlencode($branch)
         );
 
-        if ($this->token) {
-            $url = $this->addPrivateToken($url);
-        }
-
         $response = $this->api(
             $url,
-            [],
+            $this->requestArgs(),
             [
                 'logErrors' => false,
                 'storeError' => false,
@@ -205,13 +197,9 @@ class GitlabConnector extends Connector
             urlencode($this->owner . '/' . $repository)
         );
 
-        if ($this->token) {
-            $url = $this->addPrivateToken($url);
-        }
-
         $response = $this->api(
             $url,
-            [],
+            $this->requestArgs(),
             [
                 'logErrors' => false,
                 'storeError' => false,
@@ -243,13 +231,9 @@ class GitlabConnector extends Connector
             urlencode($this->owner . '/' . $repository)
         );
 
-        if ($this->token) {
-            $url = $this->addPrivateToken($url);
-        }
-
         $response = $this->api(
             $url,
-            [],
+            $this->requestArgs(),
             [
                 'logContext' => $this->getRepositoryLogContext($repository, 'tags')
             ]
@@ -263,40 +247,78 @@ class GitlabConnector extends Connector
     }
 
     /**
-     * Get the latest remote tag of a GitLab repository.
+     * Return the tag of the newest published GitLab release.
      *
-     * @param string $repository The name of the repository.
-     * @return string|boolean The latest remote tag or false on failure.
+     * @param string $repository The repository name.
+     * @return string|false A published release tag, or false if none is available.
      */
-    public function downloadRepoZip(string $repository, string $branch = 'main'): string|bool
+    public function getRemoteRelease(string $repository): string|false
     {
-        // Construct and return the ZIP archive download URL.
-        // Return false on failure or rate limit reached.
-
-        $url = sprintf(
-            '%1$s/%2$s/repository/archive.zip?sha=%3$s',
-            $this->getApiBaseUrl(),
-            urlencode($this->owner . '/' . $repository),
-            rawurlencode($branch)
-        );
-
-        if ($this->token) {
-            $url = $this->addPrivateToken($url);
+        // GitLab has upcoming releases, but no GitHub-style prerelease flag.
+        // Read newest released_at first and skip entries not published yet.
+        for ($page = 1; $page <= 100; $page++) {
+            $url = sprintf('%s/%s/releases?order_by=released_at&sort=desc&per_page=100&page=%d',
+                $this->getApiBaseUrl(), rawurlencode($this->owner . '/' . $repository), $page);
+            $response = $this->api($url, $this->requestArgs(), [
+                'logContext' => $this->getRepositoryLogContext($repository, 'releases'),
+            ]);
+            if (!is_array($response)) {
+                return false;
+            }
+            foreach ($response as $release) {
+                if (!is_object($release) || !empty($release->upcoming_release)
+                    || empty($release->tag_name) || !is_string($release->tag_name)) {
+                    continue;
+                }
+                $releasedAt = strtotime($release->released_at ?? '');
+                if ($releasedAt !== false && $releasedAt <= time()) {
+                    return $release->tag_name;
+                }
+            }
+            if (count($response) < 100) {
+                return false;
+            }
         }
+        $this->error = __('Release lookup exceeded the pagination limit.', 'rrze-updater');
+        return false;
+    }
 
-        $response = $this->api(
-            $url,
-            [],
-            [
-                'jsonDecodeBody' => false,
-                'logContext' => $this->getRepositoryLogContext($repository, 'archive.zip', $branch)
-            ]
-        );
-        if (!$response) {
+    /** A credential-free identifier safe to store in WordPress update transients. */
+    public function downloadRepoZip(string $repository, string $branch = 'main'): string
+    {
+        return sprintf('%s/%s/repository/archive.zip?sha=%s',
+            $this->getApiBaseUrl(), rawurlencode($this->owner . '/' . $repository), rawurlencode($branch));
+    }
+
+    public function downloadRepoZipToTempFile(string $repository, string $branch = 'main'): string|bool
+    {
+        if (!function_exists('wp_tempnam')) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+        }
+        $destination = wp_tempnam($repository . '.zip');
+        if (!$destination) {
+            $this->error = __('Could not create temporary file.', 'rrze-updater');
             return false;
         }
-
-        return $url;
+        $complete = false;
+        try {
+            $response = $this->api($this->downloadRepoZip($repository, $branch), array_merge($this->requestArgs(), [
+                'stream' => true, 'filename' => $destination, 'timeout' => 300,
+            ]), [
+                'jsonDecodeBody' => false,
+                'logContext' => $this->getRepositoryLogContext($repository, 'archive.zip', $branch),
+            ]);
+            if (!$response || !is_file($destination) || filesize($destination) === 0) {
+                $this->error = $this->error ?: __('Could not download ZIP archive.', 'rrze-updater');
+                return false;
+            }
+            $complete = true;
+            return $destination;
+        } finally {
+            if (!$complete && is_file($destination)) {
+                wp_delete_file($destination);
+            }
+        }
     }
 
     public function getRemoteFile(string $repository, string $ref, string $filePath): string|bool
@@ -309,13 +331,9 @@ class GitlabConnector extends Connector
             rawurlencode($ref)
         );
 
-        if ($this->token) {
-            $url = $this->addPrivateToken($url);
-        }
-
         $response = $this->api(
             $url,
-            [],
+            $this->requestArgs(),
             [
                 'jsonDecodeBody' => false,
                 'logErrors' => false,
@@ -383,11 +401,10 @@ class GitlabConnector extends Connector
         return rtrim($this->getBaseUrl() . $this->apiUri, '/');
     }
 
-    private function addPrivateToken(string $url): string
+    private function requestArgs(): array
     {
-        $separator = strpos($url, '?') === false ? '?' : '&';
-
-        return $url . $separator . 'private_token=' . rawurlencode($this->token);
+        // Never forward the connector credential to a redirected host.
+        return ['headers' => $this->token ? ['PRIVATE-TOKEN' => $this->token] : [], 'redirection' => 0];
     }
 
     private static function getGitlabRrzeSettings(): array

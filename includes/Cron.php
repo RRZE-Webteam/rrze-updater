@@ -21,6 +21,9 @@ class Cron
      */
     private $controller;
 
+    /** WordPress can dispatch both the recurring and continuation hooks in one request. */
+    private bool $batchRan = false;
+
     /**
      * Cron constructor.
      *
@@ -34,7 +37,7 @@ class Cron
         $blogId = get_current_blog_id();
         $actionHook = $this->getActionHook();
 
-        // Check if this is not the main blog (blogId != 1).
+        // Only the current network's main site runs its scheduled jobs.
         if ($blogId != $this->getMainBlogId()) {
             // If there is a scheduled hook, clear it for non-main blogs.
             if (wp_get_schedule($actionHook) !== false) {
@@ -43,15 +46,20 @@ class Cron
             if (wp_get_schedule($this->getEmailActionHook()) !== false) {
                 wp_clear_scheduled_hook($this->getEmailActionHook());
             }
+            $continuationHook = (new Config())->getCronContinuationHook();
+            if (wp_next_scheduled($continuationHook)) {
+                wp_clear_scheduled_hook($continuationHook);
+            }
             return;
         }
 
-        // Initialize the settings and controller for the main blog.
+        // Initialize the settings and controller for this network's main site.
         $this->settings = $settings;
         $this->controller = $controller;
 
         // Add action hooks to run events and activate scheduled events.
         add_action($actionHook, [$this, 'runEvents']);
+        add_action((new Config())->getCronContinuationHook(), [$this, 'resumeEvents']);
         add_action($this->getEmailActionHook(), [$this, 'sendUpdateEmail']);
         add_filter('cron_schedules', [$this, 'addCronSchedules']);
         add_action('init', [$this, 'activateScheduledEvents']);
@@ -94,6 +102,8 @@ class Cron
             wp_schedule_event(time(), $schedule, $actionHook);
         }
 
+        (new UpdateCheckBatch($this->settings, $this->controller))->ensureContinuation();
+
         $emailActionHook = $this->getEmailActionHook();
         if (!$this->isEmailEnabled()) {
             wp_clear_scheduled_hook($emailActionHook);
@@ -113,34 +123,25 @@ class Cron
     /**
      * Run scheduled events.
      *
-     * This method is called when the scheduled event is triggered.
-     * It synchronizes settings, checks for updates, and saves settings.
+     * Start or resume a persisted queue, checking one repository in this request.
      */
     public function runEvents()
     {
-        // Synchronize settings with installed extensions.
-        $this->controller->synchronizeSettings();
-
-        // Get the current timestamp.
-        $now = time();
-        $delay = $this->getUpdateCheckDelay();
-        $checked = false;
-
-        // Iterate through plugins and themes to check for updates.
-        foreach (array_merge($this->settings->plugins, $this->settings->themes) as $extension) {
-            if (!$extension->lastChecked || ($now - $extension->lastChecked) > $this->getMinimumCheckInterval()) {
-                if ($checked) {
-                    sleep($delay);
-                }
-
-                // Check for updates if last checked more than an hour ago.
-                $extension->checkForUpdates();
-                $checked = true;
-            }
+        if ($this->batchRan) {
+            return;
         }
+        $this->batchRan = true;
+        (new UpdateCheckBatch($this->settings, $this->controller))->run();
+    }
 
-        // Save updated settings.
-        $this->settings->save();
+    public function resumeEvents(): void
+    {
+        $batch = new UpdateCheckBatch($this->settings, $this->controller);
+        if ($this->batchRan || !$batch->hasPending()) {
+            return;
+        }
+        $this->batchRan = true;
+        $batch->run(false);
     }
 
     public function sendUpdateEmail()
@@ -224,6 +225,7 @@ class Cron
         $actionHook = (new Config())->getCronActionHook();
 
         wp_clear_scheduled_hook($actionHook);
+        wp_clear_scheduled_hook((new Config())->getCronContinuationHook());
     }
 
     public static function clearEmailSchedule()
@@ -256,17 +258,6 @@ class Cron
     private function isEmailEnabled(): bool
     {
         return !empty($this->settings->options['email_updates_enabled']);
-    }
-
-    private function getMinimumCheckInterval(): int
-    {
-        return (new Config())->getCronMinimumCheckInterval();
-    }
-
-    private function getUpdateCheckDelay(): int {
-        $default = (int) (new Config())->getDefaultSettings()['update_check_delay'];
-
-        return max(1, absint($this->settings->options['update_check_delay'] ?? $default));
     }
 
     private function getMainBlogId(): int

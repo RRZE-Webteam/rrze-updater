@@ -2,63 +2,222 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RRZE Updater\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/rrze-updater\n"
-"POT-Creation-Date: 2026-09-04T11:13:44+00:00\n"
+"POT-Creation-Date: 2026-09-25T17:06:42+00:00\n"
 "PO-Revision-Date: 2026-09-04 13:00+0200\n"
 "Last-Translator: RRZE Webteam <webmaster@fau.de>\n"
 "Language-Team: German\n"
 "Language: de_DE\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 "X-Generator: Loco https://localise.biz/\n"
+"Project-Id-Version: RRZE Updater 2.5.17\n"
+"PO-Revision-Date: 2026-09-25 19:15+0200\n"
+"X-Generator: gettext-parser\n"
 
-#. Plugin Name of the plugin
 #: rrze-updater.php
+#. Plugin Name of the plugin
 msgid "RRZE Updater"
 msgstr "RRZE Updater"
 
-#. Plugin URI of the plugin
 #: rrze-updater.php
+#. Plugin URI of the plugin
 msgid "https://github.com/RRZE-Webteam/rrze-updater"
 msgstr "https://github.com/RRZE-Webteam/rrze-updater"
 
-#. Description of the plugin
 #: rrze-updater.php
+#. Description of the plugin
 msgid ""
-"Sync Plugins and Themes with the corresponding GitHub or GitLab repositories."
+"Sync Plugins and Themes with the corresponding GitHub or GitLab "
+"repositories."
 msgstr ""
 "Synchronisation von Plugins und Themes mit den entsprechenden GitHub- oder "
 "GitLab-Repositories."
 
-#. Author of the plugin
 #: rrze-updater.php
+#. Author of the plugin
 msgid "RRZE Webteam"
 msgstr "RRZE-Webteam"
 
-#. Author URI of the plugin
 #: rrze-updater.php
+#. Author URI of the plugin
 msgid "https://github.com/RRZE-Webteam"
 msgstr "https://github.com/RRZE-Webteam"
 
+#: includes/AdminIntegration.php:69
+#. translators: 1: Service name, 2: User or group, 3: HTTP response code
+#, php-format
+msgid ""
+"The token for %1$s / %2$s was rejected while checking for updates (HTTP "
+"%3$d). Please check and replace the token in the service settings."
+msgstr ""
+"Der Token für %1$s / %2$s wurde bei der Update-Prüfung abgelehnt (HTTP "
+"%3$d). Prüfen und ersetzen Sie den Token in den Diensteinstellungen."
+
+#: includes/AdminIntegration.php:79
+msgid "Open services"
+msgstr "Dienste öffnen"
+
+#: includes/AdminIntegration.php:92 includes/Upgrader/PluginUpgraderSkin.php:51
+msgid "Plugin netzwerkweit aktivieren"
+msgstr "Plugin netzwerkweit aktivieren"
+
+#: includes/AdminIntegration.php:96 includes/Upgrader/ThemeUpgraderSkin.php:51
+msgid "Theme netzwerkweit aktivieren"
+msgstr "Theme netzwerkweit aktivieren"
+
+#: includes/AdminIntegration.php:118
+#: includes/views/repositories/bulk-update-progress.php:42
+msgid "Zurück zum Updater"
+msgstr "Zurück zum Updater"
+
+#: includes/AdminIntegration.php:154 includes/AdminIntegration.php:169
+#: includes/AdminIntegration.php:172 includes/views/repositories/index.php:111
+msgid "Updater"
+msgstr "Updater"
+
+#: includes/AdminIntegration.php:182 includes/AdminIntegration.php:183
+#: includes/views/plugins/index.php:31
+msgid "Plugins"
+msgstr "Plugins"
+
+#: includes/AdminIntegration.php:191 includes/AdminIntegration.php:192
+#: includes/views/themes/index.php:28
+msgid "Themes"
+msgstr "Themes"
+
+#: includes/AdminIntegration.php:200 includes/AdminIntegration.php:201
+#: includes/views/connectors/add.php:17 includes/views/connectors/edit.php:21
+#: includes/views/settings/index.php:13
+msgid "Einstellungen"
+msgstr "Einstellungen"
+
+#: includes/AdminIntegration.php:267 includes/AdminIntegration.php:268
+msgid "Edit repository"
+msgstr "Repository bearbeiten"
+
+#: includes/AdminIntegration.php:395 includes/AdminIntegration.php:429
+#. translators: %s: Branch name
+#, php-format
+msgid "Branch %s"
+msgstr "Branch %s"
+
+#: includes/AdminIntegration.php:400 includes/AdminIntegration.php:407
+#: includes/AdminIntegration.php:434 includes/AdminIntegration.php:436
+#: includes/ListTable/PluginsListTable.php:264
+#: includes/ListTable/RepoListTable.php:231
+#: includes/ListTable/ThemesListTable.php:258 includes/views/plugins/add.php:38
+#: includes/views/plugins/edit.php:115 includes/views/themes/add.php:38
+#: includes/views/themes/edit.php:110 src/installer/Browser.jsx:77
+#: src/installer/index.jsx:78
+msgid "Repository"
+msgstr "Repository"
+
+#: includes/AdminIntegration.php:412 includes/AdminIntegration.php:441
+#. translators: %s: Installation folder name
+#, php-format
+msgid "Folder %s"
+msgstr "Ordner %s"
+
+#: includes/BundleAdmin.php:31 includes/BundleAdmin.php:32
+#: includes/views/bundles/index.php:6 src/installer/index.jsx:63
+msgid "Install repositories"
+msgstr "Repositories installieren"
+
+#: includes/BundleAdmin.php:61
+msgid ""
+"Network administration and plugin/theme installation permissions are "
+"required."
+msgstr ""
+"Berechtigungen zur Netzwerkverwaltung und zur Installation von Plugins und "
+"Themes sind erforderlich."
+
+#: includes/BundleAdmin.php:69
+msgid "You cannot manage bundle installations."
+msgstr "Sie dürfen keine Paketinstallationen verwalten."
+
+#: includes/BundleAdmin.php:73
+msgid "The selected network does not match this request."
+msgstr "Das ausgewählte Netzwerk stimmt nicht mit dieser Anfrage überein."
+
+#: includes/BundleAdmin.php:79
+msgid "Invalid request."
+msgstr "Ungültige Anfrage."
+
+#: includes/BundleAdmin.php:85 includes/Controller.php:1782
+msgid "File modifications are disabled on this installation."
+msgstr "Dateiänderungen sind in dieser Installation deaktiviert."
+
+#: includes/BundleAdmin.php:90 includes/BundleAdmin.php:95
+msgid "Invalid connector selection."
+msgstr "Ungültige Auswahl des Konnektors."
+
+#: includes/BundleAdmin.php:107 includes/BundleAdmin.php:112
+msgid "Invalid repository selection."
+msgstr "Ungültige Auswahl des Repositorys."
+
+#: includes/BundleAdmin.php:117 includes/BundleAdmin.php:122
+msgid "Invalid registration selection."
+msgstr "Ungültige Auswahl für die Registrierung."
+
+#: includes/BundleAdmin.php:138
+msgid ""
+"Could not process or save bundle progress. Reload before continuing and "
+"check database availability."
+msgstr ""
+"Der Fortschritt der Paketinstallation konnte nicht verarbeitet oder "
+"gespeichert werden. Laden Sie die Seite vor dem Fortfahren neu und prüfen "
+"Sie die Verfügbarkeit der Datenbank."
+
+#: includes/BundleAdmin.php:148
+msgid "Invalid connector or page."
+msgstr "Ungültiger Konnektor oder ungültige Seite."
+
+#: includes/BundleAdmin.php:169
+msgid "Invalid repository name."
+msgstr "Ungültiger Repository-Name."
+
+#: includes/Bundles/BundleManager.php:55
+msgid ""
+"Processing was interrupted. Inspect existing files before starting a new "
+"installation."
+msgstr ""
+"Die Verarbeitung wurde unterbrochen. Prüfen Sie die vorhandenen Dateien, "
+"bevor Sie eine neue Installation starten."
+
+#: includes/Bundles/BundleManager.php:456
+msgid "Left unmanaged. Existing files were kept; registration was not selected."
+msgstr ""
+"Nicht in die Verwaltung aufgenommen. Die vorhandenen Dateien wurden "
+"beibehalten; eine Registrierung wurde nicht ausgewählt."
+
+#: includes/Bundles/JobStore.php:35
+msgid "A bundle request is still running. Wait, then resume."
+msgstr ""
+"Eine Anfrage zur Paketinstallation läuft noch. Warten Sie und setzen Sie "
+"den Vorgang anschließend fort."
+
 #: includes/Controller.php:123 includes/ListTable/PluginsListTable.php:261
-#: includes/views/plugins/edit.php:45
+#: includes/views/plugins/edit.php:45 src/installer/RegistrationDialog.jsx:11
 msgid "Plugin"
 msgstr "Plugin"
 
 #: includes/Controller.php:133 includes/ListTable/ThemesListTable.php:255
-#: includes/views/themes/edit.php:43
+#: includes/views/themes/edit.php:43 src/installer/RegistrationDialog.jsx:11
 msgid "Theme"
 msgstr "Theme"
 
-#: includes/Controller.php:182 includes/Controller.php:338
-#: includes/Controller.php:799 includes/Controller.php:1002
-#: includes/Controller.php:1069 includes/Controller.php:1087
-#: includes/Controller.php:1297 includes/Controller.php:1338
-#: includes/Controller.php:1407 includes/Controller.php:1721
-#: includes/Controller.php:1776 includes/Controller.php:1955
-#: includes/Controller.php:2272 includes/Controller.php:2330
-#: includes/Controller.php:2492 includes/Controller.php:2782
+#: includes/Controller.php:182 includes/Controller.php:340
+#: includes/Controller.php:792 includes/Controller.php:997
+#: includes/Controller.php:1064 includes/Controller.php:1082
+#: includes/Controller.php:1292 includes/Controller.php:1333
+#: includes/Controller.php:1405 includes/Controller.php:1730
+#: includes/Controller.php:1774 includes/Controller.php:1844
+#: includes/Controller.php:2173 includes/Controller.php:2249
+#: includes/Controller.php:2546 includes/ListTable/PluginsListTable.php:327
+#: includes/ListTable/RepoListTable.php:288
+#: includes/ListTable/ThemesListTable.php:318
 msgid "You need a higher level of permission."
 msgstr "Sie benötigen eine höhere Berechtigungsstufe."
 
@@ -66,129 +225,157 @@ msgstr "Sie benötigen eine höhere Berechtigungsstufe."
 msgid "Repository not found."
 msgstr "Repository nicht gefunden."
 
-#: includes/Controller.php:216
+#: includes/Controller.php:219
 msgid "Neues Update vorhanden"
 msgstr "Neues Update vorhanden"
 
-#: includes/Controller.php:217
+#: includes/Controller.php:220
 msgid "Aktuell"
 msgstr "Aktuell"
 
+#: includes/Controller.php:226
 #. translators: %s: Update check error
-#: includes/Controller.php:223
+#, php-format
 msgid "Fehler: %s"
 msgstr "Fehler: %s"
 
-#: includes/Controller.php:288 includes/Controller.php:1391
+#: includes/Controller.php:290 includes/Controller.php:1389
 msgid "Service created."
 msgstr "Dienst erstellt."
 
-#: includes/Controller.php:384
+#: includes/Controller.php:388
 msgid "Settings saved."
 msgstr "Einstellungen gespeichert."
 
-#: includes/Controller.php:393
+#: includes/Controller.php:398
 msgid "Update notice email sent."
 msgstr "Update-Hinweis per E-Mail wurde gesendet."
 
-#: includes/Controller.php:396
+#: includes/Controller.php:401
 msgid "Es liegen keine Updates vor, über die berichtet werden kann."
 msgstr "Es liegen keine Updates vor, über die berichtet werden kann."
 
-#: includes/Controller.php:399
+#: includes/Controller.php:404
 msgid "No valid email address is configured."
 msgstr "Es ist keine gültige E-Mail-Adresse konfiguriert."
 
-#: includes/Controller.php:402
+#: includes/Controller.php:407
 msgid "The update notice email could not be sent."
 msgstr "Der Update-Hinweis per E-Mail konnte nicht gesendet werden."
 
-#: includes/Controller.php:405
+#: includes/Controller.php:410
 msgid "The update notice email is disabled."
 msgstr "Der Update-Hinweis per E-Mail ist deaktiviert."
 
-#: includes/Controller.php:621
+#: includes/Controller.php:614
 msgid "Release tag not checked yet"
 msgstr "Release-Tag noch nicht geprüft"
 
-#: includes/Controller.php:804 includes/Controller.php:1422
-#: includes/Controller.php:1961 includes/Controller.php:2498
+#: includes/Controller.php:797 includes/Controller.php:1420
+#: includes/Controller.php:1850 includes/Controller.php:2255
 msgid "An error occurred. Please try again."
 msgstr "Ein Fehler ist aufgetreten. Bitte versuche es erneut."
 
-#: includes/Controller.php:810
+#: includes/Controller.php:803
 msgid "Theme Check is not available."
 msgstr "Theme Check ist nicht verfügbar."
 
-#: includes/Controller.php:815
+#: includes/Controller.php:808
 msgid "The selected theme does not exist."
 msgstr "Das ausgewählte Theme existiert nicht."
 
-#: includes/Controller.php:825 includes/Controller.php:834
+#: includes/Controller.php:818 includes/Controller.php:827
 #: includes/ListTable/ThemesListTable.php:225 includes/views/themes/edit.php:46
 msgid "Theme Check"
 msgstr "Theme Check"
 
-#: includes/Controller.php:833
+#: includes/Controller.php:826
 msgid "Theme Check requires a form submission. Continue with the button below."
 msgstr ""
 "Theme Check erfordert das Absenden eines Formulars. Fahren Sie mit dem "
 "untenstehenden Button fort."
 
-#: includes/Controller.php:940 includes/Controller.php:1191
-#: includes/Controller.php:1539 includes/Controller.php:2098
+#: includes/Controller.php:933 includes/Controller.php:1186
+#: includes/Controller.php:1543 includes/Controller.php:1994
 msgid "Number of items per page:"
 msgstr "Einträge pro Seite:"
 
-#: includes/Controller.php:994 includes/Controller.php:1012
-#: includes/Controller.php:1292 includes/Controller.php:1716
-#: includes/Controller.php:2267
+#: includes/Controller.php:989 includes/Controller.php:1007
+#: includes/Controller.php:1287 includes/Controller.php:1725
+#: includes/Controller.php:2168 includes/ListTable/PluginsListTable.php:324
+#: includes/ListTable/RepoListTable.php:285
+#: includes/ListTable/ThemesListTable.php:315
 msgid "Unable to submit this form, please refresh and try again."
 msgstr ""
-"Dieses Formular konnte nicht gesendet werden. Bitte aktualisieren Sie es und "
-"versuchen Sie es erneut."
+"Dieses Formular konnte nicht gesendet werden. Bitte aktualisieren Sie es "
+"und versuchen Sie es erneut."
 
-#: includes/Controller.php:1351
+#: includes/Controller.php:1346
 msgid "The User/Group field must not be empty."
 msgstr "Das Feld Benutzer/Gruppe darf nicht leer sein."
 
-#: includes/Controller.php:1789 includes/Controller.php:1966
-#: includes/Controller.php:2343 includes/Controller.php:2503
+#: includes/Controller.php:1788
+msgid "Invalid repository installation request."
+msgstr "Ungültige Anfrage zur Repository-Installation."
+
+#: includes/Controller.php:1806
+msgid ""
+"Installation was interrupted. Inspect the destination before retrying; "
+"existing files will not be overwritten."
+msgstr ""
+"Die Installation wurde unterbrochen. Prüfen Sie den Zielordner vor einem "
+"erneuten Versuch; vorhandene Dateien werden nicht überschrieben."
+
+#: includes/Controller.php:1855 includes/Controller.php:2260
 msgid "The Repository field must not be empty."
 msgstr "Das Feld Repository darf nicht leer sein."
 
-#: includes/Controller.php:1797 includes/Controller.php:2351
-msgid "The Repository already exists."
-msgstr "Das Repository existiert bereits."
-
-#: includes/Controller.php:2744 includes/Controller.php:2759
+#: includes/Controller.php:2508 includes/Controller.php:2523
 msgid "Y/m/d"
 msgstr "j.n.Y"
 
+#: includes/Controller.php:2518
 #. translators: %s: Human-readable time difference
-#: includes/Controller.php:2754
+#, php-format
 msgid "%s ago"
 msgstr "vor %s"
 
-#: includes/Core/Connector.php:195
+#: includes/Controller.php:2615
+msgid ""
+"Could not save the changes. Settings may have changed in another request, "
+"or the database may be unavailable. The stored values have been reloaded; "
+"review them and try again."
+msgstr ""
+"Die Änderungen konnten nicht gespeichert werden. Möglicherweise wurden die "
+"Einstellungen durch eine andere Anfrage geändert oder die Datenbank ist "
+"nicht verfügbar. Die gespeicherten Werte wurden neu geladen; prüfen Sie "
+"diese und versuchen Sie es erneut."
+
+#: includes/Core/Connector.php:138
+msgid "This connector does not support release updates."
+msgstr "Dieser Konnektor unterstützt keine Release-Updates."
+
+#: includes/Core/Connector.php:202
 msgid "Unauthorized (use valid authentication)"
 msgstr "Nicht autorisiert (gültige Authentifizierung verwenden)"
 
-#: includes/Core/Connector.php:196
+#: includes/Core/Connector.php:203
 msgid "Forbidden (use valid authentication)"
 msgstr "Verboten (gültige Authentifizierung verwenden)"
 
-#: includes/Core/Connector.php:197
+#: includes/Core/Connector.php:204
 msgid "Resource not found (check repository name, branch/tag/commit name)"
 msgstr ""
-"Ressource nicht gefunden (Repository-Name prüfen, Branch / Tag / Commit-Name)"
+"Ressource nicht gefunden (Repository-Name prüfen, Branch / Tag / "
+"Commit-Name)"
 
-#: includes/Core/Connector.php:198
+#: includes/Core/Connector.php:205
 msgid "Too many requests"
 msgstr "Zu viele Anfragen"
 
+#: includes/Core/Extension.php:266
 #. translators: 1: Branch name, 2: Repository name, 3: HTTP response code
-#: includes/Core/Extension.php:261
+#, php-format
 msgid ""
 "The GitLab repository branch \"%1$s\" could not be verified for \"%2$s\" "
 "because no access token is configured. GitLab returned HTTP %3$d; private "
@@ -196,25 +383,28 @@ msgid ""
 "settings and try again."
 msgstr ""
 "Der GitLab-Repository-Branch „%1$s“ für „%2$s“ konnte nicht geprüft werden, "
-"weil kein Zugriffstoken konfiguriert ist. GitLab lieferte HTTP %3$d; private "
-"Repositories können auf diese Weise verborgen werden. Hinterlegen Sie einen "
-"gültigen Token in den Diensteinstellungen und versuchen Sie es erneut."
+"weil kein Zugriffstoken konfiguriert ist. GitLab lieferte HTTP %3$d; "
+"private Repositories können auf diese Weise verborgen werden. Hinterlegen "
+"Sie einen gültigen Token in den Diensteinstellungen und versuchen Sie es "
+"erneut."
 
+#: includes/Core/Extension.php:290
 #. translators: 1: Repository name, 2: Service name, 3: HTTP response code
-#: includes/Core/Extension.php:285
+#, php-format
 msgid ""
 "Access to repository \"%1$s\" was denied by %2$s (HTTP %3$d). Check whether "
 "the configured token is valid and authorized to access this repository."
 msgstr ""
-"Der Zugriff auf das Repository „%1$s“ wurde von %2$s verweigert (HTTP %3$d). "
-"Prüfen Sie, ob der konfigurierte Token gültig ist und Zugriff auf dieses "
-"Repository hat."
+"Der Zugriff auf das Repository „%1$s“ wurde von %2$s verweigert (HTTP "
+"%3$d). Prüfen Sie, ob der konfigurierte Token gültig ist und Zugriff auf "
+"dieses Repository hat."
 
+#: includes/Core/Extension.php:303
 #. translators: 1: Repository name, 2: Service name
-#: includes/Core/Extension.php:298
+#, php-format
 msgid ""
-"Repository \"%1$s\" could not be found on %2$s or is not accessible with the "
-"configured token. Check the user/group and repository name. If both are "
+"Repository \"%1$s\" could not be found on %2$s or is not accessible with "
+"the configured token. Check the user/group and repository name. If both are "
 "correct, grant the token access to this repository."
 msgstr ""
 "Das Repository „%1$s“ wurde bei %2$s nicht gefunden oder ist mit dem "
@@ -222,17 +412,19 @@ msgstr ""
 "Repository-Namen. Wenn beides korrekt ist, erteilen Sie dem Token Zugriff "
 "auf dieses Repository."
 
+#: includes/Core/Extension.php:329
 #. translators: 1: Branch name, 2: Repository name
-#: includes/Core/Extension.php:324
+#, php-format
 msgid ""
 "The repository branch \"%1$s\" could not be found for \"%2$s\". The "
 "repository does not contain any branches."
 msgstr ""
-"Der Repository-Branch „%1$s“ wurde für „%2$s“ nicht gefunden. Das Repository "
-"enthält keine Branches."
+"Der Repository-Branch „%1$s“ wurde für „%2$s“ nicht gefunden. Das "
+"Repository enthält keine Branches."
 
+#: includes/Core/Extension.php:342
 #. translators: 1: Requested branch, 2: Repository, 3: Available branches, 4: Suggested branch
-#: includes/Core/Extension.php:337
+#, php-format
 msgid ""
 "The repository branch \"%1$s\" could not be found for \"%2$s\". Available "
 "branches: %3$s. Suggested branch: %4$s."
@@ -240,78 +432,187 @@ msgstr ""
 "Der Repository-Branch „%1$s“ wurde für „%2$s“ nicht gefunden. Verfügbare "
 "Branches: %3$s. Vorgeschlagener Branch: %4$s."
 
-#: includes/Core/GithubConnector.php:291
+#: includes/Core/GithubConnector.php:289 includes/Core/GitlabConnector.php:300
 msgid "Could not create temporary file."
 msgstr "Temporäre Datei konnte nicht erstellt werden."
 
-#: includes/Core/GithubConnector.php:305
-msgid "Could not write ZIP archive to temporary file."
-msgstr "ZIP-Archiv konnte nicht in die temporäre Datei geschrieben werden."
+#: includes/Core/GithubConnector.php:315
+msgid "GitHub archive redirected to an unsupported or insecure URL."
+msgstr ""
+"Der Download des GitHub-Archivs wurde auf eine nicht unterstützte oder "
+"unsichere URL umgeleitet."
 
+#: includes/Core/GithubConnector.php:346 includes/Core/GitlabConnector.php:312
+msgid "Could not download ZIP archive."
+msgstr "Das ZIP-Archiv konnte nicht heruntergeladen werden."
+
+#: includes/Core/GithubConnector.php:433
 #. translators: 1: API rate limit, 2: API rate left, 3: API rate reset
-#: includes/Core/GithubConnector.php:390
+#, php-format
 msgid "GitHub API Rate Limit: %1$s (%2$s left). It'll be reset %3$s."
 msgstr "GitHub API-Rate-Limit: %1$s (%2$s übrig). Es wird %3$s zurückgesetzt."
 
-#. translators: %s: Human time difference
-#: includes/Core/GithubConnector.php:395 includes/Core/GithubConnector.php:409
-msgctxt "Human time difference"
-msgid "in %s"
-msgstr "in %s"
-
+#: includes/Core/GithubConnector.php:449
 #. translators: %s: API rate limit time availabelity
-#: includes/Core/GithubConnector.php:406
+#, php-format
 msgid "GitHub API Rate Limit is reached! It'll be available %s."
 msgstr "GitHub API-Rate-Limit ist erreicht! Es wird %s verfügbar sein."
 
-#: includes/Core/Plugin.php:57 includes/Core/Plugin.php:86
+#: includes/Core/GitlabConnector.php:282
+msgid "Release lookup exceeded the pagination limit."
+msgstr "Die Release-Suche hat die zulässige Anzahl an Ergebnisseiten überschritten."
+
+#: includes/Core/Plugin.php:67 includes/Core/Plugin.php:96
 msgid "No repository service is configured for this plugin."
 msgstr "Für dieses Plugin ist kein Repository-Dienst konfiguriert."
 
+#: includes/Core/Plugin.php:82
 #. translators: %s: Comma-separated list of checked readme files
-#: includes/Core/Plugin.php:72
+#, php-format
 msgid ""
-"The repository is not recognized as a WordPress plugin. Missing readme file. "
-"Checked: %s."
+"The repository is not recognized as a WordPress plugin. Missing readme "
+"file. Checked: %s."
 msgstr ""
 "Das Repository wird nicht als WordPress-Plugin erkannt. Die Readme-Datei "
 "fehlt. Geprüft: %s."
 
+#: includes/Core/Plugin.php:142
 #. translators: %s: Comma-separated list of checked plugin main file candidates
-#: includes/Core/Plugin.php:132
+#, php-format
 msgid ""
 "The repository is not recognized as a WordPress plugin. Missing plugin main "
 "file. Checked: %s."
 msgstr ""
-"Das Repository wird nicht als WordPress-Plugin erkannt. Die Plugin-"
-"Hauptdatei fehlt. Geprüft: %s."
+"Das Repository wird nicht als WordPress-Plugin erkannt. Die "
+"Plugin-Hauptdatei fehlt. Geprüft: %s."
 
+#: includes/Core/Plugin.php:152
 #. translators: %s: Comma-separated list of plugin main file candidates found without Plugin Name header
-#: includes/Core/Plugin.php:142
+#, php-format
 msgid ""
 "The repository is not recognized as a WordPress plugin. Found plugin main "
 "file candidate, but the required \"Plugin Name:\" header is missing. "
 "Checked: %s."
 msgstr ""
-"Das Repository wird nicht als WordPress-Plugin erkannt. Eine mögliche Plugin-"
-"Hauptdatei wurde gefunden, aber der erforderliche Header „Plugin Name:“ "
-"fehlt. Geprüft: %s."
+"Das Repository wird nicht als WordPress-Plugin erkannt. Eine mögliche "
+"Plugin-Hauptdatei wurde gefunden, aber der erforderliche Header „Plugin "
+"Name:“ fehlt. Geprüft: %s."
+
+#: includes/Core/RepositoryDiscovery.php:40
+msgid "The configured owner could not be found or accessed."
+msgstr "Der konfigurierte Eigentümer wurde nicht gefunden oder ist nicht zugänglich."
+
+#: includes/Core/RepositoryDiscovery.php:107
+msgid "The repository does not belong to the configured owner."
+msgstr "Das Repository gehört nicht zum konfigurierten Eigentümer."
+
+#: includes/Core/RepositoryDiscovery.php:134
+msgid "Could not resolve the selected branch to a commit."
+msgstr "Für den ausgewählten Branch konnte kein Commit ermittelt werden."
+
+#: includes/Core/RepositoryDiscovery.php:163
+msgid "This repository has too many root entries to inspect automatically."
+msgstr ""
+"Dieses Repository enthält zu viele Einträge im Stammverzeichnis für eine "
+"automatische Prüfung."
+
+#: includes/Core/RepositoryDiscovery.php:177
+msgid "Could not read a repository file. It may exceed the API file-size limit."
+msgstr ""
+"Eine Repository-Datei konnte nicht gelesen werden. Möglicherweise "
+"überschreitet sie die Größenbegrenzung der API."
+
+#: includes/Core/RepositoryDiscovery.php:184
+msgid "The repository service returned an invalid response. Try again."
+msgstr ""
+"Der Repository-Dienst hat eine ungültige Antwort zurückgegeben. Versuchen "
+"Sie es erneut."
+
+#: includes/Core/RepositoryDiscovery.php:216
+msgid "Configure an access token for this connector first."
+msgstr "Konfigurieren Sie zuerst ein Zugriffstoken für diesen Konnektor."
+
+#: includes/Core/RepositoryDiscovery.php:233
+msgid "Could not contact the repository service. Try again."
+msgstr "Der Repository-Dienst konnte nicht erreicht werden. Versuchen Sie es erneut."
+
+#: includes/Core/RepositoryDiscovery.php:238
+msgid "The repository resource could not be found or accessed."
+msgstr "Die Repository-Ressource wurde nicht gefunden oder ist nicht zugänglich."
+
+#: includes/Core/RepositoryDiscovery.php:239
+msgid "The service denied access. Check the token permissions or API rate limit."
+msgstr ""
+"Der Dienst hat den Zugriff verweigert. Prüfen Sie die Token-Berechtigungen "
+"oder das API-Anfragelimit."
+
+#: includes/Core/RepositoryDiscovery.php:240
+msgid "The service rate limit was reached. Wait before trying again."
+msgstr ""
+"Das Anfragelimit des Dienstes wurde erreicht. Warten Sie vor einem erneuten "
+"Versuch."
+
+#: includes/Core/RepositoryDiscovery.php:241
+msgid "Could not retrieve repository data. Check the connector and try again."
+msgstr ""
+"Die Repository-Daten konnten nicht abgerufen werden. Prüfen Sie den "
+"Konnektor und versuchen Sie es erneut."
+
+#: includes/Core/RepositoryDiscovery.php:246
+msgid "The repository service returned an invalid or oversized response."
+msgstr ""
+"Der Repository-Dienst hat eine ungültige oder zu große Antwort "
+"zurückgegeben."
+
+#: includes/Core/RepositoryInspector.php:29
+msgid ""
+"Could not check this repository: more than 30 root PHP files require "
+"inspection."
+msgstr ""
+"Dieses Repository konnte nicht geprüft werden: Mehr als 30 PHP-Dateien im "
+"Stammverzeichnis müssten untersucht werden."
+
+#: includes/Core/RepositoryInspector.php:49
+msgid "Unsupported structure: expected one plugin or theme at the repository root."
+msgstr ""
+"Nicht unterstützte Struktur: Im Stammverzeichnis des Repositorys wird genau "
+"ein Plugin oder Theme erwartet."
+
+#: includes/Core/RepositoryInspector.php:57
+msgid "Unsupported theme: missing index.php or templates/index.html."
+msgstr "Nicht unterstütztes Theme: index.php oder templates/index.html fehlt."
+
+#: includes/Core/RepositoryInspector.php:65
+#, php-format
+msgid ""
+"Requires WordPress %1$s and PHP %2$s. This installation does not meet the "
+"declared requirements."
+msgstr ""
+"Erfordert WordPress %1$s und PHP %2$s. Diese Installation erfüllt die "
+"angegebenen Voraussetzungen nicht."
+
+#: includes/Core/RepositoryInspector.php:73
+#, php-format
+msgid "Declared plugin dependencies: %s. Review these before activation."
+msgstr "Angegebene Plugin-Abhängigkeiten: %s. Prüfen Sie diese vor der Aktivierung."
 
 #: includes/Core/Theme.php:53 includes/Core/Theme.php:82
 msgid "No repository service is configured for this theme."
 msgstr "Für dieses Theme ist kein Repository-Dienst konfiguriert."
 
+#: includes/Core/Theme.php:98
 #. translators: 1: Classic theme index file, 2: Block theme index file
-#: includes/Core/Theme.php:97
+#, php-format
 msgid ""
 "The repository is not recognized as a WordPress theme. Missing theme index "
 "template. Checked: %1$s or %2$s."
 msgstr ""
-"Das Repository wird nicht als WordPress-Theme erkannt. Die Theme-"
-"Indexvorlage fehlt. Geprüft: %1$s oder %2$s."
+"Das Repository wird nicht als WordPress-Theme erkannt. Die "
+"Theme-Indexvorlage fehlt. Geprüft: %1$s oder %2$s."
 
+#: includes/Core/Theme.php:125
 #. translators: %s: Theme stylesheet file path
-#: includes/Core/Theme.php:118
+#, php-format
 msgid ""
 "The repository is not recognized as a WordPress theme. Missing stylesheet "
 "file: %s."
@@ -319,8 +620,9 @@ msgstr ""
 "Das Repository wird nicht als WordPress-Theme erkannt. Die Stylesheet-Datei "
 "fehlt: %s."
 
+#: includes/Core/Theme.php:139
 #. translators: %s: Theme stylesheet file path
-#: includes/Core/Theme.php:132
+#, php-format
 msgid ""
 "The repository is not recognized as a WordPress theme. Found %s, but the "
 "required \"Theme Name:\" header is missing."
@@ -328,11 +630,11 @@ msgstr ""
 "Das Repository wird nicht als WordPress-Theme erkannt. %s wurde gefunden, "
 "aber der erforderliche Header „Theme Name:“ fehlt."
 
-#: includes/Cron.php:65
+#: includes/Cron.php:73
 msgid "Once weekly"
 msgstr "Einmal wöchentlich"
 
-#: includes/Cron.php:72
+#: includes/Cron.php:80
 msgid "Once monthly"
 msgstr "Einmal monatlich"
 
@@ -375,10 +677,11 @@ msgstr "Token"
 msgid "Repositories"
 msgstr "Repositories"
 
-#. translators: %s: New extension version
 #: includes/ListTable/PluginsListTable.php:162
 #: includes/ListTable/RepoListTable.php:202
 #: includes/ListTable/ThemesListTable.php:156
+#. translators: %s: New extension version
+#, php-format
 msgid "Update auf %s"
 msgstr "Update auf %s"
 
@@ -404,15 +707,6 @@ msgstr "Version"
 #: includes/ListTable/ThemesListTable.php:257
 msgid "Folder"
 msgstr "Ordner"
-
-#: includes/ListTable/PluginsListTable.php:264
-#: includes/ListTable/RepoListTable.php:231
-#: includes/ListTable/ThemesListTable.php:258 includes/Main.php:791
-#: includes/Main.php:798 includes/Main.php:835 includes/Main.php:837
-#: includes/views/plugins/add.php:38 includes/views/plugins/edit.php:115
-#: includes/views/themes/add.php:38 includes/views/themes/edit.php:110
-msgid "Repository"
-msgstr "Repository"
 
 #: includes/ListTable/PluginsListTable.php:265
 #: includes/ListTable/ThemesListTable.php:259 includes/views/plugins/add.php:47
@@ -447,64 +741,107 @@ msgstr "Branch / Release-Tag"
 msgid "Update"
 msgstr "Aktualisieren"
 
-#. translators: 1: Service name, 2: User or group, 3: HTTP response code
-#: includes/Main.php:154
+#: includes/ManagedUpgrader.php:133
+msgid "The managed installation folder is invalid."
+msgstr "Der verwaltete Installationsordner ist ungültig."
+
+#: includes/ManagedUpgrader.php:138
+msgid "Could not prepare the managed installation folder."
+msgstr "Der verwaltete Installationsordner konnte nicht vorbereitet werden."
+
+#: includes/ManagedUpgrader.php:255 includes/ManagedUpgrader.php:257
+msgid "Download failed."
+msgstr "Download fehlgeschlagen."
+
+#: includes/ManagedUpgrader.php:280
 msgid ""
-"The token for %1$s / %2$s was rejected while checking for updates (HTTP "
-"%3$d). Please check and replace the token in the service settings."
+"The package does not match the managed repository. Refresh the update "
+"information before retrying."
 msgstr ""
-"Der Token für %1$s / %2$s wurde bei der Update-Prüfung abgelehnt (HTTP "
-"%3$d). Prüfen und ersetzen Sie den Token in den Diensteinstellungen."
+"Das Paket stimmt nicht mit dem verwalteten Repository überein. "
+"Aktualisieren Sie die Update-Informationen vor einem erneuten Versuch."
 
-#: includes/Main.php:164
-msgid "Open services"
-msgstr "Dienste öffnen"
+#: includes/ManagedUpgrader.php:493
+msgid ""
+"Could not save the installed repository version. Reconcile the installation "
+"before retrying."
+msgstr ""
+"Die installierte Repository-Version konnte nicht gespeichert werden. "
+"Gleichen Sie den Installationsstatus vor einem erneuten Versuch ab."
 
-#: includes/Main.php:175 includes/Upgrader/PluginUpgraderSkin.php:51
-msgid "Plugin netzwerkweit aktivieren"
-msgstr "Plugin netzwerkweit aktivieren"
+#: includes/UpdateCheckBatch.php:37
+msgid "Another scheduled update check is running, or the check lock is unavailable."
+msgstr ""
+"Eine andere geplante Update-Prüfung läuft bereits oder die Prüfsperre ist "
+"nicht verfügbar."
 
-#: includes/Main.php:179 includes/Upgrader/ThemeUpgraderSkin.php:51
-msgid "Theme netzwerkweit aktivieren"
-msgstr "Theme netzwerkweit aktivieren"
+#: includes/UpdateCheckBatch.php:47
+msgid "Could not synchronize repository settings before checking for updates."
+msgstr ""
+"Die Repository-Einstellungen konnten vor der Update-Prüfung nicht "
+"synchronisiert werden."
 
-#: includes/Main.php:199
-#: includes/views/repositories/bulk-update-progress.php:42
-msgid "Zurück zum Updater"
-msgstr "Zurück zum Updater"
+#: includes/UpdateCheckBatch.php:82
+msgid ""
+"Scheduled update checking was interrupted or could not be saved three "
+"times. This repository will be retried in the next scheduled cycle."
+msgstr ""
+"Die geplante Update-Prüfung wurde dreimal unterbrochen oder konnte dreimal "
+"nicht gespeichert werden. Dieses Repository wird im nächsten geplanten "
+"Durchlauf erneut geprüft."
 
-#: includes/Main.php:238 includes/Main.php:259 includes/Main.php:263
-#: includes/views/repositories/index.php:107
-msgid "Updater"
-msgstr "Updater"
+#: includes/UpdateCheckBatch.php:100
+msgid ""
+"The scheduled repository check failed unexpectedly. Check the service "
+"configuration and try again."
+msgstr ""
+"Die geplante Repository-Prüfung ist unerwartet fehlgeschlagen. Prüfen Sie "
+"die Dienstkonfiguration und versuchen Sie es erneut."
 
-#: includes/Main.php:273 includes/Main.php:274
-#: includes/views/plugins/index.php:31
-msgid "Plugins"
-msgstr "Plugins"
+#: includes/UpdateCheckBatch.php:106
+msgid ""
+"Could not save a scheduled update-check result. The repository remains "
+"queued for retry."
+msgstr ""
+"Das Ergebnis einer geplanten Update-Prüfung konnte nicht gespeichert "
+"werden. Das Repository bleibt für einen erneuten Versuch vorgemerkt."
 
-#: includes/Main.php:282 includes/Main.php:283
-#: includes/views/themes/index.php:28
-msgid "Themes"
-msgstr "Themes"
+#: includes/UpdateCheckBatch.php:127
+msgid "Could not clear the completed update-check continuation."
+msgstr ""
+"Der erledigte Fortsetzungstermin der Update-Prüfung konnte nicht entfernt "
+"werden."
 
-#: includes/Main.php:291 includes/Main.php:292
-#: includes/views/connectors/add.php:17 includes/views/connectors/edit.php:21
-#: includes/views/settings/index.php:13
-msgid "Einstellungen"
-msgstr "Einstellungen"
+#: includes/UpdateCheckBatch.php:143
+msgid "Could not reschedule the update-check continuation."
+msgstr "Die Fortsetzung der Update-Prüfung konnte nicht neu geplant werden."
 
-#: includes/Main.php:376 includes/Main.php:377
-msgid "Edit repository"
-msgstr "Repository bearbeiten"
+#: includes/UpdateCheckBatch.php:151
+msgid ""
+"Could not schedule the next update-check batch. It will be retried on the "
+"next main-site request."
+msgstr ""
+"Der nächste Abschnitt der Update-Prüfung konnte nicht geplant werden. Beim "
+"nächsten Aufruf der Hauptwebsite wird dies erneut versucht."
 
+#: includes/UpdateCheckBatch.php:170
+msgid ""
+"Could not save scheduled update-check progress. The previous checkpoint is "
+"retained."
+msgstr ""
+"Der Fortschritt der geplanten Update-Prüfung konnte nicht gespeichert "
+"werden. Der bisherige Zwischenstand bleibt erhalten."
+
+#: includes/views/admin/plugin-update-row.php:12
+#: includes/views/admin/theme-update-row.php:11
 #. translators: 1: Extension name, 2: Version number
-#: includes/Main.php:619 includes/Main.php:712
+#, php-format
 msgid "There is a new version of %1$s available: %2$s."
 msgstr "Eine neue Version von %1$s ist verfügbar: %2$s."
 
+#: includes/views/admin/plugin-update-row.php:19
 #. translators: 1: Extension name, 2: Version number
-#: includes/Main.php:626
+#, php-format
 msgid ""
 "There is a new version of %1$s available: %2$s. <em>Automatic update is "
 "unavailable for this plugin.</em>"
@@ -512,22 +849,27 @@ msgstr ""
 "Eine neue Version von %1$s ist verfügbar: %2$s. <em>Eine automatische "
 "Aktualisierung ist für dieses Plugin nicht verfügbar.</em>"
 
+#: includes/views/admin/plugin-update-row.php:26
+#: includes/views/admin/theme-update-row.php:25
 #. translators: 1: Extension name, 2: Version number, 3: Update URL, 4: Additional link attributes
-#: includes/Main.php:633 includes/Main.php:726
+#, php-format
 msgid ""
-"There is a new version of %1$s available: %2$s. <a href=\"%3$s\" %4$s>Update "
-"now</a>."
+"There is a new version of %1$s available: %2$s. <a href=\"%3$s\" "
+"%4$s>Update now</a>."
 msgstr ""
 "Eine neue Version von %1$s ist verfügbar: %2$s. <a href=\"%3$s\" %4$s>Jetzt "
 "aktualisieren</a>."
 
+#: includes/views/admin/plugin-update-row.php:34
+#: includes/views/admin/theme-update-row.php:34
 #. translators: %s: Extension name
-#: includes/Main.php:641 includes/Main.php:735
+#, php-format
 msgid "Update %s now"
 msgstr "%s jetzt aktualisieren"
 
+#: includes/views/admin/theme-update-row.php:18
 #. translators: 1: Extension name, 2: Version number
-#: includes/Main.php:719
+#, php-format
 msgid ""
 "There is a new version of %1$s available: %2$s. <em>Automatic update is "
 "unavailable for this theme.</em>"
@@ -535,19 +877,11 @@ msgstr ""
 "Eine neue Version von %1$s ist verfügbar: %2$s. <em>Eine automatische "
 "Aktualisierung ist für dieses Theme nicht verfügbar.</em>"
 
-#. translators: %s: Branch name
-#: includes/Main.php:786 includes/Main.php:830
-msgid "Branch %s"
-msgstr "Branch %s"
-
-#. translators: %s: Installation folder name
-#: includes/Main.php:803 includes/Main.php:842
-msgid "Folder %s"
-msgstr "Ordner %s"
-
-#: includes/Main.php:1016 includes/Main.php:1024
-msgid "Download failed."
-msgstr "Download fehlgeschlagen."
+#: includes/views/bundles/index.php:8
+msgid "JavaScript is required for repository browsing and installation."
+msgstr ""
+"Zum Durchsuchen und Installieren von Repositories ist JavaScript "
+"erforderlich."
 
 #: includes/views/connectors/add.php:20 includes/views/connectors/edit.php:24
 #: includes/views/settings/index.php:16
@@ -568,8 +902,9 @@ msgstr "Neuen Dienst erstellen"
 msgid "GitLab host"
 msgstr "GitLab-Host"
 
-#. translators: %s: Example GitLab host name
 #: includes/views/connectors/add.php:51
+#. translators: %s: Example GitLab host name
+#, php-format
 msgid "Only used for GitLab. Example: %s"
 msgstr "Wird nur für GitLab verwendet. Beispiel: %s"
 
@@ -577,8 +912,9 @@ msgstr "Wird nur für GitLab verwendet. Beispiel: %s"
 msgid "GitLab API URI"
 msgstr "GitLab-API-URI"
 
-#. translators: %s: Default GitLab API URI
 #: includes/views/connectors/add.php:64
+#. translators: %s: Default GitLab API URI
+#, php-format
 msgid "Only used for GitLab. Default: %s"
 msgstr "Wird nur für GitLab verwendet. Standard: %s"
 
@@ -590,18 +926,20 @@ msgstr "Optional."
 msgid "Edit Service"
 msgstr "Dienst bearbeiten"
 
-#. translators: %s: Example GitLab host name
 #: includes/views/connectors/edit.php:53
+#. translators: %s: Example GitLab host name
+#, php-format
 msgid "Example: %s"
 msgstr "Beispiel: %s"
 
+#: includes/views/connectors/edit.php:66 src/installer/Browser.jsx:84
 #. translators: %s: Default GitLab API URI
-#: includes/views/connectors/edit.php:66
+#, php-format
 msgid "Default: %s"
 msgstr "Standard: %s"
 
-#: includes/views/connectors/edit.php:91 includes/views/plugins/edit.php:165
-#: includes/views/settings/index.php:112 includes/views/themes/edit.php:160
+#: includes/views/connectors/edit.php:91 includes/views/plugins/edit.php:166
+#: includes/views/settings/index.php:112 includes/views/themes/edit.php:161
 msgid "Save Changes"
 msgstr "Änderungen übernehmen"
 
@@ -610,29 +948,30 @@ msgid "Add new"
 msgstr "Neu hinzufügen"
 
 #: includes/views/connectors/index.php:15 includes/views/plugins/index.php:49
-#: includes/views/repositories/index.php:114 includes/views/themes/index.php:35
+#: includes/views/repositories/index.php:118 includes/views/themes/index.php:35
 msgid "Search"
 msgstr "Suchen"
 
-#. translators: %s: Notice message
 #: includes/views/main.php:18
 #: includes/views/repositories/bulk-update-progress.php:30
+#. translators: %s: Notice message
+#, php-format
 msgid "Hinweis: %s"
 msgstr "Hinweis: %s"
 
-#. translators: %s: Notice message
 #: includes/views/main.php:18
+#. translators: %s: Notice message
+#, php-format
 msgid "Error: %s"
 msgstr "Fehler: %s"
 
 #: includes/views/partials/bulk-delete-confirm.php:7
-#: includes/views/repositories/index.php:123
+#: includes/views/repositories/index.php:127
 msgid "Delete selected repositories?"
 msgstr "Ausgewählte Repositories löschen?"
 
 #: includes/views/partials/bulk-delete-confirm.php:8
-msgid ""
-"This action removes the selected repository definitions from RRZE Updater."
+msgid "This action removes the selected repository definitions from RRZE Updater."
 msgstr ""
 "Diese Aktion entfernt die ausgewählten Repository-Definitionen aus dem RRZE "
 "Updater."
@@ -642,8 +981,13 @@ msgid "I understand that the selected entries will be deleted."
 msgstr "Ich bestätige, dass die ausgewählten Einträge gelöscht werden."
 
 #: includes/views/partials/bulk-delete-confirm.php:58
+#: src/installer/Browser.jsx:51
 msgid "Cancel"
 msgstr "Abbrechen"
+
+#: includes/views/plugins/add-progress.php:8
+msgid "View installed plugins"
+msgstr "Installierte Plugins anzeigen"
 
 #: includes/views/plugins/add.php:9 includes/views/plugins/add.php:89
 msgid "Install Plugin"
@@ -675,7 +1019,7 @@ msgstr "Commits"
 msgid "Tags"
 msgstr "Tags"
 
-#: includes/views/plugins/add.php:80 includes/views/plugins/edit.php:157
+#: includes/views/plugins/add.php:80 includes/views/plugins/edit.php:158
 msgid "Plugin folder"
 msgstr "Ordner des Plugins"
 
@@ -683,40 +1027,51 @@ msgstr "Ordner des Plugins"
 msgid "By default, the name of the repository."
 msgstr "Standardmäßig der Name des Repositories."
 
-#. translators: %s: Remote extension version
 #: includes/views/plugins/edit.php:19 includes/views/themes/edit.php:19
+#. translators: %s: Remote extension version
+#, php-format
 msgid "A new version is available: %s."
 msgstr "Eine neue Version ist verfügbar: %s."
 
-#. translators: %s: Warning message
 #: includes/views/plugins/edit.php:28 includes/views/themes/edit.php:28
+#. translators: %s: Warning message
+#, php-format
 msgid "Warning: %s"
 msgstr "Warnhinweis: %s"
 
-#. translators: %s: Last extension error
 #: includes/views/plugins/edit.php:38 includes/views/themes/edit.php:37
+#. translators: %s: Last extension error
+#, php-format
 msgid "Last error: %s"
 msgstr "Letzter Fehler: %s"
 
-#. translators: 1: Installed extension version, 2: Local git reference
 #: includes/views/plugins/edit.php:57 includes/views/themes/edit.php:55
+#. translators: 1: Installed extension version, 2: Local git reference
+#, php-format
 msgid "Local Version: <code>%1$s</code> (Git Version: <code>%2$s</code>)"
 msgstr "Lokale Version: <code>%1$s</code> (Git-Version: <code>%2$s</code>)"
 
-#. translators: 1: Remote extension version, 2: Remote git reference
 #: includes/views/plugins/edit.php:64 includes/views/themes/edit.php:61
+#. translators: 1: Remote extension version, 2: Remote git reference
+#, php-format
 msgid "Remote Version: <code>%1$s</code> (Git Version: <code>%2$s</code>)"
 msgstr "Remote-Version: <code>%1$s</code> (Git-Version: <code>%2$s</code>)"
 
-#. translators: %s: Last checked date
 #: includes/views/plugins/edit.php:71 includes/views/themes/edit.php:67
+#. translators: %s: Last checked date
+#, php-format
 msgid "Last checked on: %s"
 msgstr "Zuletzt überprüft am: %s"
 
-#. translators: %s: Repository URL
 #: includes/views/plugins/edit.php:78 includes/views/themes/edit.php:73
+#. translators: %s: Repository URL
+#, php-format
 msgid "Repository: %s"
 msgstr "Repository: %s"
+
+#: includes/views/plugins/edit.php:141 includes/views/themes/edit.php:136
+msgid "Releases"
+msgstr "Releases"
 
 #: includes/views/plugins/index.php:32 includes/views/themes/index.php:29
 msgid "Install"
@@ -737,10 +1092,11 @@ msgstr ""
 
 #: includes/views/plugins/index.php:60
 msgid ""
-"I understand that the selected plugin repository definitions will be deleted."
+"I understand that the selected plugin repository definitions will be "
+"deleted."
 msgstr ""
-"Ich bestätige, dass die ausgewählten Plugin-Repository-Definitionen gelöscht "
-"werden."
+"Ich bestätige, dass die ausgewählten Plugin-Repository-Definitionen "
+"gelöscht werden."
 
 #: includes/views/repositories/bulk-update-progress.php:11
 msgid "Repository-Updates"
@@ -750,12 +1106,12 @@ msgstr "Repository-Updates"
 msgid "Für die ausgewählten Repositories liegen keine Updates vor."
 msgstr "Für die ausgewählten Repositories liegen keine Updates vor."
 
-#: includes/views/repositories/index.php:108
-#: includes/views/repositories/index.php:131
+#: includes/views/repositories/index.php:112
+#: includes/views/repositories/index.php:135
 msgid "Auf Updates prüfen"
 msgstr "Auf Updates prüfen"
 
-#: includes/views/repositories/index.php:124
+#: includes/views/repositories/index.php:128
 msgid ""
 "This action deletes the selected repository definitions from RRZE Updater. "
 "Installed plugins or themes are not removed by this bulk action."
@@ -764,31 +1120,54 @@ msgstr ""
 "Updater. Installierte Plugins oder Themes werden durch diese Mehrfachaktion "
 "nicht entfernt."
 
-#: includes/views/repositories/index.php:125
+#: includes/views/repositories/index.php:129
 msgid "I understand that the selected repository definitions will be deleted."
 msgstr ""
-"Ich bestätige, dass die ausgewählten Repository-Definitionen gelöscht werden."
+"Ich bestätige, dass die ausgewählten Repository-Definitionen gelöscht "
+"werden."
 
-#: includes/views/repositories/index.php:135
+#: includes/views/repositories/index.php:139
+msgid "Stop process"
+msgstr "Vorgang stoppen"
+
+#: includes/views/repositories/index.php:140 src/installer/index.jsx:65
+msgid "Resume"
+msgstr "Fortsetzen"
+
+#: includes/views/repositories/index.php:141
 msgid "Schließen"
 msgstr "Schließen"
 
-#: includes/views/repositories/index.php:242
-msgid "Prüfe..."
-msgstr "Prüfe..."
+#: includes/views/repositories/index.php:223
+msgid "Stopping after the current repository check finishes…"
+msgstr "Der Vorgang wird nach Abschluss der aktuellen Repository-Prüfung gestoppt…"
 
-#: includes/views/repositories/index.php:269
-#: includes/views/repositories/index.php:299
-msgid "Fehler bei der Prüfung"
-msgstr "Fehler bei der Prüfung"
+#: includes/views/repositories/index.php:227
+#. translators: 1: Number of repositories checked, 2: Total number of repositories.
+#, php-format
+msgid ""
+"Process stopped. %1$d of %2$d repositories checked. Resume continues with "
+"the remaining repositories."
+msgstr ""
+"Vorgang gestoppt. %1$d von %2$d Repositories geprüft. Mit „Fortsetzen“ "
+"werden die verbleibenden Repositories geprüft."
 
-#: includes/views/repositories/index.php:277
+#: includes/views/repositories/index.php:233
 msgid "Prüfung abgeschlossen. Schließen lädt die Übersicht neu."
 msgstr "Prüfung abgeschlossen. Schließen lädt die Übersicht neu."
 
-#: includes/views/repositories/index.php:323
+#: includes/views/repositories/index.php:234
 msgid "Keine Repositories vorhanden."
 msgstr "Keine Repositories vorhanden."
+
+#: includes/views/repositories/index.php:272
+msgid "Prüfe..."
+msgstr "Prüfe..."
+
+#: includes/views/repositories/index.php:299
+#: includes/views/repositories/index.php:320
+msgid "Fehler bei der Prüfung"
+msgstr "Fehler bei der Prüfung"
 
 #: includes/views/settings/index.php:27
 msgid "Scheduler"
@@ -846,11 +1225,15 @@ msgstr "Informative Meldungen an den Info-Kanal senden"
 msgid "Jetzt senden"
 msgstr "Jetzt senden"
 
+#: includes/views/themes/add-progress.php:8
+msgid "View installed themes"
+msgstr "Installierte Themes anzeigen"
+
 #: includes/views/themes/add.php:9 includes/views/themes/add.php:89
 msgid "Install Theme"
 msgstr "Theme installieren"
 
-#: includes/views/themes/add.php:80 includes/views/themes/edit.php:152
+#: includes/views/themes/add.php:80 includes/views/themes/edit.php:153
 msgid "Theme folder"
 msgstr "Ordner des Themes"
 
@@ -868,14 +1251,14 @@ msgstr ""
 "entfernt."
 
 #: includes/views/themes/index.php:46
-msgid ""
-"I understand that the selected theme repository definitions will be deleted."
+msgid "I understand that the selected theme repository definitions will be deleted."
 msgstr ""
 "Ich bestätige, dass die ausgewählten Theme-Repository-Definitionen gelöscht "
 "werden."
 
-#. translators: 1: Server WordPress version number, 2: Required WordPress version number.
 #: rrze-updater.php:114
+#. translators: 1: Server WordPress version number, 2: Required WordPress version number.
+#, php-format
 msgid ""
 "The server is running WordPress version %1$s. The plugin requires at least "
 "WordPress version %2$s."
@@ -883,8 +1266,9 @@ msgstr ""
 "Auf dem Server wird die WordPress-Version %1$s ausgeführt. Das Plugin "
 "erfordert mindestens die WordPress-Version %2$s."
 
-#. translators: 1: Server PHP version number, 2: Required PHP version number.
 #: rrze-updater.php:121
+#. translators: 1: Server PHP version number, 2: Required PHP version number.
+#, php-format
 msgid ""
 "The server is running PHP version %1$s. The plugin requires at least PHP "
 "version %2$s."
@@ -893,25 +1277,545 @@ msgstr ""
 "mindestens die PHP-Version %2$s."
 
 #: rrze-updater.php:126
-msgid ""
-"In a multisite installation, the plugin can only be installed network-wide."
+msgid "In a multisite installation, the plugin can only be installed network-wide."
 msgstr ""
 "Bei einer Multisite-Installation kann das Plugin nur netzwerkweit "
 "installiert werden."
 
-#. translators: 1: The plugin name, 2: The error string.
 #: rrze-updater.php:152
+#. translators: 1: The plugin name, 2: The error string.
+#, php-format
 msgid "Plugins: %1$s: %2$s"
 msgstr "Plugins: %1$s: %2$s"
 
-#~ msgid "GitHub.com"
-#~ msgstr "GitHub.com"
+#: src/installer/api.js:14
+msgid "The request failed. Reload to reconcile saved progress."
+msgstr ""
+"Die Anfrage ist fehlgeschlagen. Laden Sie die Seite neu, um den "
+"gespeicherten Fortschritt abzugleichen."
 
-#~ msgid "Local Version: %s"
-#~ msgstr "Lokale Version: %s"
+#: src/installer/api.js:26
+msgid ""
+"This listing is too large to load completely. Use a connector with a "
+"narrower owner scope."
+msgstr ""
+"Diese Liste ist zu groß, um vollständig geladen zu werden. Verwenden Sie "
+"einen Konnektor, dessen Eigentümer weniger Repositories umfasst."
 
-#~ msgid "Remote Version: %s"
-#~ msgstr "Remote-Version: %s"
+#: src/installer/Browser.jsx:30
+msgid "Branch for %s"
+msgstr "Branch für %s"
 
-#~ msgid "RRZE Gitlab"
-#~ msgstr "RRZE Gitlab"
+#: src/installer/Browser.jsx:31
+msgid "No default branch"
+msgstr "Kein Standard-Branch"
+
+#: src/installer/Browser.jsx:33 src/installer/Browser.jsx:43
+msgid "Loading branches…"
+msgstr "Branches werden geladen…"
+
+#: src/installer/Browser.jsx:34 src/installer/Browser.jsx:44
+msgid "Retry branch lookup"
+msgstr "Branch-Suche wiederholen"
+
+#: src/installer/Browser.jsx:41
+msgid "Change branch for %s"
+msgstr "Branch für %s ändern"
+
+#: src/installer/Browser.jsx:42
+msgid "Default branch: %s"
+msgstr "Standard-Branch: %s"
+
+#: src/installer/Browser.jsx:45 src/installer/Browser.jsx:79
+msgid "Installation branch"
+msgstr "Installations-Branch"
+
+#: src/installer/Browser.jsx:46
+msgid "Select a branch"
+msgstr "Branch auswählen"
+
+#: src/installer/Browser.jsx:48
+msgid ""
+"This branch will be used when you select and install this repository. "
+"Updates will track its commits."
+msgstr ""
+"Dieser Branch wird bei der Auswahl und Installation dieses Repositorys "
+"verwendet. Updates folgen seinen Commits."
+
+#: src/installer/Browser.jsx:50
+msgid "Use branch"
+msgstr "Branch verwenden"
+
+#: src/installer/Browser.jsx:78
+msgid "Description"
+msgstr "Beschreibung"
+
+#: src/installer/Browser.jsx:83
+msgid "Default branch"
+msgstr "Standard-Branch"
+
+#: src/installer/Browser.jsx:87
+msgid "Updated"
+msgstr "Aktualisiert"
+
+#: src/installer/Browser.jsx:95
+msgid "Visibility"
+msgstr "Sichtbarkeit"
+
+#: src/installer/Browser.jsx:95
+msgid "Public"
+msgstr "Öffentlich"
+
+#: src/installer/Browser.jsx:95
+msgid "Private"
+msgstr "Privat"
+
+#: src/installer/Browser.jsx:95
+msgid "Internal"
+msgstr "Intern"
+
+#: src/installer/Browser.jsx:96
+msgid "Updater status"
+msgstr "Updater-Status"
+
+#: src/installer/Browser.jsx:96
+msgid "Managed"
+msgstr "Verwaltet"
+
+#: src/installer/Browser.jsx:96
+msgid "Not managed"
+msgstr "Nicht verwaltet"
+
+#: src/installer/Browser.jsx:97
+msgid "Archived"
+msgstr "Archiviert"
+
+#: src/installer/Browser.jsx:97
+msgid "Yes"
+msgstr "Ja"
+
+#: src/installer/Browser.jsx:122
+msgid "Connector"
+msgstr "Konnektor"
+
+#: src/installer/Browser.jsx:123 src/installer/index.jsx:31
+msgid "Select a connector"
+msgstr "Konnektor auswählen"
+
+#: src/installer/Browser.jsx:125 src/installer/index.jsx:31
+msgid "Token missing"
+msgstr "Token fehlt"
+
+#: src/installer/Browser.jsx:127
+msgid "Refresh repositories"
+msgstr "Repositories neu laden"
+
+#: src/installer/Browser.jsx:129
+msgid ""
+"Choose repositories belonging to this connector’s owner. Use Change branch "
+"in a repository’s actions to choose its installation branch. Updates will "
+"track commits on that branch."
+msgstr ""
+"Wählen Sie Repositories des Eigentümers dieses Konnektors aus. Über „Branch "
+"ändern“ in den Aktionen eines Repositorys legen Sie den "
+"Installations-Branch fest. Updates folgen den Commits dieses Branches."
+
+#: src/installer/Browser.jsx:130
+msgid "Loading repositories… %d received"
+msgstr "Repositories werden geladen… %d empfangen"
+
+#: src/installer/Browser.jsx:136
+msgid "Add to selection"
+msgstr "Zur Auswahl hinzufügen"
+
+#: src/installer/Browser.jsx:137
+msgid "Change branch"
+msgstr "Branch ändern"
+
+#: src/installer/Browser.jsx:142 src/installer/index.jsx:59
+msgid "Selected repositories"
+msgstr "Ausgewählte Repositories"
+
+#: src/installer/Browser.jsx:143
+msgid "%d selected"
+msgstr "%d ausgewählt"
+
+#: src/installer/Browser.jsx:143
+msgid "Clear selection"
+msgstr "Auswahl aufheben"
+
+#: src/installer/Browser.jsx:144
+msgid ""
+"Selections are kept across search results and pages. Review checks the "
+"selected branches for a WordPress plugin or theme."
+msgstr ""
+"Ihre Auswahl bleibt beim Wechsel von Suchergebnissen und Seiten erhalten. "
+"Bei der Prüfung werden die ausgewählten Branches auf ein WordPress-Plugin "
+"oder -Theme untersucht."
+
+#: src/installer/Browser.jsx:148
+msgid "Installation folder for %s"
+msgstr "Installationsordner für %s"
+
+#: src/installer/Browser.jsx:149
+msgid "Remove %s"
+msgstr "%s entfernen"
+
+#: src/installer/Browser.jsx:149
+msgid "Remove"
+msgstr "Entfernen"
+
+#: src/installer/Browser.jsx:151
+msgid "Select up to 100 repositories per installation job."
+msgstr "Wählen Sie höchstens 100 Repositories pro Installationsauftrag aus."
+
+#: src/installer/Browser.jsx:152
+msgid "Review selected repositories"
+msgstr "Ausgewählte Repositories prüfen"
+
+#: src/installer/index.jsx:15
+msgid "Pending"
+msgstr "Ausstehend"
+
+#: src/installer/index.jsx:15
+msgid "Checking"
+msgstr "Wird geprüft"
+
+#: src/installer/index.jsx:15
+msgid "Ready"
+msgstr "Bereit"
+
+#: src/installer/index.jsx:16
+msgid "Check failed"
+msgstr "Prüfung fehlgeschlagen"
+
+#: src/installer/index.jsx:16
+msgid "Queued"
+msgstr "In der Warteschlange"
+
+#: src/installer/index.jsx:16
+msgid "Installing"
+msgstr "Wird installiert"
+
+#: src/installer/index.jsx:17
+msgid "Successful"
+msgstr "Erfolgreich"
+
+#: src/installer/index.jsx:17 src/installer/index.jsx:21
+msgid "Already managed"
+msgstr "Bereits verwaltet"
+
+#: src/installer/index.jsx:17
+msgid "Failed"
+msgstr "Fehlgeschlagen"
+
+#: src/installer/index.jsx:18
+msgid "Skipped: prerequisite error"
+msgstr "Übersprungen: Voraussetzungen nicht erfüllt"
+
+#: src/installer/index.jsx:19
+msgid "Left unmanaged"
+msgstr "Nicht in die Verwaltung aufgenommen"
+
+#: src/installer/index.jsx:20
+msgid "Cancelled"
+msgstr "Abgebrochen"
+
+#: src/installer/index.jsx:20
+msgid "Interrupted — inspect files"
+msgstr "Unterbrochen — Dateien prüfen"
+
+#: src/installer/index.jsx:21
+msgid "Install and register"
+msgstr "Installieren und registrieren"
+
+#: src/installer/index.jsx:21
+msgid "Register existing installation"
+msgstr "Vorhandene Installation registrieren"
+
+#: src/installer/index.jsx:27
+msgid "Recommended bundle · %d repositories"
+msgstr "Empfohlenes Paket · %d Repositories"
+
+#: src/installer/index.jsx:28
+msgid ""
+"Install our curated set of plugins and themes. Prerequisite checks "
+"determine the installation order and identify any missing parent themes."
+msgstr ""
+"Installieren Sie unsere zusammengestellte Auswahl an Plugins und Themes. "
+"Die Prüfung der Voraussetzungen bestimmt die Installationsreihenfolge und "
+"erkennt fehlende übergeordnete Themes."
+
+#: src/installer/index.jsx:34
+msgid "Review recommended bundle"
+msgstr "Empfohlenes Paket prüfen"
+
+#: src/installer/index.jsx:35
+msgid "Included repositories"
+msgstr "Enthaltene Repositories"
+
+#: src/installer/index.jsx:51
+msgid "Checking repository access, package structure, and prerequisites."
+msgstr "Repository-Zugriff, Paketstruktur und Voraussetzungen werden geprüft."
+
+#: src/installer/index.jsx:52
+msgid "Review the planned actions below, then install."
+msgstr ""
+"Prüfen Sie die unten aufgeführten geplanten Aktionen und starten Sie "
+"anschließend die Installation."
+
+#: src/installer/index.jsx:53
+msgid ""
+"Some checks failed. Resolve them and check again, or install only entries "
+"that passed and have satisfied dependencies."
+msgstr ""
+"Einige Prüfungen sind fehlgeschlagen. Beheben Sie die Probleme und prüfen "
+"Sie erneut, oder installieren Sie nur erfolgreich geprüfte Einträge, deren "
+"Abhängigkeiten erfüllt sind."
+
+#: src/installer/index.jsx:54
+msgid "Installing and registering repositories."
+msgstr "Repositories werden installiert und registriert."
+
+#: src/installer/index.jsx:55
+msgid "Processing finished with skipped entries. Review the results below."
+msgstr ""
+"Die Verarbeitung wurde mit übersprungenen Einträgen abgeschlossen. Prüfen "
+"Sie die Ergebnisse unten."
+
+#: src/installer/index.jsx:55
+msgid "Processing finished. Review the results below."
+msgstr "Die Verarbeitung wurde abgeschlossen. Prüfen Sie die Ergebnisse unten."
+
+#: src/installer/index.jsx:56
+msgid ""
+"Process cancelled. Completed installations and registrations have been "
+"kept. Start a new review to install more repositories."
+msgstr ""
+"Vorgang abgebrochen. Abgeschlossene Installationen und Registrierungen "
+"wurden beibehalten. Starten Sie eine neue Prüfung, um weitere Repositories "
+"zu installieren."
+
+#: src/installer/index.jsx:58
+msgid "Installation review"
+msgstr "Installationsprüfung"
+
+#: src/installer/index.jsx:59 src/installer/index.jsx:151
+msgid "Recommended bundle"
+msgstr "Empfohlenes Paket"
+
+#: src/installer/index.jsx:60
+msgid "Cancelling the process after the current entry finishes…"
+msgstr "Der Vorgang wird nach Abschluss des aktuellen Eintrags abgebrochen…"
+
+#: src/installer/index.jsx:60
+msgid "Paused. Resume to continue from saved progress."
+msgstr ""
+"Pausiert. Setzen Sie den Vorgang fort, um am gespeicherten Zwischenstand "
+"weiterzumachen."
+
+#: src/installer/index.jsx:61
+msgid "Installation progress"
+msgstr "Installationsfortschritt"
+
+#: src/installer/index.jsx:61
+msgid "%1$d of %2$d processed"
+msgstr "%1$d von %2$d verarbeitet"
+
+#: src/installer/index.jsx:64
+msgid "Install passing entries"
+msgstr "Erfolgreich geprüfte Einträge installieren"
+
+#: src/installer/index.jsx:66
+msgid "Pause after current entry"
+msgstr "Nach aktuellem Eintrag pausieren"
+
+#: src/installer/index.jsx:67
+msgid "Cancelling…"
+msgstr "Wird abgebrochen…"
+
+#: src/installer/index.jsx:67
+msgid "Retry cancellation"
+msgstr "Abbruch erneut versuchen"
+
+#: src/installer/index.jsx:67
+msgid "Cancel process"
+msgstr "Vorgang abbrechen"
+
+#: src/installer/index.jsx:68
+msgid "Retry checks"
+msgstr "Prüfungen wiederholen"
+
+#: src/installer/index.jsx:68
+msgid "Retry failed installations"
+msgstr "Fehlgeschlagene Installationen wiederholen"
+
+#: src/installer/index.jsx:69
+msgid "Change selection / check again"
+msgstr "Auswahl ändern / erneut prüfen"
+
+#: src/installer/index.jsx:71
+msgid ""
+"Cancel stops the remaining queue after the current entry finishes. "
+"Completed installations and registrations are kept."
+msgstr ""
+"„Vorgang abbrechen“ stoppt die verbleibende Warteschlange nach Abschluss "
+"des aktuellen Eintrags. Abgeschlossene Installationen und Registrierungen "
+"bleiben erhalten."
+
+#: src/installer/index.jsx:72
+msgid ""
+"Keep this page open while processing. Closing it pauses further requests; "
+"an in-flight request may still finish. Installation uses the reviewed "
+"commits. Existing files are kept, and activation is unchanged."
+msgstr ""
+"Lassen Sie diese Seite während der Verarbeitung geöffnet. Beim Schließen "
+"werden weitere Anfragen pausiert; eine laufende Anfrage kann noch "
+"abgeschlossen werden. Die Installation verwendet die geprüften Commits. "
+"Vorhandene Dateien bleiben erhalten und der Aktivierungsstatus bleibt "
+"unverändert."
+
+#: src/installer/index.jsx:73
+msgid ""
+"Some entries are already installed but unmanaged. Before installation "
+"starts, you can choose which ones to register with RRZE Updater."
+msgstr ""
+"Einige Einträge sind bereits installiert, werden aber nicht verwaltet. Vor "
+"Beginn der Installation können Sie auswählen, welche davon bei RRZE Updater "
+"registriert werden sollen."
+
+#: src/installer/index.jsx:78
+msgid "Type / folder"
+msgstr "Typ / Ordner"
+
+#: src/installer/index.jsx:78
+msgid "Branch / updates"
+msgstr "Branch / Updates"
+
+#: src/installer/index.jsx:78
+msgid "Planned action / commit"
+msgstr "Geplante Aktion / Commit"
+
+#: src/installer/index.jsx:78
+msgid "Status"
+msgstr "Status"
+
+#: src/installer/index.jsx:78
+msgid "Details"
+msgstr "Details"
+
+#: src/installer/index.jsx:81
+msgid "Leave unmanaged"
+msgstr "Nicht in die Verwaltung aufnehmen"
+
+#: src/installer/index.jsx:82
+msgid "Optional registration"
+msgstr "Optionale Registrierung"
+
+#: src/installer/index.jsx:131
+msgid "Could not load saved progress. Reload before continuing."
+msgstr ""
+"Der gespeicherte Fortschritt konnte nicht geladen werden. Laden Sie die "
+"Seite vor dem Fortfahren neu."
+
+#: src/installer/index.jsx:139
+msgid "The saved process changed. Review its progress before cancelling."
+msgstr ""
+"Der gespeicherte Vorgang hat sich geändert. Prüfen Sie seinen Fortschritt "
+"vor dem Abbrechen."
+
+#: src/installer/index.jsx:140
+msgid ""
+"The request did not finish normally. Reload or resume to reconcile saved "
+"progress."
+msgstr ""
+"Die Anfrage wurde nicht ordnungsgemäß abgeschlossen. Laden Sie die Seite "
+"neu oder setzen Sie den Vorgang fort, um den gespeicherten Fortschritt "
+"abzugleichen."
+
+#: src/installer/index.jsx:141
+msgid ""
+"Cancellation has not been confirmed. Retry cancellation to reconcile saved "
+"progress before continuing."
+msgstr ""
+"Der Abbruch wurde nicht bestätigt. Versuchen Sie den Abbruch erneut, um den "
+"gespeicherten Fortschritt vor dem Fortfahren abzugleichen."
+
+#: src/installer/index.jsx:147
+msgid "Install plugins and themes from your connected repositories."
+msgstr "Installieren Sie Plugins und Themes aus Ihren verbundenen Repositories."
+
+#: src/installer/index.jsx:147
+msgid "Manage connectors"
+msgstr "Konnektoren verwalten"
+
+#: src/installer/index.jsx:148
+msgid ""
+"File modifications are disabled. You can browse repositories and view saved "
+"progress."
+msgstr ""
+"Dateiänderungen sind deaktiviert. Sie können Repositories durchsuchen und "
+"den gespeicherten Fortschritt ansehen."
+
+#: src/installer/index.jsx:151
+msgid "Browse repositories"
+msgstr "Repositories durchsuchen"
+
+#: src/installer/index.jsx:157
+msgid "Return to saved progress"
+msgstr "Zum gespeicherten Fortschritt zurückkehren"
+
+#: src/installer/RegistrationDialog.jsx:7
+msgid "Manage existing installations?"
+msgstr "Vorhandene Installationen verwalten?"
+
+#: src/installer/RegistrationDialog.jsx:8
+msgid ""
+"The following plugins or themes are already installed but are not "
+"registered with RRZE Updater. Which ones would you like to add to Updater "
+"management?"
+msgstr ""
+"Die folgenden Plugins oder Themes sind bereits installiert, aber nicht bei "
+"RRZE Updater registriert. Welche möchten Sie in die Updater-Verwaltung "
+"aufnehmen?"
+
+#: src/installer/RegistrationDialog.jsx:9
+msgid ""
+"Leave installations you maintain through Git unchecked. Unchecked entries "
+"will stay unmanaged, and the remaining installation queue will continue."
+msgstr ""
+"Wählen Sie Installationen, die Sie über Git pflegen, nicht aus. Nicht "
+"ausgewählte Einträge bleiben außerhalb der Verwaltung; die verbleibende "
+"Installationswarteschlange wird weiter abgearbeitet."
+
+#: src/installer/RegistrationDialog.jsx:12
+msgid "Installed folder: %s"
+msgstr "Installierter Ordner: %s"
+
+#: src/installer/RegistrationDialog.jsx:16
+msgid ""
+"Registration keeps the current files. Future updates through RRZE Updater "
+"may replace them with files from the selected repository and branch."
+msgstr ""
+"Bei der Registrierung bleiben die aktuellen Dateien erhalten. Künftige "
+"Updates über RRZE Updater können sie durch Dateien aus dem ausgewählten "
+"Repository und Branch ersetzen."
+
+#: src/installer/RegistrationDialog.jsx:19
+msgid "Register selected and continue"
+msgstr "Ausgewählte registrieren und fortfahren"
+
+#: src/installer/RegistrationDialog.jsx:20
+msgid "Continue without registering these"
+msgstr "Ohne diese Registrierungen fortfahren"
+
+#: src/installer/RegistrationDialog.jsx:21
+msgid "Back to review"
+msgstr "Zurück zur Prüfung"
+
+#: includes/Core/GithubConnector.php:438 includes/Core/GithubConnector.php:452
+#. translators: %s: Human time difference
+#, php-format
+msgctxt "Human time difference"
+msgid "in %s"
+msgstr "in %s"

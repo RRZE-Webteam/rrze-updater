@@ -4,7 +4,5 @@ namespace RRZE\Updater;
 
 defined('ABSPATH') || exit;
 
-$upgrader = $data['upgrader'];
-$repoZip = $data['repoZip'];
-
-$upgrader->install($repoZip);
+?>
+<p><a href="<?php echo esc_url(self_admin_url('plugins.php')); ?>"><?php esc_html_e('View installed plugins', 'rrze-updater'); ?></a></p>
