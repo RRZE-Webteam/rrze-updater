@@ -21,6 +21,11 @@ class Main
         new Cron($this->settings, $this->controller);
     }
 
+    /**
+     * Initializes settings and registers the plugin's runtime components.
+     *
+     * @return void
+     */
     public function loaded(): void
     {
         $this->settings->initializeDefaults($this->config);
@@ -29,6 +34,7 @@ class Main
         (new AdminIntegration($this->settings, $this->controller, $this->config))->register();
         (new UpdateProvider($this->settings))->register();
         (new ManagedUpgrader($this->settings, $this->config))->register();
+        (new TokenStatus())->register();
 
         if (defined('WP_CLI') && WP_CLI) {
             CLI::registerCommands($this->settings);

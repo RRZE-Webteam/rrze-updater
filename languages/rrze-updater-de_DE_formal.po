@@ -3,7 +3,7 @@ msgstr ""
 "Project-Id-Version: RRZE Updater\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/rrze-updater\n"
 "POT-Creation-Date: 2026-09-25T17:06:42+00:00\n"
-"PO-Revision-Date: 2026-09-04 13:00+0200\n"
+"PO-Revision-Date: 2026-10-20 17:00+0200\n"
 "Last-Translator: RRZE Webteam <webmaster@fau.de>\n"
 "Language-Team: German (Formal)\n"
 "Language: de_DE_formal\n"
@@ -16,8 +16,8 @@ msgstr ""
 "X-Loco-Fallback: de_DE\n"
 "X-Loco-Template: languages/rrze-updater-de_DE.po\n"
 "X-Loco-Template-Mode: PO,JSON\n"
-"Project-Id-Version: RRZE Updater 2.5.17\n"
-"PO-Revision-Date: 2026-09-25 19:15+0200\n"
+"Project-Id-Version: RRZE Updater 2.5.18\n"
+"PO-Revision-Date: 2026-10-20 17:00+0200\n"
 "X-Generator: gettext-parser\n"
 
 #: rrze-updater.php
@@ -1823,3 +1823,69 @@ msgstr "Zurück zur Prüfung"
 msgctxt "Human time difference"
 msgid "in %s"
 msgstr "in %s"
+
+#. translators: %d: Number of services with a token warning.
+#: includes/AdminIntegration.php:193
+#, php-format
+msgid "Updater: Token warnings (%d)"
+msgstr "Updater: Token-Hinweise (%d)"
+
+#: includes/Controller.php:447
+msgid "Not configured"
+msgstr "Nicht hinterlegt"
+
+#: includes/Controller.php:448
+msgid "Configured"
+msgstr "Hinterlegt"
+
+#: includes/ListTable/ConnListTable.php:136
+msgid "Token status"
+msgstr "Token-Status"
+
+#. translators: %s: Localized expiration date and time.
+#: includes/TokenStatus.php:172
+#, php-format
+msgid "Token expired on %s. Replace the token."
+msgstr "Token am %s abgelaufen. Bitte ersetzen."
+
+#. translators: %s: Localized expiration date and time.
+#: includes/TokenStatus.php:176
+#, php-format
+msgid "Token expires on %s. Renew the token soon."
+msgstr "Token läuft am %s ab. Bitte rechtzeitig erneuern."
+
+#: includes/TokenStatus.php:178
+msgid "Token rejected or access denied. Check the token and its permissions."
+msgstr "Token abgelehnt oder Zugriff verweigert. Bitte Token und Berechtigungen prüfen."
+
+#. translators: %s: Localized expiration date and time.
+#: includes/TokenStatus.php:181
+#, php-format
+msgid "Token expires on %s."
+msgstr "Token läuft am %s ab."
+
+#: includes/TokenStatus.php:183
+msgid "No expiration date."
+msgstr "Kein Ablaufdatum."
+
+#: includes/TokenStatus.php:184
+msgid "Expiration date unknown. Check it in the service."
+msgstr "Ablaufdatum unbekannt. Bitte direkt beim Dienst prüfen."
+
+#: includes/TokenStatus.php:185
+msgid "Token check temporarily unavailable. Please try again later."
+msgstr "Token-Prüfung derzeit nicht möglich. Bitte später erneut versuchen."
+
+#: includes/TokenStatus.php:186
+msgid "No token configured."
+msgstr "Kein Token hinterlegt."
+
+#: includes/TokenStatus.php:187
+msgid "Token has not been checked yet."
+msgstr "Token wurde noch nicht geprüft."
+
+#. translators: %d: Number of days before expiration when token warnings start.
+#: includes/views/connectors/index.php:14
+#, php-format
+msgid "Tokens are checked twice daily and when opening this overview if the last check is due. Expiration warnings start %d days in advance."
+msgstr "Tokens werden zweimal täglich sowie beim Öffnen dieser Übersicht geprüft, sofern die letzte Prüfung fällig ist. Ablaufwarnungen erscheinen %d Tage im Voraus."

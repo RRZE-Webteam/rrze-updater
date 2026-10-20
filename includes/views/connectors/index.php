@@ -8,6 +8,14 @@ defined('ABSPATH') || exit;
     <a href="?page=<?php echo esc_attr($_REQUEST['page']); ?>&tab=services&action=add" class="add-new-h2"><?php esc_html_e('Add new', 'rrze-updater'); ?></a>
 </h2>
 
+<p class="description"><?php
+    printf(
+        /* translators: %d: Number of days before expiration when token warnings start. */
+        esc_html__('Tokens are checked twice daily and when opening this overview if the last check is due. Expiration warnings start %d days in advance.', 'rrze-updater'),
+        TokenStatus::WARNING_DAYS
+    );
+?></p>
+
 <form method="get">
     <input type="hidden" name="page" value="<?php echo esc_attr($_REQUEST['page']); ?>">
     <input type="hidden" name="tab" value="services">

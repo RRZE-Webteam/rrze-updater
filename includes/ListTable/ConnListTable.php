@@ -5,6 +5,7 @@ namespace RRZE\Updater\ListTable;
 defined('ABSPATH') || exit;
 
 use RRZE\Updater\Config;
+use RRZE\Updater\TokenStatus;
 use WP_List_Table;
 
 /**
@@ -52,7 +53,9 @@ class ConnListTable extends WP_List_Table
             case 'owner':
             case 'token':
             case 'repocount':
-                return isset($item[$columnName]) ? $item[$columnName] : '';
+                return isset($item[$columnName]) ? esc_html($item[$columnName]) : '';
+            case 'token_status':
+                return TokenStatus::render($item['token_status'] ?? ['state' => 'pending']);
             default:
                 return '';
         }
@@ -130,6 +133,7 @@ class ConnListTable extends WP_List_Table
             'display' => __('Service', 'rrze-updater'),
             'owner' => __('User/Group', 'rrze-updater'),
             'token' => __('Token', 'rrze-updater'),
+            'token_status' => __('Token status', 'rrze-updater'),
             'repocount' => __('Repositories', 'rrze-updater')
         ];
     }
@@ -158,11 +162,18 @@ class ConnListTable extends WP_List_Table
      */
     public function prepare_items()
     {
+        /**
+         * Compares scalar columns, ignoring unsupported sort parameters.
+         *
+         * @param array $a First connector row.
+         * @param array $b Second connector row.
+         * @return int Sort comparison.
+         */
         usort($this->listData, function ($a, $b) {
             $orderby = (!empty($_REQUEST['orderby'])) ? $_REQUEST['orderby'] : 'display'; // If no sort, default to display
-            $orderby = isset($a[$orderby]) || isset($b[$orderby]) ? $orderby : 'display';
+            $orderby = in_array($orderby, ['display', 'owner', 'repocount'], true) ? $orderby : 'display';
             $order = (!empty($_REQUEST['order'])) ? $_REQUEST['order'] : 'asc'; // If no order, default to asc
-            $result = strcmp($a[$orderby], $b[$orderby]); // Determine sort order
+            $result = strcmp((string) $a[$orderby], (string) $b[$orderby]); // Determine sort order
             return ($order === 'asc') ? $result : -$result; // Send final sort direction to usort
         });
 

@@ -56,6 +56,38 @@ To select a service, proceed as follows:
 - Add a token for access if necessary.
 - Confirm by clicking "Add New Service".
 
+### Token expiration warnings
+
+**Network Admin → Updater → Settings → Services** shows a token status for each
+GitHub/GitLab service. Warnings start **30 days before expiration**. Expired
+tokens and rejected authentication/access are marked as errors. Multisite super
+administrators also see a warning in the top-level WordPress toolbar, including
+on subsites and the frontend while the toolbar is visible. Its menu links to the
+affected service editors. The overview shows whether a token is configured,
+without displaying the credential.
+
+The current network's main site checks tokens twice daily through WP-Cron,
+independently of repository update checks. Opening the service overview refreshes
+checks older than twelve hours (one hour after a temporary failure). The toolbar
+only reads cached results. Background execution requires normal WP-Cron traffic
+or a system cron. Replacing a token or changing its service configuration
+invalidates its cached result; revisiting the overview checks the replacement.
+
+GitLab uses `GET /personal_access_tokens/self`, relative to the configured API
+base; date-only expiration values mean midnight UTC. GitHub uses `GET /user` and
+the `GitHub-Authentication-Token-Expiration` response header. Dates are displayed
+in the WordPress timezone. Token types, scopes or older servers that cannot
+provide expiration metadata are shown as **unknown**, not as unlimited. Only an
+explicit GitLab `expires_at: null` means no expiration date. An already expired
+token may only return HTTP 401; without a previously known date, the plugin
+reports rejection rather than guessing the cause. Permission failures and rate
+limits are not treated as proof of expiration.
+
+Network option `rrze_updater_token_status` stores timestamps, status and salted
+credential/configuration fingerprints, never raw tokens or API response bodies.
+Known expiration dates remain usable during API outages. Token metadata requests
+use header authentication, TLS verification, a five-second timeout and no redirects.
+
 ## Add a Repository (Theme or Plugin)
 The steps are the same for themes.
 

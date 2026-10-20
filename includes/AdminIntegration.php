@@ -15,8 +15,15 @@ class AdminIntegration
         private readonly Config $config
     ) {}
 
+    /**
+     * Registers admin presentation hooks and authorized toolbar styles.
+     *
+     * @return void
+     */
     public function register(): void
     {
+        add_action('admin_enqueue_scripts', [$this, 'enqueueTokenStyles']);
+        add_action('wp_enqueue_scripts', [$this, 'enqueueTokenStyles']);
         if (!is_multisite()) {
             add_action('admin_menu', [$this, 'adminMenu']);
             add_action('admin_notices', [$this, 'invalidTokenNotice']);
@@ -25,6 +32,7 @@ class AdminIntegration
             add_action('network_admin_menu', [$this, 'adminMenu']);
             add_action('network_admin_notices', [$this, 'invalidTokenNotice']);
             add_action('admin_bar_menu', [$this, 'adminBarMenu'], 100);
+            add_action('admin_bar_menu', [$this, 'tokenAdminBarMenu'], 110);
             add_filter('network_admin_plugin_action_links', [$this, 'pluginActionLinks'], 10, 2);
             add_filter('gettext', [$this, 'translateNetworkActivationLabel'], 10, 3);
         }
@@ -154,6 +162,74 @@ class AdminIntegration
             'title' => __('Updater', 'rrze-updater'),
             'href' => network_admin_url('admin.php?page=' . ($menuSettings['repositories_slug'] ?? 'rrze-updater'))
         ]);
+    }
+
+    /**
+     * Shows token warnings in the top-level toolbar for multisite super admins.
+     *
+     * Rendering only reads cached metadata. Each affected service links directly
+     * to its editor in the current network, including from a subsite's frontend.
+     *
+     * @param \WP_Admin_Bar $wpAdminBar WordPress toolbar.
+     * @return void
+     */
+    public function tokenAdminBarMenu($wpAdminBar): void
+    {
+        if (!is_multisite() || !is_super_admin() || !current_user_can('manage_network_options')) {
+            return;
+        }
+        $statuses = array_filter(TokenStatus::getAll($this->settings), [TokenStatus::class, 'needsAttention']);
+        if (!$statuses) {
+            return;
+        }
+
+        $url = network_admin_url('admin.php?page=' . ($this->config->getMenuSettings()['settings_slug'] ?? 'rrze-updater-settings') . '&tab=services');
+        $hasError = false;
+        foreach ($statuses as $status) {
+            $hasError = $hasError || $status['state'] !== 'expiring';
+        }
+        $title = sprintf(
+            /* translators: %d: Number of services with a token warning. */
+            __('Updater: Token warnings (%d)', 'rrze-updater'),
+            count($statuses)
+        );
+        $wpAdminBar->add_node([
+            'id' => 'rrze-updater-token-warnings',
+            'title' => '<span class="ab-icon dashicons dashicons-warning" aria-hidden="true"></span><span class="ab-label">' . esc_html($title) . '</span>',
+            'href' => $url,
+            'meta' => [
+                'class' => $hasError ? 'rrze-updater-token-error' : 'rrze-updater-token-warning',
+                'title' => $title,
+            ],
+        ]);
+        foreach ($statuses as $id => $status) {
+            $connector = $this->settings->getConnectorById($id);
+            $wpAdminBar->add_node([
+                'id' => 'rrze-updater-token-' . $id,
+                'parent' => 'rrze-updater-token-warnings',
+                'title' => esc_html($connector->display . ' / ' . $connector->owner . ': ' . TokenStatus::label($status)),
+                'href' => add_query_arg(['action' => 'edit', 'id' => $id], $url),
+            ]);
+        }
+    }
+
+    /**
+     * Loads status colors for the service settings and visible token warnings.
+     *
+     * @return void
+     */
+    public function enqueueTokenStyles(): void
+    {
+        $capability = is_multisite() ? 'manage_network_options' : 'manage_options';
+        if (!current_user_can($capability)) {
+            return;
+        }
+        $settingsPage = ($_GET['page'] ?? '') === ($this->config->getMenuSettings()['settings_slug'] ?? 'rrze-updater-settings');
+        $toolbarWarning = is_multisite() && is_super_admin() && is_admin_bar_showing()
+            && array_filter(TokenStatus::getAll($this->settings), [TokenStatus::class, 'needsAttention']);
+        if ($settingsPage || $toolbarWarning) {
+            wp_enqueue_style('rrze-updater-token-status', plugins_url('assets/css/token-status.css', plugin()->getFile()), [], plugin()->getVersion());
+        }
     }
 
     /** Register menu pages and their screen-option callbacks. */

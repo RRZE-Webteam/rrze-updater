@@ -412,14 +412,40 @@ class Controller
         }
     }
 
+    /**
+     * Builds the shared service table for the settings tab and legacy overview.
+     *
+     * @return ConnListTable Prepared service table.
+     */
     private function getConnectorListTable(): ConnListTable
+    {
+        $listTable = new ConnListTable($this->getConnectorListData());
+        $listTable->prepare_items();
+        return $listTable;
+    }
+
+    /**
+     * Supplies masked credentials and cached token status for each visible service.
+     *
+     * @return array Service rows, including their token status.
+     */
+    private function getConnectorListData(): array
     {
         $config = $this->settings->asArray();
         $connectors = $config['connectors'] ?? [];
 
+        // Only an authorized overview visit refreshes due checks.
+        if (current_user_can(is_multisite() ? 'manage_network_options' : 'manage_options')) {
+            TokenStatus::refresh($this->settings);
+        }
+        $tokenStatuses = TokenStatus::getAll($this->settings);
+
         foreach ($connectors as $key => $connector) {
             $repos = $this->settings->getConnectorRepos($connector['id']);
             $connectors[$key]['repocount'] = count($repos);
+            $connectors[$key]['token'] = empty($connector['token'])
+                ? __('Not configured', 'rrze-updater')
+                : __('Configured', 'rrze-updater');
         }
 
         $search = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
@@ -428,12 +454,10 @@ class Controller
                 unset($connectors[$key]);
                 continue;
             }
+            $connectors[$key]['token_status'] = $tokenStatuses[$value['id']];
         }
 
-        $listTable = new ConnListTable($connectors);
-        $listTable->prepare_items();
-
-        return $listTable;
+        return $connectors;
     }
 
     private function addRepoUpdateData(array $repo, $extension, string $type): array
@@ -1135,32 +1159,9 @@ class Controller
             }
         }
 
-        // Retrieve the configuration data for connectors.
-        $config = $this->settings->asArray();
-        $connectors = $config['connectors'];
-
-        // Calculate and add the count of repositories for each connector.
-        foreach ($connectors as $key => $connector) {
-            $repos = $this->settings->getConnectorRepos($connector['id']);
-            $connectors[$key]['repocount'] = count($repos);
-        }
-
-        // Perform a search operation if a search query is provided.
-        $search = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
-        foreach ($connectors as $key => $value) {
-            if ($search && empty(preg_grep('/' . preg_quote($search, '/') . '/i', $value))) {
-                unset($connectors[$key]);
-                continue;
-            }
-        }
-
-        // Create an instance of 'ConnListTable' and prepare the items for display.
-        $listTable = new ConnListTable($connectors);
-        $listTable->prepare_items();
-
         // Prepare the data for rendering.
         $data = [
-            'listTable' => $listTable
+            'listTable' => $this->getConnectorListTable()
         ];
 
         // Display the connectors list.

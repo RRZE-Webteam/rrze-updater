@@ -2,14 +2,14 @@
 # This file is distributed under the GNU General Public License Version 3.
 msgid ""
 msgstr ""
-"Project-Id-Version: RRZE Updater 2.5.17\n"
+"Project-Id-Version: RRZE Updater 2.5.18\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/rrze-updater\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-25T17:06:42+00:00\n"
+"POT-Creation-Date: 2026-10-20T14:26:17+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: rrze-updater\n"
@@ -40,73 +40,79 @@ msgid "https://github.com/RRZE-Webteam"
 msgstr ""
 
 #. translators: 1: Service name, 2: User or group, 3: HTTP response code
-#: includes/AdminIntegration.php:69
+#: includes/AdminIntegration.php:77
 #, php-format
 msgid "The token for %1$s / %2$s was rejected while checking for updates (HTTP %3$d). Please check and replace the token in the service settings."
 msgstr ""
 
-#: includes/AdminIntegration.php:79
+#: includes/AdminIntegration.php:87
 msgid "Open services"
 msgstr ""
 
-#: includes/AdminIntegration.php:92
+#: includes/AdminIntegration.php:100
 #: includes/Upgrader/PluginUpgraderSkin.php:51
 msgid "Plugin netzwerkweit aktivieren"
 msgstr ""
 
-#: includes/AdminIntegration.php:96
+#: includes/AdminIntegration.php:104
 #: includes/Upgrader/ThemeUpgraderSkin.php:51
 msgid "Theme netzwerkweit aktivieren"
 msgstr ""
 
-#: includes/AdminIntegration.php:118
+#: includes/AdminIntegration.php:126
 #: includes/views/repositories/bulk-update-progress.php:42
 msgid "Zurück zum Updater"
 msgstr ""
 
-#: includes/AdminIntegration.php:154
-#: includes/AdminIntegration.php:169
-#: includes/AdminIntegration.php:172
+#: includes/AdminIntegration.php:162
+#: includes/AdminIntegration.php:245
+#: includes/AdminIntegration.php:248
 #: includes/views/repositories/index.php:111
 msgid "Updater"
 msgstr ""
 
-#: includes/AdminIntegration.php:182
-#: includes/AdminIntegration.php:183
+#. translators: %d: Number of services with a token warning.
+#: includes/AdminIntegration.php:193
+#, php-format
+msgid "Updater: Token warnings (%d)"
+msgstr ""
+
+#: includes/AdminIntegration.php:258
+#: includes/AdminIntegration.php:259
 #: includes/views/plugins/index.php:31
 msgid "Plugins"
 msgstr ""
 
-#: includes/AdminIntegration.php:191
-#: includes/AdminIntegration.php:192
+#: includes/AdminIntegration.php:267
+#: includes/AdminIntegration.php:268
 #: includes/views/themes/index.php:28
 msgid "Themes"
 msgstr ""
 
-#: includes/AdminIntegration.php:200
-#: includes/AdminIntegration.php:201
+#: includes/AdminIntegration.php:276
+#: includes/AdminIntegration.php:277
 #: includes/views/connectors/add.php:17
 #: includes/views/connectors/edit.php:21
 #: includes/views/settings/index.php:13
 msgid "Einstellungen"
 msgstr ""
 
-#: includes/AdminIntegration.php:267
-#: includes/AdminIntegration.php:268
+#: includes/AdminIntegration.php:343
+#: includes/AdminIntegration.php:344
 msgid "Edit repository"
 msgstr ""
 
 #. translators: %s: Branch name
-#: includes/AdminIntegration.php:395
-#: includes/AdminIntegration.php:429
+#: includes/AdminIntegration.php:471
+#: includes/AdminIntegration.php:505
 #, php-format
 msgid "Branch %s"
 msgstr ""
 
-#: includes/AdminIntegration.php:400
-#: includes/AdminIntegration.php:407
-#: includes/AdminIntegration.php:434
-#: includes/AdminIntegration.php:436
+#: includes/AdminIntegration.php:476
+#: includes/AdminIntegration.php:483
+#: includes/AdminIntegration.php:510
+#: includes/AdminIntegration.php:512
 #: includes/ListTable/PluginsListTable.php:264
 #: includes/ListTable/RepoListTable.php:231
 #: includes/ListTable/ThemesListTable.php:258
@@ -120,8 +126,8 @@ msgid "Repository"
 msgstr ""
 
 #. translators: %s: Installation folder name
-#: includes/AdminIntegration.php:412
-#: includes/AdminIntegration.php:441
+#: includes/AdminIntegration.php:488
+#: includes/AdminIntegration.php:517
 #, php-format
 msgid "Folder %s"
 msgstr ""
@@ -150,7 +156,7 @@ msgid "Invalid request."
 msgstr ""
 
 #: includes/BundleAdmin.php:85
-#: includes/Controller.php:1782
+#: includes/Controller.php:1783
 msgid "File modifications are disabled on this installation."
 msgstr ""
 
@@ -209,19 +215,19 @@ msgstr ""
 
 #: includes/Controller.php:182
 #: includes/Controller.php:340
-#: includes/Controller.php:792
-#: includes/Controller.php:997
-#: includes/Controller.php:1064
-#: includes/Controller.php:1082
-#: includes/Controller.php:1292
-#: includes/Controller.php:1333
-#: includes/Controller.php:1405
-#: includes/Controller.php:1730
-#: includes/Controller.php:1774
-#: includes/Controller.php:1844
-#: includes/Controller.php:2173
-#: includes/Controller.php:2249
-#: includes/Controller.php:2546
+#: includes/Controller.php:816
+#: includes/Controller.php:1021
+#: includes/Controller.php:1088
+#: includes/Controller.php:1106
+#: includes/Controller.php:1293
+#: includes/Controller.php:1334
+#: includes/Controller.php:1406
+#: includes/Controller.php:1731
+#: includes/Controller.php:1775
+#: includes/Controller.php:1845
+#: includes/Controller.php:2174
+#: includes/Controller.php:2250
+#: includes/Controller.php:2547
 #: includes/ListTable/PluginsListTable.php:327
 #: includes/ListTable/RepoListTable.php:288
 #: includes/ListTable/ThemesListTable.php:318
@@ -247,7 +253,7 @@ msgid "Fehler: %s"
 msgstr ""
 
 #: includes/Controller.php:290
-#: includes/Controller.php:1389
+#: includes/Controller.php:1390
 msgid "Service created."
 msgstr ""
 
@@ -275,83 +281,91 @@ msgstr ""
 msgid "The update notice email is disabled."
 msgstr ""
 
-#: includes/Controller.php:614
+#: includes/Controller.php:447
+msgid "Not configured"
+msgstr ""
+
+#: includes/Controller.php:448
+msgid "Configured"
+msgstr ""
+
+#: includes/Controller.php:638
 msgid "Release tag not checked yet"
 msgstr ""
 
-#: includes/Controller.php:797
-#: includes/Controller.php:1420
-#: includes/Controller.php:1850
-#: includes/Controller.php:2255
+#: includes/Controller.php:821
+#: includes/Controller.php:1421
+#: includes/Controller.php:1851
+#: includes/Controller.php:2256
 msgid "An error occurred. Please try again."
 msgstr ""
 
-#: includes/Controller.php:803
+#: includes/Controller.php:827
 msgid "Theme Check is not available."
 msgstr ""
 
-#: includes/Controller.php:808
+#: includes/Controller.php:832
 msgid "The selected theme does not exist."
 msgstr ""
 
-#: includes/Controller.php:818
-#: includes/Controller.php:827
+#: includes/Controller.php:842
+#: includes/Controller.php:851
 #: includes/ListTable/ThemesListTable.php:225
 #: includes/views/themes/edit.php:46
 msgid "Theme Check"
 msgstr ""
 
-#: includes/Controller.php:826
+#: includes/Controller.php:850
 msgid "Theme Check requires a form submission. Continue with the button below."
 msgstr ""
 
-#: includes/Controller.php:933
-#: includes/Controller.php:1186
-#: includes/Controller.php:1543
-#: includes/Controller.php:1994
+#: includes/Controller.php:957
+#: includes/Controller.php:1187
+#: includes/Controller.php:1544
+#: includes/Controller.php:1995
 msgid "Number of items per page:"
 msgstr ""
 
-#: includes/Controller.php:989
-#: includes/Controller.php:1007
-#: includes/Controller.php:1287
-#: includes/Controller.php:1725
-#: includes/Controller.php:2168
+#: includes/Controller.php:1013
+#: includes/Controller.php:1031
+#: includes/Controller.php:1288
+#: includes/Controller.php:1726
+#: includes/Controller.php:2169
 #: includes/ListTable/PluginsListTable.php:324
 #: includes/ListTable/RepoListTable.php:285
 #: includes/ListTable/ThemesListTable.php:315
 msgid "Unable to submit this form, please refresh and try again."
 msgstr ""
 
-#: includes/Controller.php:1346
+#: includes/Controller.php:1347
 msgid "The User/Group field must not be empty."
 msgstr ""
 
-#: includes/Controller.php:1788
+#: includes/Controller.php:1789
 msgid "Invalid repository installation request."
 msgstr ""
 
-#: includes/Controller.php:1806
+#: includes/Controller.php:1807
 msgid "Installation was interrupted. Inspect the destination before retrying; existing files will not be overwritten."
 msgstr ""
 
-#: includes/Controller.php:1855
-#: includes/Controller.php:2260
+#: includes/Controller.php:1856
+#: includes/Controller.php:2261
 msgid "The Repository field must not be empty."
 msgstr ""
 
-#: includes/Controller.php:2508
-#: includes/Controller.php:2523
+#: includes/Controller.php:2509
+#: includes/Controller.php:2524
 msgid "Y/m/d"
 msgstr ""
 
 #. translators: %s: Human-readable time difference
-#: includes/Controller.php:2518
+#: includes/Controller.php:2519
 #, php-format
 msgid "%s ago"
 msgstr ""
 
-#: includes/Controller.php:2615
+#: includes/Controller.php:2616
 msgid "Could not save the changes. Settings may have changed in another request, or the database may be unavailable. The stored values have been reloaded; review them and try again."
 msgstr ""
 
@@ -571,14 +585,14 @@ msgstr ""
 msgid "Once monthly"
 msgstr ""
 
-#: includes/ListTable/ConnListTable.php:87
+#: includes/ListTable/ConnListTable.php:90
 #: includes/ListTable/PluginsListTable.php:106
 #: includes/ListTable/RepoListTable.php:100
 #: includes/ListTable/ThemesListTable.php:100
 msgid "Edit"
 msgstr ""
 
-#: includes/ListTable/ConnListTable.php:107
+#: includes/ListTable/ConnListTable.php:110
 #: includes/ListTable/PluginsListTable.php:119
 #: includes/ListTable/PluginsListTable.php:304
 #: includes/ListTable/RepoListTable.php:114
@@ -589,7 +603,7 @@ msgstr ""
 msgid "Delete"
 msgstr ""
 
-#: includes/ListTable/ConnListTable.php:130
+#: includes/ListTable/ConnListTable.php:133
 #: includes/views/connectors/add.php:33
 #: includes/views/connectors/edit.php:38
 #: includes/views/plugins/add.php:18
@@ -599,19 +613,23 @@ msgstr ""
 msgid "Service"
 msgstr ""
 
-#: includes/ListTable/ConnListTable.php:131
+#: includes/ListTable/ConnListTable.php:134
 #: includes/views/connectors/add.php:71
 #: includes/views/connectors/edit.php:74
 msgid "User/Group"
 msgstr ""
 
-#: includes/ListTable/ConnListTable.php:132
+#: includes/ListTable/ConnListTable.php:135
 #: includes/views/connectors/add.php:79
 #: includes/views/connectors/edit.php:82
 msgid "Token"
 msgstr ""
 
-#: includes/ListTable/ConnListTable.php:133
+#: includes/ListTable/ConnListTable.php:136
+msgid "Token status"
+msgstr ""
+
+#: includes/ListTable/ConnListTable.php:137
 msgid "Repositories"
 msgstr ""
 
@@ -702,6 +720,48 @@ msgstr ""
 
 #: includes/ManagedUpgrader.php:493
 msgid "Could not save the installed repository version. Reconcile the installation before retrying."
+msgstr ""
+
+#. translators: %s: Localized expiration date and time.
+#: includes/TokenStatus.php:172
+#, php-format
+msgid "Token expired on %s. Replace the token."
+msgstr ""
+
+#. translators: %s: Localized expiration date and time.
+#: includes/TokenStatus.php:176
+#, php-format
+msgid "Token expires on %s. Renew the token soon."
+msgstr ""
+
+#: includes/TokenStatus.php:178
+msgid "Token rejected or access denied. Check the token and its permissions."
+msgstr ""
+
+#. translators: %s: Localized expiration date and time.
+#: includes/TokenStatus.php:181
+#, php-format
+msgid "Token expires on %s."
+msgstr ""
+
+#: includes/TokenStatus.php:183
+msgid "No expiration date."
+msgstr ""
+
+#: includes/TokenStatus.php:184
+msgid "Expiration date unknown. Check it in the service."
+msgstr ""
+
+#: includes/TokenStatus.php:185
+msgid "Token check temporarily unavailable. Please try again later."
+msgstr ""
+
+#: includes/TokenStatus.php:186
+msgid "No token configured."
+msgstr ""
+
+#: includes/TokenStatus.php:187
+msgid "Token has not been checked yet."
 msgstr ""
 
 #: includes/UpdateCheckBatch.php:37
@@ -852,7 +912,13 @@ msgstr ""
 msgid "Add new"
 msgstr ""
 
-#: includes/views/connectors/index.php:15
+#. translators: %d: Number of days before expiration when token warnings start.
+#: includes/views/connectors/index.php:14
+#, php-format
+msgid "Tokens are checked twice daily and when opening this overview if the last check is due. Expiration warnings start %d days in advance."
+msgstr ""
+
+#: includes/views/connectors/index.php:23
 #: includes/views/plugins/index.php:49
 #: includes/views/repositories/index.php:118
 #: includes/views/themes/index.php:35
@@ -1161,23 +1227,23 @@ msgid "I understand that the selected theme repository definitions will be delet
 msgstr ""
 
 #. translators: 1: Server WordPress version number, 2: Required WordPress version number.
-#: rrze-updater.php:114
+#: rrze-updater.php:115
 #, php-format
 msgid "The server is running WordPress version %1$s. The plugin requires at least WordPress version %2$s."
 msgstr ""
 
 #. translators: 1: Server PHP version number, 2: Required PHP version number.
-#: rrze-updater.php:121
+#: rrze-updater.php:122
 #, php-format
 msgid "The server is running PHP version %1$s. The plugin requires at least PHP version %2$s."
 msgstr ""
 
-#: rrze-updater.php:126
+#: rrze-updater.php:127
 msgid "In a multisite installation, the plugin can only be installed network-wide."
 msgstr ""
 
 #. translators: 1: The plugin name, 2: The error string.
-#: rrze-updater.php:152
+#: rrze-updater.php:153
 #, php-format
 msgid "Plugins: %1$s: %2$s"
 msgstr ""

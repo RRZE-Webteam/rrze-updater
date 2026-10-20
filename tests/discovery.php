@@ -284,3 +284,4 @@ require __DIR__ . '/cron.php';
 require __DIR__ . '/cron-batches.php';
 require __DIR__ . '/github-downloads.php';
 require __DIR__ . '/github-rate-limits.php';
+require __DIR__ . '/token-status.php';
