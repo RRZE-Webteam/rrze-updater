@@ -64,6 +64,8 @@ function adminSaveFixture(): array {
     return [$settings, new AdminSaveControllerFixture($settings)];
 }
 $beforeAdminSaves = $checks;
+$savedAdminSaveMultisite = $multisite;
+$multisite = false;
 $bundle_caps = ['manage_options' => true, 'update_plugins' => true, 'update_themes' => true];
 foreach (['connector', 'plugin', 'theme', 'settings'] as $kind) {
     foreach (['database', 'lock', 'conflict', 'success'] as $outcome) {
@@ -82,7 +84,7 @@ foreach (['connector', 'plugin', 'theme', 'settings'] as $kind) {
                 'theme' => $concurrent->themes[0]->branch = 'concurrent-branch',
                 'settings' => $concurrent->options['update_check_delay'] = 29,
             };
-            check($concurrent->save(), 'Concurrent editor commits its change.');
+            check($concurrent->save(), "Concurrent editor commits its $kind change.");
         }
         $storedBefore = (new Settings())->asArray();
         $fail_save = $outcome === 'database';
@@ -97,6 +99,11 @@ foreach (['connector', 'plugin', 'theme', 'settings'] as $kind) {
             check($settings->asArray() === $storedBefore, 'Rejected edits do not replace persisted or concurrent edits.');
             check($admin_schedule_calls === [] && $invalidated === [], 'Rejected edits do not reschedule jobs or clear update caches.');
             check(!in_array('Settings saved.', $controller->notices(), true), 'Failed save never reports success.');
+        }
+        if ($kind === 'theme' && $outcome === 'success') {
+            check($settings->themes[0]->remoteVersion === str_repeat('a', 40)
+                && $settings->themes[0]->lastChecked > 0,
+                'A theme source edit retains its fresh remote check after generic source invalidation.');
         }
         $data = $controller->shown['data'];
         if ($kind === 'connector') check($data['connector']->token === $settings->connectors[0]->token, 'Connector form shows the persisted token.');
@@ -165,5 +172,6 @@ foreach (['add', 'delete-plugin', 'delete-theme', 'delete-connector', 'synchroni
     check(count(array_filter($controller->notices(), 'is_wp_error')) === 1, "$operation exposes the failed save.");
     check($invalidated === [], "$operation preserves caches after a failed save.");
 }
+$multisite = $savedAdminSaveMultisite;
 $_POST = $_GET = [];
 echo 'Passed ' . ($checks - $beforeAdminSaves) . " admin save failure checks.\n";

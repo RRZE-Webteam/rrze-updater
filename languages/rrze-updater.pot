@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-20T14:26:17+00:00\n"
+"POT-Creation-Date: 2026-10-26T14:45:00+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: rrze-updater\n"
@@ -1696,4 +1696,289 @@ msgstr ""
 
 #: src/installer/RegistrationDialog.jsx:21
 msgid "Back to review"
+msgstr ""
+
+#: includes/Bundles/JobStore.php:47
+msgid "A repository operation is still running. Wait, then resume."
+msgstr ""
+
+#: includes/Controller.php:1957
+msgid "Plugin replacement requires a form submission."
+msgstr ""
+
+#: includes/Controller.php:1989
+msgid "The managed plugin no longer exists. Reload the plugin list."
+msgstr ""
+
+#: includes/Controller.php:2019
+msgid "Plugin replacement cancelled. No files have changed."
+msgstr ""
+
+#: includes/Controller.php:2025
+msgid "Plugin files successfully reinstalled."
+msgstr ""
+
+#: includes/Controller.php:2033
+msgid "Plugin replacement was interrupted. Inspect the installation before trying again."
+msgstr ""
+
+#: includes/Core/PluginReplacement.php:58
+msgid "This folder already belongs to a managed plugin. Open its settings to reinstall it or change its source."
+msgstr ""
+
+#: includes/Core/PluginReplacement.php:61
+msgid "This repository is already assigned to another plugin folder."
+msgstr ""
+
+#: includes/Core/PluginReplacement.php:70
+#: includes/Upgrader/PluginPackageReplacement.php:53
+msgid "Reinstallation requires a GitHub or GitLab service."
+msgstr ""
+
+#: includes/Core/PluginReplacement.php:93
+msgid "The confirmation could not be saved. No plugin files were changed."
+msgstr ""
+
+#: includes/Core/PluginReplacement.php:129
+msgid "The confirmation could not be consumed safely. No files were changed."
+msgstr ""
+
+#: includes/Core/PluginReplacement.php:164
+msgid "The plugin association could not be saved. Previous plugin files were restored."
+msgstr ""
+
+#: includes/Core/PluginReplacement.php:176
+msgid "The plugin replacement could not be completed. Please review the installation again."
+msgstr ""
+
+#: includes/Core/PluginReplacement.php:241
+msgid "This confirmation has expired, was already used, or belongs to another administrator. Please review the installation again."
+msgstr ""
+
+#: includes/Core/PluginReplacement.php:256
+msgid "You are not allowed to replace plugin files on this installation."
+msgstr ""
+
+#: includes/Core/PluginReplacement.php:384
+msgid "The plugin source, assignment or files changed since review. Please review the installation again."
+msgstr ""
+
+#: includes/Core/PluginReplacement.php:390
+msgid "The selected plugin source or commit could not be verified. Check the service, repository and update policy."
+msgstr ""
+
+#: includes/Core/RepositoryManager.php:117
+msgid "The managed plugin no longer exists. Reload the plugin overview."
+msgstr ""
+
+#: includes/Core/RepositoryManager.php:139
+msgid "The repository source changed during validation. Reload and check the source again."
+msgstr ""
+
+#: includes/Core/RepositoryManager.php:150
+msgid "The repository or installation folder already belongs to another managed plugin."
+msgstr ""
+
+#: includes/Core/RepositoryManager.php:169
+msgid "Repository source saved. Installed plugin files are unchanged."
+msgstr ""
+
+#: includes/FilesystemLock.php:43
+#: includes/FilesystemLock.php:51
+msgid "Another repository operation is running. Wait for it to finish, then try again."
+msgstr ""
+
+#: includes/ListTable/PluginsListTable.php:157
+#: includes/ListTable/RepoListTable.php:197
+#: includes/views/plugins/edit.php:28
+msgid "Installation incomplete"
+msgstr ""
+
+#: includes/ListTable/PluginsListTable.php:159
+#: includes/ListTable/RepoListTable.php:199
+#: includes/views/plugins/edit.php:31
+#: includes/views/plugins/edit.php:182
+#: includes/views/plugins/edit.php:188
+msgid "Reinstall plugin files"
+msgstr ""
+
+#: includes/ManagedUpgrader.php:224
+msgid "The repository source changed or the package was not verified. Refresh update information before trying again."
+msgstr ""
+
+#: includes/ManagedUpgrader.php:242
+msgid "The managed plugin folder must not be a symbolic link."
+msgstr ""
+
+#: includes/ManagedUpgrader.php:257
+#, php-format
+msgid "The replacement package must preserve the plugin entrypoint %s and its Plugin Name header."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:22
+msgid "The installation folder is invalid."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:27
+msgid "The existing plugin folder is missing, unsafe, or a symbolic link. Check the folder before trying again."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:36
+msgid "The existing plugin folder could not be inspected completely."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:70
+msgid "Could not download the reviewed plugin commit. Existing files were kept."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:86
+msgid "The plugin archive could not be extracted. Existing files were kept."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:99
+msgid "The plugin files changed since review. Please check the installation again."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:106
+msgid "The existing plugin folder could not be backed up. No replacement was started."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:110
+msgid "The replacement files could not be installed."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:115
+msgid "The plugin association could not be saved."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:139
+msgid "The plugin replacement was interrupted. The previous files were kept or restored."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:167
+msgid "WordPress cannot access the filesystem for plugin replacement."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:173
+msgid "Plugin replacement requires filesystem paths that WordPress can inspect locally."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:194
+msgid "The maintenance window could not be started. Another update may be running, or the WordPress root is not writable. Existing plugin files were kept."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:203
+msgid "The maintenance window could not be started. Existing plugin files were kept."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:235
+#: includes/Upgrader/PluginPackageReplacement.php:241
+msgid "The plugin recovery directory is unsafe."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:238
+msgid "The plugin recovery directory could not be created."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:248
+msgid "The plugin staging directory could not be created."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:262
+msgid "The PHP ZIP extension is required to safely inspect a replacement archive."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:266
+msgid "The downloaded file is not a readable ZIP archive."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:270
+msgid "The plugin archive is empty."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:282
+#: includes/Upgrader/PluginPackageReplacement.php:289
+msgid "The plugin archive contains unsafe or ambiguous file paths."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:328
+msgid "The archive must contain a plugin at its root or inside one enclosing directory."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:346
+msgid "The replacement must contain a valid plugin and preserve all existing plugin main filenames."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:354
+msgid "The replacement requires a newer WordPress or PHP version."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:394
+msgid "Plugin replacement does not support symbolic links or special filesystem entries."
+msgstr ""
+
+#: includes/Upgrader/PluginPackageReplacement.php:399
+msgid "A plugin file could not be read completely."
+msgstr ""
+
+#. translators: %s: Absolute path to the retained previous plugin directory.
+#: includes/Upgrader/PluginPackageReplacement.php:426
+#, php-format
+msgid "Automatic recovery failed. The previous plugin files are retained at %s. Restore this directory before trying again."
+msgstr ""
+
+#: includes/views/plugins/add.php:94
+msgid "This folder already belongs to a managed plugin. Change its source or reinstall its files from the existing entry."
+msgstr ""
+
+#: includes/views/plugins/add.php:95
+msgid "Open managed plugin"
+msgstr ""
+
+#: includes/views/plugins/add.php:99
+msgid "The plugin folder already exists. You can review a replacement before any files are changed."
+msgstr ""
+
+#: includes/views/plugins/add.php:101
+msgid "Replace folder and install"
+msgstr ""
+
+#: includes/views/plugins/edit.php:29
+msgid "WordPress no longer recognizes a plugin in this folder. Its repository association has been preserved so the plugin files can be reinstalled."
+msgstr ""
+
+#: includes/views/plugins/edit.php:183
+msgid "Download the target version from the saved source again. The next step shows the exact version and asks for confirmation before replacing any files."
+msgstr ""
+
+#: includes/views/plugins/replace.php:10
+msgid "Confirm plugin file replacement"
+msgstr ""
+
+#: includes/views/plugins/replace.php:12
+msgid "All files in the destination folder will be replaced, including custom changes and leftover files."
+msgstr ""
+
+#: includes/views/plugins/replace.php:13
+msgid "The plugin will not be uninstalled. Plugin settings in the database and its activation state will be preserved."
+msgstr ""
+
+#: includes/views/plugins/replace.php:26
+msgid "Target version"
+msgstr ""
+
+#: includes/views/plugins/replace.php:30
+msgid "Git reference"
+msgstr ""
+
+#: includes/views/plugins/replace.php:34
+msgid "Commit"
+msgstr ""
+
+#: includes/views/plugins/replace.php:39
+msgid "This confirmation is valid once for 15 minutes. If the source or installation changes, prepare a new review."
+msgstr ""
+
+#: includes/views/plugins/replace.php:44
+msgid "Confirm and replace plugin files"
 msgstr ""

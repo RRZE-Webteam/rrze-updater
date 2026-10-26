@@ -9,6 +9,7 @@ require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
 use RRZE\Updater\Core\GithubConnector;
 use RRZE\Updater\Core\GitlabConnector;
 use RRZE\Updater\Core\Plugin;
+use RRZE\Updater\Core\RepositorySource;
 use RRZE\Updater\Upgrader\PluginUpgraderSkin;
 use RRZE\Updater\Upgrader\ThemeUpgraderSkin;
 use WP_Error;
@@ -35,7 +36,7 @@ class ManagedUpgrader
      * install folder also removes the entry after passing it to $currentPackage.
      * WeakMap removes entries automatically when their upgrader object is destroyed.
      *
-     * @var \WeakMap<\WP_Upgrader, array{extension: Core\Extension, ref: string, type: 'plugin'|'theme'}>|null
+     * @var \WeakMap<\WP_Upgrader, array{extension: Core\Extension, ref: string, source: string, type: 'plugin'|'theme'}>|null
      */
     private ?\WeakMap $downloadedPackages = null;
 
@@ -46,7 +47,7 @@ class ManagedUpgrader
      * Cleared when another folder is prepared or the post-install hook reads it.
      * A user clicking "Update" through AJAX counts as a manual update.
      *
-     * @var array{extension: Core\Extension, ref: string, type: 'plugin'|'theme', upgrader: \WP_Upgrader, automatic: bool}|null
+     * @var array{extension: Core\Extension, ref: string, source: string, type: 'plugin'|'theme', upgrader: \WP_Upgrader, automatic: bool}|null
      */
     private ?array $currentPackage = null;
 
@@ -57,9 +58,12 @@ class ManagedUpgrader
      * or "theme:example". automaticUpdatesComplete() reads and clears this list
      * so a later report cannot save the same updates again.
      *
-     * @var array<string, array{extension: Core\Extension, ref: string, type: 'plugin'|'theme', upgrader: \WP_Upgrader, automatic: bool}>
+     * @var array<string, array{extension: Core\Extension, ref: string, source: string, type: 'plugin'|'theme', upgrader: \WP_Upgrader, automatic: bool}>
      */
     private array $automaticPackages = [];
+
+    /** @var bool Whether this updater holds the shared lock through core rollback. */
+    private bool $filesystemLockHeld = false;
 
     /**
      * Stores the settings and configuration used by this class.
@@ -106,7 +110,9 @@ class ManagedUpgrader
      * Called by the upgrader_source_selection hook after WordPress unzips a package.
      * Leaves other plugins and themes alone. For a managed update, checks the folder
      * name and moves the files without replacing a folder that already exists.
-     * Remembers the checked download so its Git ref can be saved after installation.
+     * Verifies the persisted source and plugin entrypoints under the shared lock,
+     * retained through shutdown rollback. Remembers the checked download so its
+     * Git ref can be saved after installation.
      *
      * @global \WP_Filesystem_Base $wp_filesystem WordPress's object for reading and moving files.
      *
@@ -132,12 +138,35 @@ class ManagedUpgrader
         if (!is_string($folder) || !preg_match('/\A[a-zA-Z0-9][a-zA-Z0-9._-]*\z/', $folder) || str_contains($folder, '..')) {
             return new WP_Error('rrze_updater_invalid_destination', __('The managed installation folder is invalid.', 'rrze-updater'));
         }
+        $package = $this->downloadedPackages[$upgrader] ?? null;
+        if ($extension->connector instanceof GithubConnector || $extension->connector instanceof GitlabConnector) {
+            if (!$package || $package['extension'] !== $extension) {
+                return $this->staleSourceError();
+            }
+            if (!$this->filesystemLockHeld) {
+                $locked = FilesystemLock::acquire();
+                if (is_wp_error($locked)) {
+                    return $locked;
+                }
+                $this->filesystemLockHeld = true;
+                add_action('shutdown', [$this, 'releaseFilesystemLock'], PHP_INT_MAX);
+            }
+            $validation = $this->validateCurrentSource($package);
+            if (is_wp_error($validation)) {
+                return $validation;
+            }
+            if ($extension instanceof Plugin) {
+                $validation = $this->validatePluginEntrypoints($source, $folder, $hookExtra);
+                if (is_wp_error($validation)) {
+                    return $validation;
+                }
+            }
+        }
         $newSource = trailingslashit($remoteSource) . trailingslashit($folder);
         if (untrailingslashit($newSource) !== untrailingslashit($source)
             && !$wp_filesystem->move($source, $newSource, false)) {
             return new WP_Error('rrze_updater_source_move_failed', __('Could not prepare the managed installation folder.', 'rrze-updater'));
         }
-        $package = $this->downloadedPackages[$upgrader] ?? null;
         if ($package && $package['extension'] === $extension) {
             // AJAX updates reuse the background-update skin class, but are manual
             // updates. They do not trigger automatic_updates_complete.
@@ -149,6 +178,88 @@ class ManagedUpgrader
             unset($this->downloadedPackages[$upgrader]);
         }
         return $newSource;
+    }
+
+    /**
+     * Release this updater's lock only after WordPress's shutdown rollbacks.
+     *
+     * @return void
+     */
+    public function releaseFilesystemLock(): void
+    {
+        if ($this->filesystemLockHeld) {
+            $this->filesystemLockHeld = false;
+            FilesystemLock::release();
+        }
+    }
+
+    /**
+     * Check that a downloaded package still belongs to the persisted source.
+     *
+     * @param array<string, mixed> $package Download snapshot including its fingerprint.
+     * @return true|WP_Error True or an error blocking a stale package/ref write.
+     */
+    private function validateCurrentSource(array $package): true|WP_Error
+    {
+        $extension = $package['extension'];
+        $expected = $package['source'] ?? '';
+        $settings = new Settings();
+        $settings->reload();
+        $current = $package['type'] === 'plugin'
+            ? $settings->getPluginById($extension->id)
+            : $settings->getThemeById($extension->id);
+        return $current && $expected !== ''
+            && RepositorySource::fingerprint($extension) === $expected
+            && RepositorySource::fingerprint($current) === $expected
+            ? true : $this->staleSourceError();
+    }
+
+    /**
+     * Return the common error for an outdated or unverified repository package.
+     *
+     * @return WP_Error Error instructing the administrator to refresh the source.
+     */
+    private function staleSourceError(): WP_Error
+    {
+        return new WP_Error('rrze_updater_source_changed', __('The repository source changed or the package was not verified. Refresh update information before trying again.', 'rrze-updater'));
+    }
+
+    /**
+     * Preserve every recognized plugin entrypoint before WordPress replaces files.
+     *
+     * Activation is stored by entrypoint path. Keeping a PHP file with the same
+     * basename is insufficient if its Plugin Name header disappeared.
+     *
+     * @param string $source Extracted package directory in the filesystem adapter.
+     * @param string $folder Existing managed installation folder.
+     * @param array<string, mixed> $hookExtra Core plugin identifier for this update.
+     * @return true|WP_Error True or an error preventing a broken activation mapping.
+     */
+    private function validatePluginEntrypoints(string $source, string $folder, array $hookExtra): true|WP_Error
+    {
+        global $wp_filesystem;
+        if (defined('WP_PLUGIN_DIR') && is_link(trailingslashit(WP_PLUGIN_DIR) . $folder)) {
+            return new WP_Error('rrze_updater_invalid_destination', __('The managed plugin folder must not be a symbolic link.', 'rrze-updater'));
+        }
+        $entrypoints = array_keys(get_plugins());
+        if (is_string($hookExtra['plugin'] ?? null)) {
+            $entrypoints[] = $hookExtra['plugin'];
+        }
+        foreach (array_unique($entrypoints) as $entrypoint) {
+            if (dirname($entrypoint) !== $folder) {
+                continue;
+            }
+            $contents = $wp_filesystem->get_contents(trailingslashit($source) . basename($entrypoint));
+            $header = is_string($contents) ? str_replace("\r", "\n", substr($contents, 0, 8192)) : '';
+            if (!preg_match('/^(?:[ \t]*<\?php)?[ \t\/*#@]*Plugin Name:(.*)$/mi', $header, $match)
+                || trim(preg_replace('/\s*(?:\*\/|\?>).*/', '', $match[1])) === '') {
+                return new WP_Error('rrze_updater_missing_entrypoint', sprintf(
+                    __('The replacement package must preserve the plugin entrypoint %s and its Plugin Name header.', 'rrze-updater'),
+                    $entrypoint
+                ));
+            }
+        }
+        return true;
     }
 
     /**
@@ -227,6 +338,7 @@ class ManagedUpgrader
         if (!$extension) {
             return false;
         }
+        $sourceFingerprint = RepositorySource::fingerprint($extension);
         if ($extension->connector instanceof GitlabConnector) {
             $package = remove_query_arg('private_token', $package);
         }
@@ -257,7 +369,7 @@ class ManagedUpgrader
             return new WP_Error('download_failed', $extension->connector->error ?: __('Download failed.', 'rrze-updater'));
         }
         $this->downloadedPackages[$upgrader] = ['extension' => $extension, 'ref' => $ref,
-            'type' => $extension instanceof Plugin ? 'plugin' : 'theme'];
+            'type' => $extension instanceof Plugin ? 'plugin' : 'theme', 'source' => $sourceFingerprint];
         return $download;
     }
 
@@ -474,17 +586,22 @@ class ManagedUpgrader
     /**
      * Saves the installed Git ref in settings.
      *
+     * Verifies the persisted source again before recording the package ref.
      * An empty ref means we no longer know which version is installed.
      * Only known versions get a success log message. If saving fails, restores
      * localVersion on the settings object to its previous value and returns an error.
      *
-     * @param array{extension: Core\Extension, ref: string, type: 'plugin'|'theme', upgrader: \WP_Upgrader, automatic: bool} $package
+     * @param array{extension: Core\Extension, ref: string, source: string, type: 'plugin'|'theme', upgrader: \WP_Upgrader, automatic: bool} $package
      *     Details of the completed update. Its ref can be empty after a failed rollback.
      *
      * @return true|WP_Error True if saved, or an error if the settings could not be saved.
      */
     private function saveInstalledPackage(array $package): true|WP_Error
     {
+        $validation = $this->validateCurrentSource($package);
+        if (is_wp_error($validation)) {
+            return $validation;
+        }
         $extension = $package['extension'];
         $previous = $extension->localVersion;
         $extension->localVersion = $package['ref'];

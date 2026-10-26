@@ -5,8 +5,10 @@ namespace RRZE\Updater;
 defined('ABSPATH') || exit;
 
 use RRZE\Updater\Core\Connector;
+use RRZE\Updater\Core\Extension;
 use RRZE\Updater\Core\GitlabConnector;
 use RRZE\Updater\Core\Plugin;
+use RRZE\Updater\Core\RepositorySource;
 use RRZE\Updater\Core\Theme;
 
 /**
@@ -45,6 +47,23 @@ class Settings
 
     /** The snapshot this request actually read, used to detect its own edits. */
     private array $baseline;
+
+    /** @var array<string, string> Source identities checked before the next save. */
+    private array $validatedSources = [];
+
+    /**
+     * Retain freshly checked remote metadata when the next save changes a source.
+     *
+     * Only call this after checking the candidate's remote source and refs.
+     * Other source mutations invalidate remote metadata until the next check.
+     *
+     * @param Extension $extension Checked candidate whose source will be saved.
+     * @return void
+     */
+    public function markSourceValidated(Extension $extension): void
+    {
+        $this->validatedSources[$extension->id] = RepositorySource::fingerprint($extension);
+    }
 
     /**
      * Constructor to Initialize Settings
@@ -180,23 +199,37 @@ class Settings
      *
      * This method saves the current `Settings` object to WordPress options based on
      * whether the environment is a multisite or single site.
+     * Effective source changes invalidate old refs and use the filesystem lock.
+     * Metadata from a stale source snapshot is rejected instead of merging into
+     * a newer source, while unrelated edits and token rotations can still merge.
      *
      * @return bool True if the settings were successfully saved, false otherwise.
      */
     public function save()
     {
         global $wpdb;
+        $sourceLock = $this->hasSourceChanges();
+        if ($sourceLock && is_wp_error(FilesystemLock::acquire())) {
+            $this->validatedSources = [];
+            return false;
+        }
         // Every writer (cron, admin, CLI and bundles) uses this short-lived lock.
         // Keep it separate from the bundle filesystem lock; never hold it over HTTP.
         $scope = is_multisite() ? 'network:' . get_current_network_id() : 'site:' . get_current_blog_id();
         $lock = 'rrze_settings_' . md5(DB_NAME . '|' . $wpdb->base_prefix . '|' . $scope);
         if ((string) $wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, 10)', $lock)) !== '1') {
+            if ($sourceLock) {
+                FilesystemLock::release();
+            }
+            $this->validatedSources = [];
             return false;
         }
         try {
             $this->clearOptionCache();
+            $this->invalidateChangedSources();
             $local = $this->asArray();
             $latest = (new self())->asArray();
+            $this->assertSourceConsistency($local, $latest);
             $merged = $latest;
             foreach (['connectors', 'plugins', 'themes'] as $kind) {
                 $records = $this->mergeChanges(
@@ -227,9 +260,118 @@ class Settings
             return false;
         } finally {
             $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $lock));
+            if ($sourceLock) {
+                FilesystemLock::release();
+            }
+            $this->validatedSources = [];
         }
     }
 
+    /**
+     * Determine whether this request changes an existing filesystem association.
+     *
+     * @return bool Whether a source change or removal needs the filesystem lock.
+     */
+    private function hasSourceChanges(): bool
+    {
+        $local = $this->asArray();
+        $beforeConnectors = array_column($this->baseline['connectors'] ?? [], null, 'id');
+        $localConnectors = array_column($local['connectors'] ?? [], null, 'id');
+        foreach (['plugins', 'themes'] as $kind) {
+            $current = array_column($local[$kind] ?? [], null, 'id');
+            foreach ($this->baseline[$kind] ?? [] as $before) {
+                $record = $current[$before['id']] ?? null;
+                if (!$record || RepositorySource::fingerprintRecord($before, $beforeConnectors)
+                    !== RepositorySource::fingerprintRecord($record, $localConnectors)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Clear metadata that cannot identify files or refs in a newly selected source.
+     *
+     * A checked candidate keeps its remote result. Changes to a connector owner,
+     * host or API also invalidate every affected extension, while token rotation
+     * leaves source identity and installed refs intact.
+     *
+     * @return void
+     */
+    private function invalidateChangedSources(): void
+    {
+        $beforeConnectors = array_column($this->baseline['connectors'] ?? [], null, 'id');
+        foreach (['plugins', 'themes'] as $kind) {
+            $beforeRecords = array_column($this->baseline[$kind] ?? [], null, 'id');
+            foreach ($this->$kind as $extension) {
+                $before = $beforeRecords[$extension->id] ?? null;
+                if (!$before) {
+                    continue;
+                }
+                $effective = clone $extension;
+                $effective->connector = $this->getConnectorById($extension->connectorId);
+                $fingerprint = RepositorySource::fingerprint($effective);
+                if ($fingerprint === RepositorySource::fingerprintRecord($before, $beforeConnectors)) {
+                    continue;
+                }
+                $extension->localVersion = '';
+                if (($this->validatedSources[$extension->id] ?? '') !== $fingerprint) {
+                    $extension->remoteVersion = $extension->remoteReadableVersion = '';
+                    $extension->lastWarning = $extension->lastError = '';
+                    $extension->lastChecked = 0;
+                }
+            }
+        }
+    }
+
+    /**
+     * Reject late metadata or source writes against a different effective source.
+     *
+     * @param array<string, mixed> $local Requested registry snapshot.
+     * @param array<string, mixed> $latest Current persisted registry snapshot.
+     * @return void
+     * @throws \UnexpectedValueException When another request changed the source.
+     */
+    private function assertSourceConsistency(array $local, array $latest): void
+    {
+        $beforeConnectors = array_column($this->baseline['connectors'] ?? [], null, 'id');
+        $localConnectors = array_column($local['connectors'] ?? [], null, 'id');
+        $latestConnectors = array_column($latest['connectors'] ?? [], null, 'id');
+        $mergedConnectors = $this->mergeChanges($beforeConnectors, $localConnectors, $latestConnectors, true);
+        foreach (['plugins', 'themes'] as $kind) {
+            $beforeRecords = array_column($this->baseline[$kind] ?? [], null, 'id');
+            $latestRecords = array_column($latest[$kind] ?? [], null, 'id');
+            foreach ($local[$kind] ?? [] as $record) {
+                $before = $beforeRecords[$record['id']] ?? null;
+                $current = $latestRecords[$record['id']] ?? null;
+                $sourceLocal = RepositorySource::fingerprintRecord($record, $localConnectors);
+                $sourceBefore = $before ? RepositorySource::fingerprintRecord($before, $beforeConnectors) : '';
+                $changed = !$before || $record !== $before || $sourceLocal !== $sourceBefore;
+                if ($changed && RepositorySource::fingerprintRecord($record, $mergedConnectors) !== $sourceLocal) {
+                    throw new \UnexpectedValueException('The repository connector changed before its metadata could be saved.');
+                }
+                if (!$before || !$current) {
+                    continue; // Additions/deletions are checked by the ordinary merge.
+                }
+                if ($changed
+                    && RepositorySource::fingerprintRecord($current, $latestConnectors) !== $sourceBefore) {
+                    throw new \UnexpectedValueException('The repository source changed before its metadata could be saved.');
+                }
+            }
+        }
+    }
+
+    /**
+     * Merge independent edits while rejecting changes to the same stored value.
+     *
+     * @param array $before Snapshot read by this request.
+     * @param array $local Requested values.
+     * @param array $latest Current persisted values.
+     * @param bool $records Whether values are registry records keyed by ID.
+     * @return array Merged values.
+     * @throws \UnexpectedValueException On a conflicting edit.
+     */
     private function mergeChanges(array $before, array $local, array $latest, bool $records = false): array
     {
         foreach (array_unique(array_merge(array_keys($before), array_keys($local))) as $key) {

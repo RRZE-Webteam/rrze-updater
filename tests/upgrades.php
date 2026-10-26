@@ -18,6 +18,8 @@ $settings->plugins = [$plugin]; $settings->themes = [$theme];
 $wp_filesystem = new class {
     public array $moves = [];
     public bool $fail = false;
+    /** Return the plugin header from a simulated extracted entrypoint. */
+    public function get_contents($path) { return "<?php\n/* Plugin Name: Fixture */"; }
     public function move($source, $destination, $overwrite) {
         $this->moves[] = [$source, $destination, $overwrite];
         return !$this->fail;

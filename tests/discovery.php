@@ -264,24 +264,15 @@ foreach ([false, true] as $consent) {
 }
 echo 'Passed ' . ($checks - $beforeCustomConsent) . " discovered registration consent checks.\n";
 
-require __DIR__ . '/settings.php';
-require __DIR__ . '/gitlab.php';
-require __DIR__ . '/registrations.php';
-require __DIR__ . '/upgrades.php';
-require __DIR__ . '/bulk-downloads.php';
-require __DIR__ . '/update-refs.php';
-require __DIR__ . '/legacy-parent.php';
-require __DIR__ . '/legacy-installs.php';
-
-require __DIR__ . '/update-sources.php';
-require __DIR__ . '/update-outcomes.php';
-require __DIR__ . '/admin-saves.php';
-require __DIR__ . '/admin-integration.php';
-require __DIR__ . '/managed-upgrader.php';
-require __DIR__ . '/settings-defaults.php';
-require __DIR__ . '/admin-deletions.php';
-require __DIR__ . '/cron.php';
-require __DIR__ . '/cron-batches.php';
-require __DIR__ . '/github-downloads.php';
-require __DIR__ . '/github-rate-limits.php';
-require __DIR__ . '/token-status.php';
+// Each fixture models independent WordPress requests; core rollback finishes before the next one.
+foreach ([
+    'settings.php', 'gitlab.php', 'registrations.php', 'upgrades.php', 'bulk-downloads.php',
+    'update-refs.php', 'legacy-parent.php', 'legacy-installs.php', 'update-sources.php',
+    'update-outcomes.php', 'admin-saves.php', 'admin-integration.php', 'managed-upgrader.php',
+    'settings-defaults.php', 'admin-deletions.php', 'cron.php', 'cron-batches.php',
+    'github-downloads.php', 'github-rate-limits.php', 'token-status.php',
+    'plugin-repair-admin.php', 'source-switch.php', 'filesystem-lock.php',
+] as $regressionFile) {
+    require __DIR__ . '/' . $regressionFile;
+    \RRZE\Updater\FilesystemLock::releaseAll();
+}

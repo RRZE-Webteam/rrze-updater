@@ -35,7 +35,7 @@ Public documentation at:
 
 * WordPress ab 6.8
 * PHP ab 8.3
-* WordPress Multisite
+* WordPress Single-Site or Multisite (repository browser and bundles require Multisite)
 
 
 ## Installation
@@ -99,8 +99,55 @@ The steps are the same for themes.
 - Change the branch to the name of the desired branch.
 - Choose whether to use commits or tags for checking for updates.
 - (Optional) Specify a different plugin or theme folder.
-- (Optional) Choose whether existing plugin files should be overwritten.
 - Confirm by clicking "Install Plugin".
+
+An existing plugin directory is never replaced by the ordinary Install button.
+After a directory conflict, **Replace folder and install** opens a separate
+confirmation. For a directory already managed by Updater, open its existing
+settings instead.
+
+### Change a plugin's update source
+
+Edit the plugin's service, repository, branch or update policy and save. Updater
+validates the proposed source before saving; failed access or an invalid target
+keeps the previous association. Saving does not replace files or change the
+installation folder. When the source changes, the installed Git ref is treated
+as unknown for that source, so even an identical tag name offers an update from
+the newly selected repository. The version read from installed files remains
+visible. Existing automatic-update settings continue to apply.
+
+### Reinstall or repair plugin files
+
+**Reinstall plugin files** on the plugin editor downloads the offered target for
+the configured commits, tags or releases policy. It may therefore install a
+newer version. Its confirmation shows the source, target folder, version and
+pinned commit. A confirmation belongs to its administrator and installation,
+expires after 15 minutes, and can be used only once. Changed source settings or
+local files require a fresh review.
+
+Replacement exchanges the **entire plugin directory**, removing leftover files
+and local modifications. It does not call uninstall, activate or deactivate and
+does not delete plugin settings from the database. Existing plugin main filenames
+must remain present. Symlinks, unsafe paths and conflicting associations are
+rejected. A mapped plugin with a remaining folder but no recognized entrypoint
+stays visible as **Installation incomplete**, with repair available instead of a
+normal update action. Completely removed directories are still removed from the
+Updater registry during synchronization.
+
+The archive is checked before the old directory is moved. Updater keeps a
+temporary backup until both the new files and their repository association are
+saved. A short WordPress maintenance window covers the exchange and recovery;
+an existing maintenance file prevents a replacement from starting. Failed file
+or settings operations restore the previous files. If that
+restore also fails, the error reports the retained backup directory under
+`wp-content/rrze-updater-recovery/` for manual recovery. Replacement requires the
+PHP ZIP extension and filesystem paths that PHP can inspect locally.
+
+These actions are available in the classic plugin administration to authorized
+Single-Site administrators and Multisite superadministrators, subject to
+WordPress installation/update capabilities and file-modification settings.
+Themes, CLI, repository browser and bundles do not expose replacement actions.
+Concurrent Updater file operations share a database advisory lock across networks.
 
 GitHub ZIP downloads stream over HTTPS directly to a temporary file, avoiding a
 complete archive in PHP memory. Certificate verification stays enabled. Archive
@@ -381,7 +428,22 @@ The standalone PHP tests cover recommended bundles, discovered repositories,
 GitHub/GitLab pagination and owner boundaries, package inspection, immutable refs,
 retries, parent dependencies, authorization, network isolation, and file installation
 through fixtures. They do not call real services or modify installed extensions.
-Browser validation and a real installation should be tested on staging.
+The replacement suite additionally uses real temporary directories and ZIP files
+to check complete replacement, permission failures, maintenance and rollback.
+
+For a disposable WordPress installation backed by MySQL, add
+`define('RRZE_UPDATER_TEST_INSTALLATION', true);` to that installation's
+`wp-config.php`, then run the optional integration fixture:
+
+```sh
+wp eval-file /path/to/rrze-updater/tests/wordpress-repair.php /path/to/rrze-updater --path=/path/to/disposable-wordpress --skip-plugins --skip-themes --user=1
+```
+
+Run once on a Single-Site installation and once on a Multisite installation.
+This fixture changes the test installation's Updater settings and creates test
+plugins, so use an isolated database and content directory. It exercises real
+WordPress options, activation state, filesystem operations and ZIP extraction;
+GitHub/GitLab responses are supplied locally without external API access.
 
 ### Updating translations
 

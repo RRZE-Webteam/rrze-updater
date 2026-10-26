@@ -10,15 +10,26 @@ $installedVersion = $data['installedVersion'] ?? '&mdash;';
 $repositoryUrl = $data['repositoryUrl'] ?? '';
 $pluginCheckUrl = $data['pluginCheckUrl'] ?? '';
 $multisiteManagerPluginsUrl = $data['multisiteManagerPluginsUrl'] ?? '';
+$incomplete = !empty($data['incomplete']);
+$canReplace = !empty($data['canReplace']);
 $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' => 'all'], self_admin_url('plugins.php'));
 ?>
-<?php if (($extension->localVersion != $extension->remoteVersion) && ($extension->lastError == "")) : ?>
+<?php if (!$incomplete && ($extension->localVersion != $extension->remoteVersion) && ($extension->lastError == "")) : ?>
     <div class="notice notice-info">
         <p><a href="<?php echo esc_url($searchPlugin); ?>"><?php printf(
             /* translators: %s: Remote extension version */
             esc_html__('A new version is available: %s.', 'rrze-updater'),
             esc_html($extension->getRemoteVersionLabel())
         ); ?></a></p>
+    </div>
+<?php endif; ?>
+<?php if ($incomplete) : ?>
+    <div class="notice notice-warning">
+        <p><strong><?php esc_html_e('Installation incomplete', 'rrze-updater'); ?></strong></p>
+        <p><?php esc_html_e('WordPress no longer recognizes a plugin in this folder. Its repository association has been preserved so the plugin files can be reinstalled.', 'rrze-updater'); ?></p>
+        <?php if ($canReplace) : ?>
+            <p><a href="#plugin-reinstall"><?php esc_html_e('Reinstall plugin files', 'rrze-updater'); ?></a></p>
+        <?php endif; ?>
     </div>
 <?php endif; ?>
 <?php if ($extension->lastWarning) : ?>
@@ -165,3 +176,16 @@ $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' =>
     </table>
     <?php submit_button(__('Save Changes', 'rrze-updater')); ?>
 </form>
+
+<?php if ($canReplace) : ?>
+    <section id="plugin-reinstall" aria-labelledby="plugin-reinstall-heading">
+        <h2 id="plugin-reinstall-heading"><?php esc_html_e('Reinstall plugin files', 'rrze-updater'); ?></h2>
+        <p><?php esc_html_e('Download the target version from the saved source again. The next step shows the exact version and asks for confirmation before replacing any files.', 'rrze-updater'); ?></p>
+        <form action="<?php echo esc_url(add_query_arg(['page' => 'rrze-updater-plugins', 'action' => 'replace'], self_admin_url('admin.php'))); ?>" method="post">
+            <?php wp_nonce_field('rrze-updater-plugin-replacement-prepare', 'rrze-updater-nonce'); ?>
+            <input type="hidden" name="rrze-updater[replacement_action]" value="prepare">
+            <input type="hidden" name="rrze-updater[plugin_id]" value="<?php echo esc_attr($extension->id); ?>">
+            <?php submit_button(__('Reinstall plugin files', 'rrze-updater'), 'secondary'); ?>
+        </form>
+    </section>
+<?php endif; ?>

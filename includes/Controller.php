@@ -4,7 +4,7 @@ namespace RRZE\Updater;
 
 defined('ABSPATH') || exit;
 
-use RRZE\Updater\Core\{Connector, Plugin, Theme, RepositoryManager};
+use RRZE\Updater\Core\{Connector, Plugin, Theme, RepositoryManager, PluginReplacement};
 use RRZE\Updater\Upgrader\{PluginUpgraderSkin, ThemeUpgraderSkin};
 use RRZE\Updater\ListTable\{RepoListTable, ConnListTable, PluginsListTable, ThemesListTable};
 use Plugin_Upgrader;
@@ -460,13 +460,23 @@ class Controller
         return $connectors;
     }
 
+    /**
+     * Add update or repair actions to a repository row.
+     *
+     * @param array $repo Repository display data.
+     * @param mixed $extension Managed extension, if available.
+     * @param string $type Extension type.
+     * @return array Repository data with safe actions.
+     */
     private function addRepoUpdateData(array $repo, $extension, string $type): array
     {
         $repo['hasUpdate'] = false;
         $repo['updateVersion'] = '';
         $repo['updateUrl'] = '';
+        $repo['incomplete'] = $type === 'plugin' && $extension && $this->isPluginIncomplete($extension);
+        $repo['repairUrl'] = $repo['incomplete'] ? $this->getPluginEditUrl($extension->id) . '#plugin-reinstall' : '';
 
-        if (!$extension || !$this->extensionHasUpdate($extension)) {
+        if ($repo['incomplete'] || !$extension || !$this->extensionHasUpdate($extension)) {
             return $repo;
         }
 
@@ -1076,6 +1086,12 @@ class Controller
         $this->display('repositories/bulk-update-progress', $data);
     }
 
+    /**
+     * Build bulk updates, excluding incomplete plugins that require explicit repair.
+     *
+     * @param array $repoIds Requested managed repository IDs.
+     * @return array Eligible plugin and theme updates.
+     */
     private function getRepoBulkUpdateItems(array $repoIds): array {
         $updates = [];
 
@@ -1083,7 +1099,7 @@ class Controller
             $id = sanitize_text_field((string) $repoId);
             $plugin = $this->settings->getPluginById($id);
 
-            if ($plugin && $this->extensionHasUpdate($plugin)) {
+            if ($plugin && !$this->isPluginIncomplete($plugin) && $this->extensionHasUpdate($plugin)) {
                 if (!current_user_can('update_plugins')) {
                     wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
                 }
@@ -1460,6 +1476,11 @@ class Controller
      */
     public function getPluginIndex()
     {
+        if (($_GET['action'] ?? '') === 'replace') {
+            $this->postPluginReplacement();
+            return;
+        }
+
         if ($action = $this->getAction()) {
             $this->getPluginAction($action);
             if ($action != 'delete') {
@@ -1569,7 +1590,7 @@ class Controller
         switch ($action) {
             case 'add':
                 // Check the nonce field to verify the action, then proceed with adding a new plugin.
-                if (wp_verify_nonce($nonceField, 'rrze-updater-plugin-add')) {
+                if (is_string($nonceField) && wp_verify_nonce($nonceField, 'rrze-updater-plugin-add')) {
                     $this->postPluginAdd();
                 } else {
                     // If nonce verification fails, display the plugin add form.
@@ -1584,7 +1605,7 @@ class Controller
 
             case 'edit':
                 // Check the nonce field to verify the action, then proceed with editing an existing plugin.
-                if (wp_verify_nonce($nonceField, 'rrze-updater-plugin-edit')) {
+                if (is_string($nonceField) && wp_verify_nonce($nonceField, 'rrze-updater-plugin-edit')) {
                     $this->postPluginEdit();
                 } else {
                     // If nonce verification fails, display the plugin edit form.
@@ -1632,26 +1653,77 @@ class Controller
      */
     protected function getPluginEdit()
     {
-        // Retrieve the ID of the plugin to be edited.
         $pluginId = $_GET['id'] ?? '';
-        $pluginId = sanitize_text_field($pluginId);
-
-        // Check if the plugin with the given ID exists.
-        if ($plugin = $this->settings->getPluginById($pluginId)) {
-            // Prepare the data for rendering.
-            $data = [
-                'connectors' => $this->settings->connectors,
-                'plugin' => $plugin,
-                'lastChecked' => $this->lastChecked($plugin->lastChecked),
-                'installedVersion' => $this->pluginVersion($plugin->installationFolder, $plugin->repository),
-                'repositoryUrl' => $this->getExtensionRepositoryUrl($plugin),
-                'pluginCheckUrl' => $this->getPluginCheckUrl($plugin),
-                'multisiteManagerPluginsUrl' => $this->getMultisiteManagerPluginsUrl()
-            ];
-
-            // Display the plugin edit form.
-            $this->display('plugins/edit', $data);
+        if (is_string($pluginId) && ($plugin = $this->settings->getPluginById(sanitize_text_field($pluginId)))) {
+            $this->displayPluginEdit($plugin);
         }
+    }
+
+    /**
+     * Render the stored plugin definition and its repair availability.
+     *
+     * @param Plugin $plugin Persisted managed plugin.
+     * @return void
+     */
+    private function displayPluginEdit(Plugin $plugin): void
+    {
+        $this->display('plugins/edit', [
+            'connectors' => $this->settings->connectors,
+            'plugin' => $plugin,
+            'lastChecked' => $this->lastChecked($plugin->lastChecked),
+            'installedVersion' => $this->pluginVersion($plugin->installationFolder, $plugin->repository),
+            'repositoryUrl' => $this->getExtensionRepositoryUrl($plugin),
+            'pluginCheckUrl' => $this->getPluginCheckUrl($plugin),
+            'multisiteManagerPluginsUrl' => $this->getMultisiteManagerPluginsUrl(),
+            'incomplete' => $this->isPluginIncomplete($plugin),
+            'canReplace' => $this->canReplacePluginFiles(),
+        ]);
+    }
+
+    /**
+     * Detect a managed plugin whose entry point is no longer recognized by WordPress.
+     *
+     * @param Plugin $plugin Managed plugin.
+     * @return bool Whether the installation needs repair.
+     */
+    private function isPluginIncomplete(Plugin $plugin): bool
+    {
+        return $this->getInstalledPluginFile($plugin->installationFolder) === '';
+    }
+
+    /**
+     * Build the local or network editor URL for a plugin.
+     *
+     * @param string $id Managed plugin ID.
+     * @return string Editor URL.
+     */
+    private function getPluginEditUrl(string $id): string
+    {
+        return (string) add_query_arg(['page' => 'rrze-updater-plugins', 'action' => 'edit', 'id' => $id], self_admin_url('admin.php'));
+    }
+
+    /**
+     * Determine whether the user may manage the installation's plugin sources.
+     *
+     * @return bool Whether source management is permitted.
+     */
+    private function canManagePluginSources(): bool
+    {
+        return current_user_can(is_multisite() ? 'manage_network_options' : 'manage_options')
+            && (!is_multisite() || is_super_admin())
+            && current_user_can('update_plugins');
+    }
+
+    /**
+     * Determine whether the user may replace plugin files.
+     *
+     * @return bool Whether all administrative and filesystem capabilities allow replacement.
+     */
+    private function canReplacePluginFiles(): bool
+    {
+        return $this->canManagePluginSources()
+            && current_user_can('install_plugins')
+            && wp_is_file_mod_allowed('rrze_updater_install');
     }
 
     /**
@@ -1688,19 +1760,7 @@ class Controller
                 delete_site_transient('update_plugins');
             }
 
-            // Prepare the data for rendering.
-            $data = [
-                'connectors' => $this->settings->connectors,
-                'plugin' => $plugin,
-                'lastChecked' => $this->lastChecked($plugin->lastChecked),
-                'installedVersion' => $this->pluginVersion($plugin->installationFolder, $plugin->repository),
-                'repositoryUrl' => $this->getExtensionRepositoryUrl($plugin),
-                'pluginCheckUrl' => $this->getPluginCheckUrl($plugin),
-                'multisiteManagerPluginsUrl' => $this->getMultisiteManagerPluginsUrl()
-            ];
-
-            // Display the plugin edit form.
-            $this->display('plugins/edit', $data);
+            $this->displayPluginEdit($plugin);
         }
     }
 
@@ -1809,18 +1869,196 @@ class Controller
         foreach ($manager->getWarnings() as $warning) {
             $this->messages[] = new WP_Error('rrze_updater_repository_warning', $warning);
         }
+        if ($type === 'plugin' && is_wp_error($result) && $this->canReplacePluginFiles()) {
+            $folder = ($request['installationFolder'] ?? '') ?: $repository;
+            $managed = $this->getManagedPluginForFolder($folder);
+            if ($managed) {
+                $data['managedPluginUrl'] = $this->getPluginEditUrl($managed->id);
+            } elseif ($this->pluginDestinationExists($folder)) {
+                $data['canReplace'] = true;
+            }
+        }
         $this->messages[] = $result;
         $this->display($plural . (is_wp_error($result) ? '/add' : '/add-progress'), $data);
     }
 
+    /**
+     * Create the shared repository management service.
+     *
+     * @return RepositoryManager Repository management service.
+     */
     protected function createRepositoryManager(): RepositoryManager
     {
         return new RepositoryManager($this->settings);
     }
 
+    /**
+     * Install a plugin through the regular non-overwriting installation path.
+     *
+     * @return void
+     */
     protected function postPluginAdd()
     {
         $this->postRepositoryAdd('plugin');
+    }
+
+    /**
+     * Create the shared service for reviewed plugin file replacement.
+     *
+     * @return PluginReplacement Replacement service.
+     */
+    protected function createPluginReplacement(): PluginReplacement
+    {
+        return new PluginReplacement($this->settings);
+    }
+
+    /**
+     * Find an existing association for an installation directory.
+     *
+     * @param string $folder Plugin directory name.
+     * @return Plugin|null Existing managed plugin, if any.
+     */
+    private function getManagedPluginForFolder(string $folder): ?Plugin
+    {
+        foreach ($this->settings->plugins as $plugin) {
+            if ($plugin->installationFolder === $folder) {
+                return $plugin;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Check whether a safe, single-component plugin destination still exists.
+     *
+     * @param string $folder Plugin directory name.
+     * @return bool Whether files or a symlink remain at the destination.
+     */
+    private function pluginDestinationExists(string $folder): bool
+    {
+        if (!defined('WP_PLUGIN_DIR') || $folder === '' || $folder === '.' || $folder === '..' || strpbrk($folder, "/\\\0") !== false) {
+            return false;
+        }
+        $path = trailingslashit(WP_PLUGIN_DIR) . $folder;
+        return file_exists($path) || is_link($path);
+    }
+
+    /**
+     * Process the POST-only preparation, confirmation, or cancellation of a replacement.
+     *
+     * The browser submits only the review ID for confirmation; source, directory,
+     * and commit are read exclusively from the server-side review.
+     *
+     * @return void
+     */
+    protected function postPluginReplacement(): void
+    {
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            wp_die(esc_html__('Plugin replacement requires a form submission.', 'rrze-updater'));
+        }
+        if (!$this->canManagePluginSources() || !current_user_can('install_plugins')) {
+            wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
+        }
+        $request = $_POST['rrze-updater'] ?? null;
+        $operation = is_array($request) ? ($request['replacement_action'] ?? '') : '';
+        $nonce = $_POST['rrze-updater-replacement-nonce'] ?? $_POST['rrze-updater-nonce'] ?? '';
+        if (!is_string($operation) || !in_array($operation, ['prepare', 'apply', 'cancel'], true)
+            || !is_string($nonce) || !wp_verify_nonce($nonce, 'rrze-updater-plugin-replacement-' . $operation)) {
+            wp_die(esc_html__('Unable to submit this form, please refresh and try again.', 'rrze-updater'));
+        }
+        if (!wp_is_file_mod_allowed('rrze_updater_install')) {
+            $this->messages[] = new WP_Error('file_modifications_disabled', __('File modifications are disabled on this installation.', 'rrze-updater'));
+            $this->display('');
+            return;
+        }
+        foreach (['plugin_id', 'review_id', 'repository', 'connectorId', 'installationFolder', 'branch', 'updates'] as $field) {
+            if (isset($request[$field]) && !is_string($request[$field])) {
+                $this->messages[] = new WP_Error('invalid_request', __('Invalid repository installation request.', 'rrze-updater'));
+                $this->display('');
+                return;
+            }
+        }
+        $request = wp_unslash($request);
+        $pluginId = $request['plugin_id'] ?? '';
+        $service = $this->createPluginReplacement();
+        try {
+            if ($operation === 'prepare') {
+                if ($pluginId !== '') {
+                    $plugin = $this->settings->getPluginById($pluginId);
+                    if (!$plugin) {
+                        $result = new WP_Error('rrze_updater_missing_plugin', __('The managed plugin no longer exists. Reload the plugin list.', 'rrze-updater'));
+                    } else {
+                        // Reinstallation always uses the saved source, never unsaved editor fields.
+                        $result = $service->prepare($plugin->repository, [
+                            'connector' => $plugin->connectorId,
+                            'folder' => $plugin->installationFolder,
+                            'branch' => $plugin->branch,
+                            'updates' => $plugin->updates,
+                        ], $pluginId);
+                    }
+                } else {
+                    $repository = trim($request['repository'] ?? '');
+                    $result = $service->prepare($repository, [
+                        'connector' => $request['connectorId'] ?? '',
+                        'folder' => ($request['installationFolder'] ?? '') ?: $repository,
+                        'branch' => ($request['branch'] ?? '') ?: 'main',
+                        'updates' => ($request['updates'] ?? '') ?: 'tags',
+                    ]);
+                }
+                if (!is_wp_error($result)) {
+                    $this->display('plugins/replace', ['review' => $result]);
+                    return;
+                }
+            } else {
+                $reviewId = $request['review_id'] ?? '';
+                $result = $service->getReview($reviewId);
+                if (!is_wp_error($result)) {
+                    $pluginId = $result['plugin_id'] ?? '';
+                    if ($operation === 'cancel') {
+                        $service->cancel($reviewId);
+                        $this->messages[] = __('Plugin replacement cancelled. No files have changed.', 'rrze-updater');
+                        $this->displayReplacementReturn($pluginId);
+                        return;
+                    }
+                    $result = $service->apply($reviewId);
+                    if (!is_wp_error($result)) {
+                        $this->messages[] = __('Plugin files successfully reinstalled.', 'rrze-updater');
+                        $this->displayReplacementReturn($result);
+                        return;
+                    }
+                }
+            }
+        } catch (\Throwable $exception) {
+            // Transport and filesystem exception messages can contain credentials.
+            $result = new WP_Error('rrze_updater_replacement_interrupted', __('Plugin replacement was interrupted. Inspect the installation before trying again.', 'rrze-updater'));
+        }
+        $this->messages[] = $result;
+        if ($result->get_error_code() === 'rrze_updater_managed_destination') {
+            $errorData = $result->get_error_data();
+            $existingId = is_array($errorData) ? ($errorData['plugin_id'] ?? '') : '';
+            $this->display('plugins/add', [
+                'connectors' => $this->settings->connectors,
+                'managedPluginUrl' => is_string($existingId) && $existingId !== '' ? $this->getPluginEditUrl($existingId) : '',
+            ]);
+            return;
+        }
+        $this->displayReplacementReturn($pluginId);
+    }
+
+    /**
+     * Return from a replacement request to its persisted editor or the add form.
+     *
+     * @param string $pluginId Managed plugin ID, or an empty string for a new association.
+     * @return void
+     */
+    private function displayReplacementReturn(string $pluginId): void
+    {
+        $plugin = $pluginId !== '' ? $this->settings->getPluginById($pluginId) : false;
+        if ($plugin) {
+            $this->displayPluginEdit($plugin);
+        } else {
+            $this->getPluginAdd();
+        }
     }
 
     /**
@@ -1835,73 +2073,37 @@ class Controller
      */
     protected function postPluginEdit()
     {
-        $request = $_POST['rrze-updater'] ?? '';
-        if (!$request || !is_array($request)) {
-            return;
-        }
-
-        // Check the user's permissions.
-        if (!current_user_can('update_plugins')) {
+        if (!$this->canManagePluginSources()) {
             wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
         }
-
-        $extensionId = $request['id'];
-
-        if (!$extension = $this->settings->getPluginById($extensionId)) {
-            wp_die(esc_html__('An error occurred. Please try again.', 'rrze-updater'));
-        }
-
-        if (!$request['repository']) {
-            // Handle empty repository field with an error message.
-            $this->messages[] = new WP_Error('error', __('The Repository field must not be empty.', 'rrze-updater'));
-            $data = [
-                'connectors' => $this->settings->connectors,
-                'plugin' => $extension,
-                'lastChecked' => $this->lastChecked($extension->lastChecked),
-                'installedVersion' => $this->pluginVersion($extension->installationFolder, $extension->repository),
-                'repositoryUrl' => $this->getExtensionRepositoryUrl($extension),
-                'pluginCheckUrl' => $this->getPluginCheckUrl($extension),
-                'multisiteManagerPluginsUrl' => $this->getMultisiteManagerPluginsUrl()
-            ];
-            $this->display('plugins/edit', $data);
+        $request = $_POST['rrze-updater'] ?? null;
+        if (!is_array($request)) {
             return;
         }
-
-        // Update the plugin definition's properties
-        $extension->connectorId = $request['connectorId'];
-        $extension->connector = $this->settings->getConnectorById($extension->connectorId);
-        $extension->repository = $request['repository'];
-        $extension->branch = $request['branch'] ?: 'main';
-        $extension->updates = $request['updates'];
-        $extension->remoteVersion = $request['branch'];
-
-        // If updates are configured for tags or commits, check if updates are available
-        $extension->checkForUpdates();
-
-        // Save the changes and clear cached plugin updates
-        if (!$this->saveSettings()) {
-            $extension = $this->settings->getPluginById($extensionId);
-            if (!$extension) {
+        foreach (['id', 'repository', 'connectorId', 'branch', 'updates'] as $field) {
+            if (!isset($request[$field]) || !is_string($request[$field])) {
+                $this->messages[] = new WP_Error('invalid_request', __('Invalid repository installation request.', 'rrze-updater'));
                 $this->display('');
                 return;
             }
-        } else {
-            delete_site_transient('update_plugins');
         }
-
-        // Prepare the data for rendering.
-        $data = [
-            'connectors' => $this->settings->connectors,
-            'plugin' => $extension,
-            'lastChecked' => $this->lastChecked($extension->lastChecked),
-            'installedVersion' => $this->pluginVersion($extension->installationFolder, $extension->repository),
-            'repositoryUrl' => $this->getExtensionRepositoryUrl($extension),
-            'pluginCheckUrl' => $this->getPluginCheckUrl($extension),
-            'multisiteManagerPluginsUrl' => $this->getMultisiteManagerPluginsUrl()
-        ];
-
-        // Display the plugin edit form.
-        $this->display('plugins/edit', $data);
+        $request = wp_unslash($request);
+        $manager = $this->createRepositoryManager();
+        $result = $manager->changePluginSource($request['id'], trim($request['repository']), [
+            'connector' => $request['connectorId'],
+            'branch' => $request['branch'] ?: 'main',
+            'updates' => $request['updates'],
+        ]);
+        $this->messages[] = $result;
+        foreach ($manager->getWarnings() as $warning) {
+            $this->messages[] = new WP_Error('rrze_updater_repository_warning', $warning);
+        }
+        $plugin = $this->settings->getPluginById($request['id']);
+        if ($plugin) {
+            $this->displayPluginEdit($plugin);
+        } else {
+            $this->display('');
+        }
     }
 
     /**
@@ -2282,6 +2484,10 @@ class Controller
 
         // If update on tags or commits, check if there is a tag or commit available
         $extension->checkForUpdates();
+        if (in_array($extension->updates, ['tags', 'commits', 'releases'], true)) {
+            // Retain this fresh result when Settings invalidates the old source's metadata.
+            $this->settings->markSourceValidated($extension);
+        }
 
         // Save the changes and clear cached themes updates
         if (!$this->saveSettings()) {
@@ -2567,41 +2773,52 @@ class Controller
      * installed plugins and themes in the WordPress environment. It checks the list of installed
      * plugins and themes and ensures that the settings are consistent with the current state of
      * the WordPress installation. Settings for plugins or themes that are no longer installed
-     * are removed to maintain an accurate configuration.
+     * are removed to maintain an accurate configuration. A remaining plugin directory
+     * retains its association so an incomplete installation can be repaired.
      * 
      * @return bool Whether the synchronized settings were saved.
      */
     public function synchronizeSettings()
     {
-        // Get a list of installed plugins.
-        $installedPlugins = get_plugins();
-        $pluginFolders = [];
+        // Read and prune while holding the same lock as repairs. Otherwise the
+        // temporary rename interval could look like a fully removed plugin.
+        $result = FilesystemLock::withLock(function (): bool {
+            // Get a list of installed plugins.
+            $installedPlugins = get_plugins();
+            $pluginFolders = [];
 
-        // Extract plugin folder paths from the list of installed plugins.
-        foreach (array_keys($installedPlugins) as $pluginFile) {
-            $pluginFolders[] = dirname($pluginFile);
-        }
-
-        // Loop through the plugin settings and remove any that don't match currently installed plugins.
-        foreach ($this->settings->plugins as $key => $plugin) {
-            if (!$plugin->installationFolder || !in_array($plugin->installationFolder, $pluginFolders)) {
-                unset($this->settings->plugins[$key]);
+            // Extract plugin folder paths from the list of installed plugins.
+            foreach (array_keys($installedPlugins) as $pluginFile) {
+                $pluginFolders[] = dirname($pluginFile);
             }
-        }
 
-        // Get a list of installed themes.
-        $installedThemes = wp_get_themes();
-        $themeFolders = array_keys($installedThemes);
-
-        // Loop through the theme settings and remove any that don't match currently installed themes.
-        foreach ($this->settings->themes as $key => $theme) {
-            if (!$theme->installationFolder || !in_array($theme->installationFolder, $themeFolders)) {
-                unset($this->settings->themes[$key]);
+            // Loop through the plugin settings and remove any that don't match currently installed plugins.
+            foreach ($this->settings->plugins as $key => $plugin) {
+                if (!$plugin->installationFolder || (!in_array($plugin->installationFolder, $pluginFolders, true)
+                    && !$this->pluginDestinationExists($plugin->installationFolder))) {
+                    unset($this->settings->plugins[$key]);
+                }
             }
-        }
 
-        // Save the updated settings to maintain consistency.
-        return $this->saveSettings();
+            // Get a list of installed themes.
+            $installedThemes = wp_get_themes();
+            $themeFolders = array_keys($installedThemes);
+
+            // Loop through the theme settings and remove any that don't match currently installed themes.
+            foreach ($this->settings->themes as $key => $theme) {
+                if (!$theme->installationFolder || !in_array($theme->installationFolder, $themeFolders)) {
+                    unset($this->settings->themes[$key]);
+                }
+            }
+
+            // Save the updated settings to maintain consistency.
+            return $this->saveSettings();
+        });
+        if (is_wp_error($result)) {
+            $this->messages[] = $result;
+            return false;
+        }
+        return $result;
     }
 
     /** Never present rejected edits as persisted values to this or other consumers. */

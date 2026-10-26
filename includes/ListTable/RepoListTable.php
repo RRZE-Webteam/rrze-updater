@@ -185,8 +185,21 @@ class RepoListTable extends WP_List_Table
         );
     }
 
+    /**
+     * Render the installed version, or a repair action for incomplete plugins.
+     *
+     * @param array $item Repository display data.
+     * @return string Escaped version and action markup.
+     */
     public function column_version($item)
     {
+        if (!empty($item['incomplete'])) {
+            $status = '<strong>' . esc_html__('Installation incomplete', 'rrze-updater') . '</strong>';
+            if (!empty($item['repairUrl'])) {
+                $status .= sprintf('<br><a href="%1$s">%2$s</a>', esc_url($item['repairUrl']), esc_html__('Reinstall plugin files', 'rrze-updater'));
+            }
+            return $status;
+        }
         $version = !empty($item['version']) ? $item['version'] : '';
 
         if (empty($item['hasUpdate']) || empty($item['updateUrl']) || empty($item['updateVersion'])) {

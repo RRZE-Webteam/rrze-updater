@@ -6,6 +6,7 @@ defined('ABSPATH') || exit;
 
 use RRZE\Updater\Settings;
 use RRZE\Updater\Config;
+use RRZE\Updater\FilesystemLock;
 use RRZE\Updater\Upgrader\RepositoryInstaller;
 use WP_Error;
 
@@ -45,14 +46,132 @@ class RepositoryManager
         ], $this->extensions($type)));
     }
 
+    /**
+     * Associate existing files under the shared filesystem lock.
+     *
+     * @param string $type Plugin or theme.
+     * @param string $repository Repository name.
+     * @param array<string, mixed> $options Source and destination options.
+     * @return string|WP_Error Success notice or failure.
+     */
     public function register(string $type, string $repository, array $options): string|WP_Error
     {
-        return $this->add($type, $repository, $options, false);
+        return FilesystemLock::withLock(fn() => $this->add($type, $repository, $options, false));
     }
 
+    /**
+     * Install and save an association without concurrent managed filesystem writes.
+     *
+     * @param string $type Plugin or theme.
+     * @param string $repository Repository name.
+     * @param array<string, mixed> $options Source and destination options.
+     * @return string|WP_Error Success notice or failure.
+     */
     public function install(string $type, string $repository, array $options): string|WP_Error
     {
-        return $this->add($type, $repository, $options, true);
+        return FilesystemLock::withLock(fn() => $this->add($type, $repository, $options, true));
+    }
+
+    /**
+     * Validate a plugin source without applying destination-conflict rules.
+     *
+     * Used by source changes and explicit repairs, which keep an existing folder.
+     * Remote requests operate on a private connector so rejected candidates do
+     * not modify the live registry's warnings, versions or source configuration.
+     *
+     * @param string $repository Repository name within the connector owner.
+     * @param array<string, mixed> $options Connector, folder, branch and update policy.
+     * @return Plugin|WP_Error Checked plugin definition or validation failure.
+     */
+    public function preparePluginDefinition(string $repository, array $options): Plugin|WP_Error
+    {
+        $this->warnings = [];
+        $candidate = $this->definition('plugin', $repository, $options);
+        if (is_wp_error($candidate)) {
+            return $candidate;
+        }
+        $candidate->connector = clone $candidate->connector;
+        // A saved branch must remain valid even when tags or releases currently
+        // determine the target version; switching policies must not hide a typo.
+        $validation = $candidate->validateRemotePluginBranch($candidate->branch);
+        if (is_wp_error($validation)) {
+            return $validation;
+        }
+        $validation = $this->checkRemote($candidate);
+        return is_wp_error($validation) ? $validation : $candidate;
+    }
+
+    /**
+     * Validate and save a new source while preserving installed files and identity.
+     *
+     * @param string $id Existing plugin association ID.
+     * @param string $repository Proposed repository name.
+     * @param array<string, mixed> $options Proposed connector, branch and update policy.
+     * @return string|WP_Error Success notice or an error leaving the association intact.
+     */
+    public function changePluginSource(string $id, string $repository, array $options): string|WP_Error
+    {
+        $previous = $this->settings->getPluginById($id);
+        if (!$previous) {
+            $this->settings->reload();
+            return $this->error('unknown_plugin', __('The managed plugin no longer exists. Reload the plugin overview.', 'rrze-updater'));
+        }
+        $before = RepositorySource::fingerprint($previous);
+        $candidate = $this->preparePluginDefinition($repository, array_merge($options, ['folder' => $previous->installationFolder]));
+        if (is_wp_error($candidate)) {
+            $this->settings->reload();
+            return $candidate;
+        }
+        $candidate->id = $previous->id;
+        $candidate->localVersion = RepositorySource::fingerprint($candidate) === $before ? $previous->localVersion : '';
+
+        $result = FilesystemLock::withLock(function () use ($id, $before, $candidate): string|WP_Error {
+            // HTTP ran outside the filesystem lock. Re-read before committing so
+            // an update or another source edit cannot invalidate the candidate.
+            $current = new Settings();
+            $current->reload();
+            $persisted = $current->getPluginById($id);
+            $checkedSource = RepositorySource::fingerprint($candidate);
+            $effectiveCandidate = clone $candidate;
+            $effectiveCandidate->connector = $current->getConnectorById($candidate->connectorId);
+            if (!$persisted || RepositorySource::fingerprint($persisted) !== $before
+                || RepositorySource::fingerprint($effectiveCandidate) !== $checkedSource) {
+                return $this->error('source_changed', __('The repository source changed during validation. Reload and check the source again.', 'rrze-updater'));
+            }
+            foreach ($current->plugins as $other) {
+                if ($other->id === $id) {
+                    continue;
+                }
+                $sameRepository = $other->connectorId === $candidate->connectorId
+                    && ($candidate->connector->getType() === 'github'
+                        ? strcasecmp($other->repository, $candidate->repository) === 0
+                        : $other->repository === $candidate->repository);
+                if ($sameRepository || strcasecmp($other->installationFolder, $candidate->installationFolder) === 0) {
+                    return $this->error('conflicting_repository', __('The repository or installation folder already belongs to another managed plugin.', 'rrze-updater'));
+                }
+            }
+            // An update may have completed during validation without changing
+            // the source. Preserve that installed ref when this is only a check.
+            if ($checkedSource === $before) {
+                $candidate->localVersion = $persisted->localVersion;
+            }
+            $extensions = $this->settings->plugins;
+            foreach ($extensions as $key => $extension) {
+                if ($extension->id === $id) {
+                    $extensions[$key] = $candidate;
+                }
+            }
+            $this->settings->markSourceValidated($candidate);
+            $saved = $this->save('plugin', $extensions);
+            if (is_wp_error($saved)) {
+                return $saved;
+            }
+            return __('Repository source saved. Installed plugin files are unchanged.', 'rrze-updater');
+        });
+        if (is_wp_error($result)) {
+            $this->settings->reload();
+        }
+        return $result;
     }
 
     /** Build a read-only plan. No files or associations are changed. */
@@ -83,12 +202,20 @@ class RepositoryManager
         ];
     }
 
-    /** Execute a server-side preflight plan without resolving a newer ref. */
+    /**
+     * Execute a server-side preflight plan without resolving a newer ref.
+     *
+     * @param string $type Plugin or theme.
+     * @param string $repository Repository name.
+     * @param array<string, mixed> $options Reviewed source and destination options.
+     * @param array<string, mixed> $plan Server-side preflight result.
+     * @return string|WP_Error Success notice or failure.
+     */
     public function applyPrepared(string $type, string $repository, array $options, array $plan): string|WP_Error
     {
         // An interrupted install may have saved its association already. The
         // normal association checks recognize that case without reinstalling.
-        return $this->add($type, $repository, $options, $plan['action'] === 'install', $plan);
+        return FilesystemLock::withLock(fn() => $this->add($type, $repository, $options, $plan['action'] === 'install', $plan));
     }
 
     /** Build a plan from server-side inspection of an immutable discovered commit. */
@@ -222,6 +349,14 @@ class RepositoryManager
         return ['existing' => $existing, 'installed' => $installed];
     }
 
+    /**
+     * Build an extension only from validated source and destination values.
+     *
+     * @param string $type Plugin or theme.
+     * @param string $repository Repository name.
+     * @param array<string, mixed> $options Connector, folder, branch and policy.
+     * @return Extension|WP_Error Parsed extension or input error.
+     */
     private function definition(string $type, string $repository, array $options): Extension|WP_Error
     {
         $folder = $options['folder'] ?? $repository;
@@ -230,7 +365,10 @@ class RepositoryManager
                 return $this->error('invalid_name', 'Repository and folder must be single names without path separators or "..".');
             }
         }
-        $connector = $this->settings->getConnectorById($options['connector'] ?? '');
+        if (!is_string($options['connector'] ?? null)) {
+            return $this->error('unknown_connector', 'Unknown connector ID. Run wp rrze-updater connector list.');
+        }
+        $connector = $this->settings->getConnectorById($options['connector']);
         if (!$connector) {
             return $this->error('unknown_connector', 'Unknown connector ID. Run wp rrze-updater connector list.');
         }
