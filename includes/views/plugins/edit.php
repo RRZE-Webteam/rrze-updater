@@ -180,6 +180,7 @@ $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' =>
 <?php if ($canReplace) : ?>
     <section id="plugin-reinstall" aria-labelledby="plugin-reinstall-heading">
         <h2 id="plugin-reinstall-heading"><?php esc_html_e('Reinstall plugin files', 'rrze-updater'); ?></h2>
+        <?php echo MaintenanceNotice::render('replacement', 'plugin', '', true); ?>
         <p><?php esc_html_e('Download the target version from the saved source again. The next step shows the exact version and asks for confirmation before replacing any files.', 'rrze-updater'); ?></p>
         <form action="<?php echo esc_url(add_query_arg(['page' => 'rrze-updater-plugins', 'action' => 'replace'], self_admin_url('admin.php'))); ?>" method="post">
             <?php wp_nonce_field('rrze-updater-plugin-replacement-prepare', 'rrze-updater-nonce'); ?>

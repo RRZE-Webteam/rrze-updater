@@ -6,13 +6,6 @@ use RRZE\Updater\Core\{GithubConnector, GitlabConnector};
 use RRZE\Updater\ListTable\ConnListTable;
 
 /**
- * Supplies the super-admin identity independently of delegated capabilities.
- *
- * @return bool Fixture super-admin flag.
- */
-function is_super_admin(): bool { return $GLOBALS['token_super_admin'] ?? false; }
-
-/**
  * Formats dates deterministically in UTC for these offline checks.
  *
  * @param string $format Date format.

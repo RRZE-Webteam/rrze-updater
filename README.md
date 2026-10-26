@@ -149,6 +149,30 @@ WordPress installation/update capabilities and file-modification settings.
 Themes, CLI, repository browser and bundles do not expose replacement actions.
 Concurrent Updater file operations share a database advisory lock across networks.
 
+### Maintenance notices in network administration
+
+Authorized superadministrators see maintenance guidance before relevant managed
+plugin/theme actions in the Multisite network administration. Repair buttons and
+their existing confirmation show that **all websites sharing this WordPress
+installation** can temporarily display a maintenance message. Form submissions
+and interactive requests can fail and need to be repeated. Replacement downloads
+and validates its package before entering maintenance mode.
+
+The displayed **few seconds to a few minutes** is a rough orientation, not a
+measurement or a guaranteed upper limit. Multiple updates, large packages, slow
+servers and recovery can take longer. No timing history or additional settings
+are stored, and the notices add no confirmation steps.
+
+Core plugin/theme lists and the Updates page explain WordPress bulk/AJAX
+maintenance through a shared page notice. Automatic-update controls do not repeat
+the explanation under each entry. The Updater overview uses individual
+updates instead of core bulk updates, so only its maintenance-triggering theme
+updates receive warnings, including a conditional note for mixed selections.
+Manual plugin single updates, ordinary first installation, source edits and update
+checks do not receive a maintenance warning. These notices do not change the
+actual maintenance behavior and are not displayed on Single-Site or ordinary
+site dashboards.
+
 GitHub ZIP downloads stream over HTTPS directly to a temporary file, avoiding a
 complete archive in PHP memory. Certificate verification stays enabled. Archive
 redirects are restricted to GitHub's API and codeload hosts, and the API token is
@@ -439,9 +463,17 @@ For a disposable WordPress installation backed by MySQL, add
 wp eval-file /path/to/rrze-updater/tests/wordpress-repair.php /path/to/rrze-updater --path=/path/to/disposable-wordpress --skip-plugins --skip-themes --user=1
 ```
 
-Run once on a Single-Site installation and once on a Multisite installation.
-This fixture changes the test installation's Updater settings and creates test
-plugins, so use an isolated database and content directory. It exercises real
+On the disposable Multisite, `tests/wordpress-maintenance.php` runs that repair
+suite plus real core single, bulk/AJAX-equivalent and automatic plugin/theme
+updates against local fixture archives. It compares the maintenance marker with
+the notice classification, checks network screen visibility, and reports local
+maintenance timings for small and larger replacement packages. Use the same
+`wp eval-file` command with this filename. All HTTP is intercepted; these timings
+are a plausibility check, not an estimate for a production server.
+
+Run `wordpress-repair.php` once on a Single-Site installation and once on a
+Multisite installation. Both fixtures change the test installation's Updater
+settings and create test plugins, so use an isolated database and content directory. They exercise real
 WordPress options, activation state, filesystem operations and ZIP extraction;
 GitHub/GitLab responses are supplied locally without external API access.
 

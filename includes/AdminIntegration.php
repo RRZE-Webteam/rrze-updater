@@ -43,6 +43,57 @@ class AdminIntegration
         add_filter('set-screen-option', [$this, 'setScreenOption'], 10, 3);
         add_filter('plugin_row_meta', [$this, 'pluginRowMeta'], 10, 2);
         add_filter('theme_row_meta', [$this, 'themeRowMeta'], 10, 2);
+        add_action('network_admin_notices', [$this, 'maintenanceNotice']);
+    }
+
+    /**
+     * Explain core bulk/AJAX maintenance before network update controls are used.
+     *
+     * The notice remains outside the table that WordPress replaces after AJAX
+     * searches. Only screens with an installed managed extension are relevant.
+     *
+     * @return void
+     */
+    public function maintenanceNotice(): void
+    {
+        $base = get_current_screen()->base ?? '';
+        $base = preg_replace('/-network$/', '', $base);
+        $types = match ($base) {
+            'plugins' => ['plugin'],
+            'themes' => ['theme'],
+            'update-core' => ['plugin', 'theme'],
+            default => [],
+        };
+        foreach ($types as $type) {
+            if (!MaintenanceNotice::visible($type)) {
+                continue;
+            }
+            $installed = $type === 'plugin' ? array_keys(get_plugins()) : array_keys(wp_get_themes());
+            foreach ($installed as $target) {
+                if ($this->isManagedMaintenanceTarget($type, $target)) {
+                    echo MaintenanceNotice::render('core-bulk', $type);
+                    return; // One shared notice also covers mixed plugin/theme selections.
+                }
+            }
+        }
+    }
+
+    /**
+     * Match an installed asset to an exact managed folder without prefix collisions.
+     *
+     * @param string $type plugin or theme.
+     * @param string $target Plugin basename or theme stylesheet.
+     * @return bool Whether the asset belongs to a managed repository.
+     */
+    private function isManagedMaintenanceTarget(string $type, string $target): bool
+    {
+        $folder = $type === 'plugin' ? dirname($target) : $target;
+        foreach ($this->settings->{$type . 's'} as $extension) {
+            if ($extension->installationFolder === $folder) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Show rejected-token notices only on an authorized dashboard. */

@@ -2174,3 +2174,67 @@ msgstr "Diese Bestätigung gilt 15 Minuten lang und kann einmal verwendet werden
 #: includes/views/plugins/replace.php:44
 msgid "Confirm and replace plugin files"
 msgstr "Bestätigen und Plugin-Dateien ersetzen"
+
+#: includes/MaintenanceNotice.php:75
+msgid "After confirmation, replacing the plugin files activates WordPress maintenance mode."
+msgstr "Nach der Bestätigung wird beim Austausch der Plugin-Dateien der WordPress-Wartungsmodus aktiviert."
+
+#: includes/MaintenanceNotice.php:76
+msgid "Future automatic updates activate WordPress maintenance mode. Enabling automatic updates does not start maintenance by itself."
+msgstr "Künftige automatische Updates aktivieren den WordPress-Wartungsmodus. Das Einschalten automatischer Updates allein startet keinen Wartungsmodus."
+
+#: includes/MaintenanceNotice.php:77
+msgid "WordPress activates maintenance mode for bulk updates and updates that run directly within the list."
+msgstr "Bei Sammelaktualisierungen und Aktualisierungen, die direkt innerhalb der Liste ausgeführt werden, aktiviert WordPress den Wartungsmodus."
+
+#: includes/MaintenanceNotice.php:78
+msgid "Selecting a theme marked with a maintenance notice also activates maintenance mode during this Updater bulk action."
+msgstr "Wenn ein mit einem Wartungshinweis gekennzeichnetes Theme ausgewählt wird, aktiviert auch diese Updater-Sammelaktion den Wartungsmodus."
+
+#: includes/MaintenanceNotice.php:79
+msgid "This action activates WordPress maintenance mode."
+msgstr "Bei dieser Aktion wird der WordPress-Wartungsmodus aktiviert."
+
+#: includes/MaintenanceNotice.php:81
+msgid "All websites in this WordPress installation will temporarily be unavailable for normal use."
+msgstr "Dadurch sind alle Websites dieser WordPress-Installation vorübergehend nicht regulär erreichbar."
+
+#: includes/MaintenanceNotice.php:82
+msgid "Estimated interruption: a few seconds to a few minutes."
+msgstr "Geschätzte Unterbrechung: wenige Sekunden bis wenige Minuten."
+
+#: includes/MaintenanceNotice.php:83
+msgid "This is a rough estimate. Multiple updates, large packages, slow servers or recovery can take longer."
+msgstr "Dies ist eine grobe Orientierung. Bei mehreren Updates, großen Paketen, langsamen Servern oder einer Wiederherstellung kann es länger dauern."
+
+#: includes/MaintenanceNotice.php:84
+msgid "Visitors may see a maintenance message. Form submissions and other interactive requests may fail and need to be repeated."
+msgstr "Besucher können eine Wartungsmeldung sehen. Formularübermittlungen und andere interaktive Anfragen können fehlschlagen und müssen gegebenenfalls wiederholt werden."
+
+#: includes/MaintenanceNotice.php:86
+msgid "Download and package validation take place before maintenance mode starts."
+msgstr "Download und Paketprüfung erfolgen vor dem Wartungsmodus."
+
+#: includes/MaintenanceNotice.php:90
+msgid "Future automatic updates interrupt all websites in this WordPress installation. Enabling this setting alone does not start maintenance."
+msgstr "Künftige automatische Updates unterbrechen die Verfügbarkeit aller Websites dieser WordPress-Installation. Das Einschalten dieser Einstellung allein startet keinen Wartungsmodus."
+
+#: includes/MaintenanceNotice.php:92
+msgid "After confirmation, maintenance mode temporarily interrupts all websites in this WordPress installation."
+msgstr "Nach der Bestätigung unterbricht der Wartungsmodus vorübergehend die Verfügbarkeit aller Websites dieser WordPress-Installation."
+
+#: includes/MaintenanceNotice.php:93
+msgid "Maintenance mode temporarily interrupts all websites in this WordPress installation."
+msgstr "Der Wartungsmodus unterbricht vorübergehend die Verfügbarkeit aller Websites dieser WordPress-Installation."
+
+#: includes/MaintenanceNotice.php:96
+msgid "Rough estimate; large packages, slow servers or recovery can take longer."
+msgstr "Grobe Schätzung; bei großen Paketen, langsamen Servern oder einer Wiederherstellung kann es länger dauern."
+
+#: includes/MaintenanceNotice.php:97
+msgid "Visitors may see a maintenance message; form submissions and interactive requests may fail."
+msgstr "Besucher können eine Wartungsmeldung sehen; Formularübermittlungen und interaktive Anfragen können fehlschlagen."
+
+#: includes/MaintenanceNotice.php:101
+msgid "Temporary interruption of all websites"
+msgstr "Vorübergehende Unterbrechung aller Websites"

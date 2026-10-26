@@ -139,6 +139,12 @@ class ThemesListTable extends WP_List_Table
         );
     }
 
+    /**
+     * Render the version and any manual theme update with its maintenance guidance.
+     *
+     * @param array $item Repository row including pre-rendered maintenance markup.
+     * @return string Version, update link and authorized notice.
+     */
     public function column_version($item)
     {
         $version = !empty($item['version']) ? $item['version'] : '';
@@ -156,7 +162,7 @@ class ThemesListTable extends WP_List_Table
                 esc_html__('Update auf %s', 'rrze-updater'),
                 esc_html($item['updateVersion'])
             )
-        );
+        ) . ($item['maintenanceNotice'] ?? '');
     }
 
     public function single_row($item)

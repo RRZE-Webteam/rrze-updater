@@ -152,7 +152,7 @@ class Controller
         }
 
         foreach ($repos as $key => $value) {
-            if ($search && empty(preg_grep('/' . preg_quote($search, '/') . '/i', $value))) {
+            if ($search && empty(preg_grep('/' . preg_quote($search, '/') . '/i', array_diff_key($value, ['maintenanceNotice' => true])))) {
                 unset($repos[$key]);
                 continue;
             }
@@ -165,6 +165,7 @@ class Controller
         // Prepare the data for rendering.
         $data = [
             'listTable' => $listTable,
+            'bulkMaintenanceNotice' => $this->getBulkMaintenanceNotice($repos),
             'updateCheckItems' => $this->getRepositoryUpdateCheckItems(),
             'updateCheckDelay' => $this->getUpdateCheckDelay(),
             'updateCheckNonce' => wp_create_nonce('rrze-updater-check-updates'),
@@ -473,6 +474,7 @@ class Controller
         $repo['hasUpdate'] = false;
         $repo['updateVersion'] = '';
         $repo['updateUrl'] = '';
+        $repo['maintenanceNotice'] = '';
         $repo['incomplete'] = $type === 'plugin' && $extension && $this->isPluginIncomplete($extension);
         $repo['repairUrl'] = $repo['incomplete'] ? $this->getPluginEditUrl($extension->id) . '#plugin-reinstall' : '';
 
@@ -485,8 +487,29 @@ class Controller
         $repo['updateUrl'] = $type == 'plugin'
             ? $this->getPluginUpdateUrl($extension)
             : $this->getThemeUpdateUrl($extension);
+        $repo['maintenanceNotice'] = MaintenanceNotice::render('manual', $type, $extension->installationFolder, true);
 
         return $repo;
+    }
+
+    /**
+     * Explain overview bulk maintenance only when a selectable single update uses it.
+     *
+     * This overview calls upgrade() repeatedly, not WordPress bulk_upgrade(). The
+     * warning is conditional on selecting a marked theme and covers mixed lists
+     * without suggesting plugin-only selections will enter maintenance mode.
+     *
+     * @param array $repos Filtered repository rows available for selection.
+     * @return string Shared notice markup, or an empty string for unaffected lists.
+     */
+    private function getBulkMaintenanceNotice(array $repos): string
+    {
+        foreach ($repos as $repo) {
+            if (!empty($repo['maintenanceNotice'])) {
+                return MaintenanceNotice::render('updater-bulk', 'theme', $repo['installationFolder']);
+            }
+        }
+        return '';
     }
 
     private function getExtensionRepositoryUrl($extension): string
@@ -1525,7 +1548,7 @@ class Controller
 
         // Filter the data based on the search criteria.
         foreach ($data as $key => $value) {
-            if ($search && empty(preg_grep('/' . preg_quote($search, '/') . '/i', $value))) {
+            if ($search && empty(preg_grep('/' . preg_quote($search, '/') . '/i', array_diff_key($value, ['maintenanceNotice' => true])))) {
                 unset($data[$key]);
                 continue;
             }
@@ -2161,7 +2184,7 @@ class Controller
         // Handle theme searching and filtering
         $search = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
         foreach ($data as $key => $value) {
-            if ($search && empty(preg_grep('/' . preg_quote($search, '/') . '/i', $value))) {
+            if ($search && empty(preg_grep('/' . preg_quote($search, '/') . '/i', array_diff_key($value, ['maintenanceNotice' => true])))) {
                 unset($data[$key]);
                 continue;
             }

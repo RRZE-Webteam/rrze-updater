@@ -12,6 +12,7 @@ $actionUrl = add_query_arg(['page' => 'rrze-updater-plugins', 'action' => 'repla
     <p><strong><?php esc_html_e('All files in the destination folder will be replaced, including custom changes and leftover files.', 'rrze-updater'); ?></strong></p>
     <p><?php esc_html_e('The plugin will not be uninstalled. Plugin settings in the database and its activation state will be preserved.', 'rrze-updater'); ?></p>
 </div>
+<?php echo MaintenanceNotice::render('replacement'); ?>
 <table class="widefat striped">
     <tbody>
         <tr>

@@ -1982,3 +1982,67 @@ msgstr ""
 #: includes/views/plugins/replace.php:44
 msgid "Confirm and replace plugin files"
 msgstr ""
+
+#: includes/MaintenanceNotice.php:75
+msgid "After confirmation, replacing the plugin files activates WordPress maintenance mode."
+msgstr ""
+
+#: includes/MaintenanceNotice.php:76
+msgid "Future automatic updates activate WordPress maintenance mode. Enabling automatic updates does not start maintenance by itself."
+msgstr ""
+
+#: includes/MaintenanceNotice.php:77
+msgid "WordPress activates maintenance mode for bulk updates and updates that run directly within the list."
+msgstr ""
+
+#: includes/MaintenanceNotice.php:78
+msgid "Selecting a theme marked with a maintenance notice also activates maintenance mode during this Updater bulk action."
+msgstr ""
+
+#: includes/MaintenanceNotice.php:79
+msgid "This action activates WordPress maintenance mode."
+msgstr ""
+
+#: includes/MaintenanceNotice.php:81
+msgid "All websites in this WordPress installation will temporarily be unavailable for normal use."
+msgstr ""
+
+#: includes/MaintenanceNotice.php:82
+msgid "Estimated interruption: a few seconds to a few minutes."
+msgstr ""
+
+#: includes/MaintenanceNotice.php:83
+msgid "This is a rough estimate. Multiple updates, large packages, slow servers or recovery can take longer."
+msgstr ""
+
+#: includes/MaintenanceNotice.php:84
+msgid "Visitors may see a maintenance message. Form submissions and other interactive requests may fail and need to be repeated."
+msgstr ""
+
+#: includes/MaintenanceNotice.php:86
+msgid "Download and package validation take place before maintenance mode starts."
+msgstr ""
+
+#: includes/MaintenanceNotice.php:90
+msgid "Future automatic updates interrupt all websites in this WordPress installation. Enabling this setting alone does not start maintenance."
+msgstr ""
+
+#: includes/MaintenanceNotice.php:92
+msgid "After confirmation, maintenance mode temporarily interrupts all websites in this WordPress installation."
+msgstr ""
+
+#: includes/MaintenanceNotice.php:93
+msgid "Maintenance mode temporarily interrupts all websites in this WordPress installation."
+msgstr ""
+
+#: includes/MaintenanceNotice.php:96
+msgid "Rough estimate; large packages, slow servers or recovery can take longer."
+msgstr ""
+
+#: includes/MaintenanceNotice.php:97
+msgid "Visitors may see a maintenance message; form submissions and interactive requests may fail."
+msgstr ""
+
+#: includes/MaintenanceNotice.php:101
+msgid "Temporary interruption of all websites"
+msgstr ""

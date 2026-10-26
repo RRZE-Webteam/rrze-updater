@@ -215,7 +215,7 @@ class RepoListTable extends WP_List_Table
                 esc_html__('Update auf %s', 'rrze-updater'),
                 esc_html($item['updateVersion'])
             )
-        );
+        ) . ($item['maintenanceNotice'] ?? '');
     }
 
     public function single_row($item)

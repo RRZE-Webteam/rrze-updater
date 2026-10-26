@@ -97,6 +97,7 @@ $replacementUrl = add_query_arg(['page' => 'rrze-updater-plugins', 'action' => '
     <?php elseif (!empty($data['canReplace'])) : ?>
         <div class="notice notice-warning inline">
             <p><?php esc_html_e('The plugin folder already exists. You can review a replacement before any files are changed.', 'rrze-updater'); ?></p>
+            <?php echo MaintenanceNotice::render('replacement', 'plugin', '', true); ?>
             <?php wp_nonce_field('rrze-updater-plugin-replacement-prepare', 'rrze-updater-replacement-nonce'); ?>
             <p><button type="submit" class="button" name="rrze-updater[replacement_action]" value="prepare" formaction="<?php echo esc_url($replacementUrl); ?>"><?php esc_html_e('Replace folder and install', 'rrze-updater'); ?></button></p>
         </div>
