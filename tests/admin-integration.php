@@ -54,7 +54,8 @@ $beforeAdminIntegration = $checks;
 $savedAdminHooks = $wp_filter;
 foreach ([false, true] as $multisite) {
     $wp_filter = [];
-    [$settings, $controller] = adminSaveFixture();
+    [$settings] = adminSaveFixture();
+    $controller = new RRZE\Updater\Controller($settings);
     $settings->plugins[0]->installationFolder = $settings->themes[0]->installationFolder = 'target';
     $settings->plugins[0]->remoteVersion = 'next';
     $settings->plugins[0]->localVersion = 'current';

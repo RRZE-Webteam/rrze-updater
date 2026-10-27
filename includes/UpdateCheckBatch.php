@@ -11,7 +11,13 @@ class UpdateCheckBatch
     private const RETRY_DELAY = 60;
     private const MAX_ATTEMPTS = 3;
 
-    public function __construct(private Settings $settings, private Controller $controller) {}
+    /**
+     * Share repository settings and a UI-independent installation synchronizer.
+     *
+     * @param Settings $settings Repository state and persistence baseline.
+     * @param SettingsSynchronizer $synchronizer Reconciles installations before a new cycle.
+     */
+    public function __construct(private Settings $settings, private SettingsSynchronizer $synchronizer) {}
 
     public function hasPending(): bool
     {
@@ -26,7 +32,12 @@ class UpdateCheckBatch
         }
     }
 
-    /** A continuation can resume an existing queue, but cannot start a new cycle. */
+    /**
+     * Check one queued repository while preserving durable recovery checkpoints.
+     *
+     * @param bool $start Whether an empty queue may start a new cycle.
+     * @return void
+     */
     public function run(bool $start = true): void
     {
         global $wpdb;
@@ -43,7 +54,7 @@ class UpdateCheckBatch
             $this->settings->reload();
             $job = $this->load();
             if (!$job && $start) {
-                if ($this->controller->synchronizeSettings() === false) {
+                if (is_wp_error($this->synchronizer->synchronize())) {
                     $this->logError(__('Could not synchronize repository settings before checking for updates.', 'rrze-updater'));
                     return;
                 }

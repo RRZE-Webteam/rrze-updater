@@ -14,18 +14,20 @@ use RRZE\Updater\ListTable\ConnListTable;
  */
 function wp_date($format, $timestamp): string { return gmdate($format, $timestamp); }
 
-/**
- * Adds query parameters to an existing fixture URL.
- *
- * @param array $args New query parameters.
- * @param string $url Original URL.
- * @return string Updated URL.
- */
-function add_query_arg(array $args, string $url): string
-{
-    $parts = explode('?', $url, 2);
-    parse_str($parts[1] ?? '', $query);
-    return $parts[0] . '?' . http_build_query(array_merge($query, $args));
+if (!function_exists('add_query_arg')) {
+    /**
+     * Adds query parameters to an existing fixture URL.
+     *
+     * @param array $args New query parameters.
+     * @param string $url Original URL.
+     * @return string Updated URL.
+     */
+    function add_query_arg(array $args, string $url): string
+    {
+        $parts = explode('?', $url, 2);
+        parse_str($parts[1] ?? '', $query);
+        return $parts[0] . '?' . http_build_query(array_merge($query, $args));
+    }
 }
 
 /** Collects toolbar nodes without requiring a rendered admin page. */
@@ -245,13 +247,13 @@ foreach ([false, true] as $multisite) {
     }
 }
 check(count($discovery_requests) === 1, 'Toolbar rendering never requests provider data.');
-$table = (new ReflectionClass(ConnListTable::class))->newInstanceWithoutConstructor();
+$table = new ConnListTable();
 $status = TokenStatus::getAll($settings)['token-service'];
 check(isset($table->get_columns()['token_status']), 'Service overview has a dedicated status column.');
 check(str_contains($table->column_default(['token_status' => $status], 'token_status'), 'rrze-updater-token-warning'), 'Service overview renders a visible expiry warning.');
-$controller = new Controller($settings);
-$dataMethod = new ReflectionMethod($controller, 'getConnectorListData');
-$rows = $dataMethod->invoke($controller);
+$fixture = new AdminPageFixture($settings);
+TokenStatus::refresh($settings);
+$rows = $fixture->presenter->getConnectorListData();
 check($rows[0]['token'] === 'Configured' && isset($rows[0]['token_status']), 'Both service routes receive masked tokens and status data.');
 check(!str_contains(json_encode($rows), $settings->connectors[0]->token), 'Service list data never contains the credential.');
 

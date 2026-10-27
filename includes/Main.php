@@ -13,12 +13,15 @@ class Main
     public Settings $settings;
     protected Config $config;
 
+    /**
+     * Compose runtime components around one shared settings registry.
+     */
     public function __construct()
     {
         $this->config = new Config();
         $this->settings = new Settings();
         $this->controller = new Controller($this->settings);
-        new Cron($this->settings, $this->controller);
+        new Cron($this->settings, new SettingsSynchronizer($this->settings));
     }
 
     /**

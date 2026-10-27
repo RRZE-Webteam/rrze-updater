@@ -91,31 +91,6 @@ class PluginRepairServiceFixture extends PluginReplacement
     }
 }
 
-/** Controller fixture exposing the request boundary with a replaceable service. */
-class PluginRepairControllerFixture extends AdminSaveControllerFixture
-{
-    /**
-     * Initialize the UI with an isolated replacement service.
-     *
-     * @param Settings $settings Shared settings.
-     * @param PluginRepairServiceFixture $replacement Replacement service fixture.
-     */
-    public function __construct(Settings $settings, public PluginRepairServiceFixture $replacement)
-    {
-        parent::__construct($settings);
-    }
-
-    /**
-     * Supply the non-mutating fixture service.
-     *
-     * @return PluginReplacement Replacement service.
-     */
-    protected function createPluginReplacement(): PluginReplacement
-    {
-        return $this->replacement;
-    }
-}
-
 /**
  * Configure an authorized request with fresh settings and a recording service.
  *
@@ -137,7 +112,7 @@ function pluginRepairAdminFixture(string $operation = 'prepare', bool $network =
     $_POST = ['rrze-updater-nonce' => 'rrze-updater-plugin-replacement-' . $operation,
         'rrze-updater' => ['replacement_action' => $operation, 'plugin_id' => 'admin-plugin', 'review_id' => 'review-fixture']];
     $service = new PluginRepairServiceFixture();
-    return [$settings, new PluginRepairControllerFixture($settings, $service), $service];
+    return [$settings, new AdminPageFixture($settings, null, $service), $service];
 }
 
 $beforePluginRepairAdmin = $checks;
@@ -148,8 +123,8 @@ foreach ([false, true] as $network) {
     [$settings, $controller, $service] = pluginRepairAdminFixture('prepare', $network);
     $_POST['rrze-updater'] += ['repository' => 'spoofed', 'connectorId' => 'other', 'installationFolder' => 'other'];
     $before = $settings->asArray();
-    $controller->getPluginIndex();
-    check($controller->shown['view'] === 'plugins/replace' && $service->calls === [
+    $controller->plugins->getPluginIndex();
+    check($controller->renderer->shown['view'] === 'plugins/replace' && $service->calls === [
         ['prepare', 'package', ['connector' => 'admin-connector', 'folder' => 'package', 'branch' => 'master', 'updates' => 'commits'], 'admin-plugin'],
     ], 'Reinstallation prepares only the saved source and immutable folder on single-site and multisite.');
     check($settings->asArray() === $before && (new Settings())->asArray() === $before, 'Preparing a review cannot change source settings.');
@@ -166,59 +141,59 @@ foreach ([false, true] as $network) {
             case 'superadmin': $token_super_admin = false; break;
             default: $bundle_caps[$denial] = false;
         }
-        check(adminDeletionRejected(fn() => $controller->getPluginIndex()), 'Replacement rejects unauthorized or non-POST requests: ' . $denial);
+        check(adminDeletionRejected(fn() => $controller->plugins->getPluginIndex()), 'Replacement rejects unauthorized or non-POST requests: ' . $denial);
         check($service->calls === [], 'Rejected replacement never reaches its service.');
     }
 }
 
 [$settings, $controller, $service] = pluginRepairAdminFixture();
 $bundle_mods = false;
-$controller->getPluginIndex();
+$controller->plugins->getPluginIndex();
 check($service->calls === [] && is_wp_error($controller->notices()[0] ?? null), 'Disabled filesystem changes block review preparation.');
 
 [$settings, $controller, $service] = pluginRepairAdminFixture();
 $_POST['rrze-updater']['repository'] = ['malformed'];
-$controller->getPluginIndex();
-check($service->calls === [] && $controller->shown['view'] === '', 'Malformed replacement fields are rejected before the service.');
+$controller->plugins->getPluginIndex();
+check($service->calls === [] && $controller->renderer->shown['view'] === '', 'Malformed replacement fields are rejected before the service.');
 
 [$settings, $controller, $service] = pluginRepairAdminFixture();
 $_POST['rrze-updater'] = ['replacement_action' => 'prepare', 'repository' => 'new-package',
     'connectorId' => 'admin-connector', 'installationFolder' => 'leftover', 'branch' => 'main', 'updates' => 'releases'];
 $_POST['rrze-updater-replacement-nonce'] = $_POST['rrze-updater-nonce'];
 $_POST['rrze-updater-nonce'] = 'rrze-updater-plugin-add';
-$controller->getPluginIndex();
+$controller->plugins->getPluginIndex();
 check($service->calls === [['prepare', 'new-package', ['connector' => 'admin-connector', 'folder' => 'leftover',
     'branch' => 'main', 'updates' => 'releases'], null]], 'The add form prepares its chosen destination using its own replacement nonce.');
 
 foreach (['apply', 'cancel'] as $operation) {
     [$settings, $controller, $service] = pluginRepairAdminFixture($operation);
     $_POST['rrze-updater'] += ['repository' => 'spoofed', 'installationFolder' => 'spoofed', 'commit' => 'spoofed'];
-    $controller->getPluginIndex();
+    $controller->plugins->getPluginIndex();
     check($service->calls === [['review', 'review-fixture'], [$operation, 'review-fixture']], 'Confirmation and cancellation use only the server-side review ID.');
-    check($controller->shown['view'] === 'plugins/edit', 'A completed request returns to the persisted plugin editor.');
+    check($controller->renderer->shown['view'] === 'plugins/edit', 'A completed request returns to the persisted plugin editor.');
     check(str_contains(implode(' ', $controller->notices()), $operation === 'cancel' ? 'cancelled' : 'successfully'), 'The result explains whether files changed.');
 
     [$settings, $controller, $service] = pluginRepairAdminFixture($operation);
     $service->review = new WP_Error('expired_review', 'Prepare a new review.');
-    $controller->getPluginIndex();
+    $controller->plugins->getPluginIndex();
     check($service->calls === [['review', 'review-fixture']], 'An invalid or expired review never reaches apply or cancel.');
     check(count(array_filter($controller->notices(), 'is_wp_error')) === 1, 'Invalid reviews produce an actionable failure.');
 }
 
 [$settings, $controller, $service] = pluginRepairAdminFixture('apply');
 $service->result = new WP_Error('replacement_failed', 'Restored the original plugin files.');
-$controller->getPluginIndex();
+$controller->plugins->getPluginIndex();
 check(count($controller->notices()) === 1 && is_wp_error($controller->notices()[0]), 'Failed replacement never displays a success notice.');
 
 [$settings, $controller, $service] = pluginRepairAdminFixture();
 $service->review = new WP_Error('rrze_updater_managed_destination', 'Already managed.', ['plugin_id' => 'admin-plugin']);
-$controller->getPluginIndex();
-check($controller->shown['view'] === 'plugins/add' && str_contains($controller->shown['data']['managedPluginUrl'], 'id=admin-plugin'),
+$controller->plugins->getPluginIndex();
+check($controller->renderer->shown['view'] === 'plugins/add' && str_contains($controller->renderer->shown['data']['managedPluginUrl'], 'id=admin-plugin'),
     'An existing association leads to its editor rather than silently changing its source.');
 
 [$settings, $controller, $service] = pluginRepairAdminFixture();
 $service->throw = true;
-$controller->getPluginIndex();
+$controller->plugins->getPluginIndex();
 check(!str_contains(serialize($controller->notices()), 'private-fixture-token'), 'Transport exception text is never exposed by the UI.');
 
 [$settings, $controller, $service] = pluginRepairAdminFixture();
@@ -241,7 +216,7 @@ foreach (['invalid', ['malformed']] as $nonce) {
     $_GET = ['action' => 'edit', 'id' => 'admin-plugin'];
     $_POST = ['rrze-updater-nonce' => $nonce, 'rrze-updater' => ['id' => 'admin-plugin',
         'repository' => 'spoofed', 'connectorId' => 'admin-connector', 'branch' => 'main', 'updates' => 'commits']];
-    $controller->getPluginIndex();
+    $controller->plugins->getPluginIndex();
     check($settings->asArray() === $before && (new Settings())->asArray() === $before,
         'An invalid or malformed edit nonce cannot change the source.');
 }
@@ -251,20 +226,18 @@ foreach (['invalid', ['malformed']] as $nonce) {
 $extension = $settings->plugins[0];
 $extension->remoteVersion = 'new';
 $extension->localVersion = 'old';
-$rowMethod = new ReflectionMethod(RRZE\Updater\Controller::class, 'addRepoUpdateData');
-$row = $rowMethod->invoke($controller, ['version' => '1.0'], $extension, 'plugin');
+$row = $controller->presenter->addRepoUpdateData(['version' => '1.0'], $extension, 'plugin');
 check($row['incomplete'] && !$row['hasUpdate'] && $row['updateUrl'] === '' && str_contains($row['repairUrl'], '#plugin-reinstall'),
     'Unrecognized plugins expose a repair action and no ordinary update link.');
 foreach ([PluginsListTable::class, RepoListTable::class] as $tableClass) {
-    $table = (new ReflectionClass($tableClass))->newInstanceWithoutConstructor();
+    $table = new $tableClass();
     $html = $table->column_version($row);
     check(str_contains($html, 'Installation incomplete') && str_contains($html, '#plugin-reinstall') && !str_contains($html, 'upgrade-plugin'),
         'Both overview tables show the incomplete installation with a repair link.');
 }
-$bulkMethod = new ReflectionMethod(RRZE\Updater\Controller::class, 'getRepoBulkUpdateItems');
-check($bulkMethod->invoke($controller, ['admin-plugin']) === [], 'Combined bulk update also skips incomplete plugins.');
+check($controller->updates->items(['admin-plugin']) === [], 'Combined bulk update also skips incomplete plugins.');
 $extension->installationFolder = 'target';
-$row = $rowMethod->invoke($controller, ['version' => '1.0'], $extension, 'plugin');
+$row = $controller->presenter->addRepoUpdateData(['version' => '1.0'], $extension, 'plugin');
 check(!$row['incomplete'] && $row['hasUpdate'], 'Recognized plugins retain their normal update action.');
 
 // A private temporary directory exercises the synchronization boundary safely.
@@ -285,10 +258,10 @@ try {
     check($settings->save(), 'Save the damaged and missing plugin fixtures.');
     $beforeSynchronization = $settings->asArray();
     $wpdb->deny = true;
-    check(!$controller->synchronizeSettings() && $settings->asArray() === $beforeSynchronization,
+    check(!$controller->plugins->synchronizeSettings() && $settings->asArray() === $beforeSynchronization,
         'Synchronization cannot prune directory mappings while another filesystem operation holds the lock.');
     $wpdb->deny = false;
-    check($controller->synchronizeSettings(), 'Synchronization persists its result.');
+    check($controller->plugins->synchronizeSettings(), 'Synchronization persists its result.');
     check(count($settings->plugins) === 1 && reset($settings->plugins)->id === 'admin-plugin',
         'Synchronization retains a remaining directory but removes a completely absent installation.');
 
@@ -306,9 +279,9 @@ try {
             'repository' => 'package', 'connectorId' => 'admin-connector', 'installationFolder' => $repairFolder,
             'branch' => 'main', 'updates' => 'commits',
         ]];
-        $controller->getPluginIndex();
-        check($controller->shown['view'] === 'plugins/add', 'An ordinary install never overwrites the existing directory.');
-        $data = $controller->shown['data'];
+        $controller->plugins->getPluginIndex();
+        check($controller->renderer->shown['view'] === 'plugins/add', 'An ordinary install never overwrites the existing directory.');
+        $data = $controller->renderer->shown['data'];
         check($managed ? !empty($data['managedPluginUrl']) && empty($data['canReplace']) : !empty($data['canReplace']),
             'Existing folders offer explicit review; managed destinations lead to their existing editor.');
     }

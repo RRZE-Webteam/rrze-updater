@@ -26,9 +26,4 @@ defined('ABSPATH') || exit;
             </div>
     <?php endif;
     endforeach;
-    if ($data['view']) :
-        include $data['view'];
-    endif;
     ?>
-    <hr>
-</div>

@@ -30,23 +30,6 @@ function wp_schedule_single_event($time, $hook, $args = [], $wpError = false) {
 class AdminSaveConnectorFixture extends LegacyInstallConnectorFixture {
     public function asArray(): array { return RRZE\Updater\Core\GithubConnector::createFromArray(parent::asArray())->asArray(); }
 }
-class AdminSaveControllerFixture extends Controller {
-    public array $shown = [];
-    protected function display($view, $data = []) { $this->shown = compact('view', 'data'); }
-    protected function pluginVersion($folder, $repository) { return '1.0'; }
-    protected function themeVersion($folder) { return '1.0'; }
-    protected function lastChecked($timestamp) { return (string) $timestamp; }
-    public function notices(): array { return $this->messages; }
-    public function submit(string $kind): void {
-        match ($kind) {
-            'connector' => $this->postConnectorEdit(),
-            'plugin' => $this->postPluginEdit(),
-            'theme' => $this->postThemeEdit(),
-            'add' => $this->postConnectorAdd(),
-            'settings' => $this->getSettingsIndex(),
-        };
-    }
-}
 function adminSaveFixture(): array {
     $GLOBALS['storage'] = []; $GLOBALS['fail_save'] = false; $GLOBALS['wpdb']->deny = false;
     $GLOBALS['admin_schedule_calls'] = []; $GLOBALS['invalidated'] = [];
@@ -61,7 +44,7 @@ function adminSaveFixture(): array {
         'repository' => 'package', 'installationFolder' => 'package', 'branch' => 'master', 'updates' => 'commits'])];
     $settings->plugins[0]->connector = $settings->themes[0]->connector = $connector;
     $settings->save();
-    return [$settings, new AdminSaveControllerFixture($settings)];
+    return [$settings, new AdminPageFixture($settings)];
 }
 $beforeAdminSaves = $checks;
 $savedAdminSaveMultisite = $multisite;
@@ -90,7 +73,12 @@ foreach (['connector', 'plugin', 'theme', 'settings'] as $kind) {
         $fail_save = $outcome === 'database';
         $wpdb->deny = $outcome === 'lock';
         if ($kind === 'settings' && $outcome !== 'success') $_POST['rrze-updater-send-now'] = '1';
-        $controller->submit($kind);
+        match ($kind) {
+            'connector' => $controller->services->postConnectorEdit(),
+            'plugin' => $controller->plugins->postPluginEdit(),
+            'theme' => $controller->themes->postThemeEdit(),
+            'settings' => $controller->services->getSettingsIndex(),
+        };
         $fail_save = $wpdb->deny = false;
         $errors = array_values(array_filter($controller->notices(), 'is_wp_error'));
         check(count($errors) === ($outcome === 'success' ? 0 : 1), "$kind/$outcome reports failed persistence exactly once.");
@@ -105,7 +93,7 @@ foreach (['connector', 'plugin', 'theme', 'settings'] as $kind) {
                 && $settings->themes[0]->lastChecked > 0,
                 'A theme source edit retains its fresh remote check after generic source invalidation.');
         }
-        $data = $controller->shown['data'];
+        $data = $controller->renderer->shown['data'];
         if ($kind === 'connector') check($data['connector']->token === $settings->connectors[0]->token, 'Connector form shows the persisted token.');
         elseif ($kind === 'settings') check($data['settings'] === $settings->options, 'General settings form shows persisted values.');
         else {
@@ -137,11 +125,16 @@ foreach (['plugin', 'theme'] as $kind) {
         }
         $_POST['rrze-updater'] = ['id' => 'admin-' . $kind, 'repository' => 'other',
             'connectorId' => 'admin-connector', 'branch' => 'main', 'updates' => 'commits'];
-        $controller->submit($kind);
+        match ($kind) {
+            'connector' => $controller->services->postConnectorEdit(),
+            'plugin' => $controller->plugins->postPluginEdit(),
+            'theme' => $controller->themes->postThemeEdit(),
+            'settings' => $controller->services->getSettingsIndex(),
+        };
         check(count(array_filter($controller->notices(), 'is_wp_error')) === 1, 'Registry rejection is shown as a save error.');
         check($settings->asArray() === (new Settings())->asArray(), 'Rejected or deleted associations are reloaded in place.');
-        if ($outcome === 'duplicate') check($controller->shown['data'][$kind]->repository === 'package', 'Duplicate edit does not change the displayed update source.');
-        else check($controller->shown['view'] === '' && $settings->$property === [], 'Concurrent deletion is not resurrected or rendered as an editable record.');
+        if ($outcome === 'duplicate') check($controller->renderer->shown['data'][$kind]->repository === 'package', 'Duplicate edit does not change the displayed update source.');
+        else check($controller->renderer->shown['view'] === '' && $settings->$property === [], 'Concurrent deletion is not resurrected or rendered as an editable record.');
     }
 }
 // Failed creation and deletions restore associations for all consumers of Settings.
@@ -154,18 +147,19 @@ foreach (['add', 'delete-plugin', 'delete-theme', 'delete-connector', 'synchroni
     $fail_save = true;
     if ($operation === 'add') {
         $_POST['rrze-updater'] = ['owner' => 'new-owner', 'type' => 'github', 'token' => 'new-fixture-token'];
-        $controller->submit('add');
-        check($controller->shown['view'] === 'connectors/add', 'Failed creation stays on the form without a success redirect.');
+        $controller->services->postConnectorAdd();
+        check($controller->renderer->shown['view'] === 'connectors/add', 'Failed creation stays on the form without a success redirect.');
     } elseif ($operation === 'synchronize') {
-        $controller->synchronizeSettings();
+        $controller->plugins->synchronizeSettings();
     } elseif ($operation === 'ajax-check') {
         $_POST = ['nonce' => 'rrze-updater-check-updates', 'id' => 'admin-plugin', 'type' => 'plugin'];
-        $controller->ajaxCheckRepositoryUpdate();
+        $controller->repositories->ajaxCheckRepositoryUpdate();
         check($bundle_response['success'] === false && $bundle_response['status'] === 409, 'AJAX returns an error when checked metadata cannot be persisted.');
     } else {
         $kind = substr($operation, strlen('delete-'));
         $method = $kind . 'Delete';
-        $controller->$method('admin-' . $kind);
+        $page = match ($kind) { 'plugin' => $controller->plugins, 'theme' => $controller->themes, 'connector' => $controller->services };
+        $page->$method('admin-' . $kind);
     }
     $fail_save = false;
     check($settings->asArray() === $before && (new Settings())->asArray() === $before, "$operation restores rejected registry mutations in place.");

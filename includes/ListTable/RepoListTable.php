@@ -4,7 +4,6 @@ namespace RRZE\Updater\ListTable;
 
 defined('ABSPATH') || exit;
 
-use RRZE\Updater\Controller;
 use RRZE\Updater\Config;
 use WP_List_Table;
 
@@ -18,24 +17,23 @@ use WP_List_Table;
 class RepoListTable extends WP_List_Table
 {
     /**
-     * @var Controller $controller The controller object for repository management.
-     */
-    protected $controller;
-
-    /**
      * @var array $listData An array of repository data to be displayed in the table.
      */
-    public $listData;
+    public array $listData;
+
+    /** @var string Validated column used by the current sort. */
+    private string $sortColumn = 'repository';
+
+    /** @var bool Whether rows use ascending order within each update group. */
+    private bool $sortAscending = true;
 
     /**
      * Constructor to Initialize Repository List Table
      *
-     * @param Controller $controller The controller object for repository management.
      * @param array $listData An array of repository data to be displayed in the table.
      */
-    public function __construct(Controller $controller, $listData = [])
+    public function __construct(array $listData = [])
     {
-        $this->controller = $controller;
         $this->listData = $listData;
 
         parent::__construct([
@@ -280,61 +278,17 @@ class RepoListTable extends WP_List_Table
     }
 
     /**
-     * Process Bulk Actions
-     *
-     * This method processes bulk actions, such as deleting repositories.
-     */
-    public function process_bulk_action()
-    {
-        if ('delete' === $this->current_action()) {
-            $repos = $_GET['repositories'] ?? '';
-            if (!empty($repos) && is_array($repos)) {
-                if (($_GET['rrze-updater-bulk-delete-confirmed'] ?? '') !== '1') {
-                    return;
-                }
-
-                $nonce = $_GET['_wpnonce'] ?? '';
-                if (!is_string($nonce) || !wp_verify_nonce($nonce, 'bulk-' . $this->_args['plural'])) {
-                    wp_die(esc_html__('Unable to submit this form, please refresh and try again.', 'rrze-updater'));
-                }
-                if (!current_user_can('update_plugins') || !current_user_can('update_themes')) {
-                    wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
-                }
-
-                foreach ($repos as $id) {
-                    foreach ($this->listData as $key => $subary) {
-                        if ($subary['id'] == $id) {
-                            unset($this->listData[$key]);
-                        }
-                    }
-                    $this->controller->pluginDelete($id);
-                    $this->controller->themeDelete($id);
-                }
-            }
-        }
-
-        if ('update' === $this->current_action()) {
-            $repos = $_GET['repositories'] ?? '';
-            if (empty($repos) || !is_array($repos)) {
-                return;
-            }
-
-            $this->controller->repoBulkUpdate($repos);
-            exit;
-        }
-    }
-
-    /**
      * Prepare Table Items
      *
      * This method prepares the items to be displayed in the table,
-     * including sorting, pagination, and bulk action processing.
+     * including sorting and pagination only.
+     *
+     * @return void
      */
     public function prepare_items()
     {
+        $this->readSortParameters();
         usort($this->listData, [$this, 'sortItems']);
-
-        $this->process_bulk_action();
 
         $this->_column_headers = $this->get_column_info();
 
@@ -351,14 +305,13 @@ class RepoListTable extends WP_List_Table
         ]);
     }
 
-    private function sortItems(array $a, array $b): int {
-        $aHasUpdate = !empty($a['hasUpdate']);
-        $bHasUpdate = !empty($b['hasUpdate']);
-
-        if ($aHasUpdate !== $bHasUpdate) {
-            return $aHasUpdate ? -1 : 1;
-        }
-
+    /**
+     * Read the request once so comparisons operate on a stable sort definition.
+     *
+     * @return void
+     */
+    private function readSortParameters(): void
+    {
         $orderby = (!empty($_REQUEST['orderby']) && is_string($_REQUEST['orderby']))
             ? sanitize_key($_REQUEST['orderby'])
             : 'repository';
@@ -368,18 +321,43 @@ class RepoListTable extends WP_List_Table
             $orderby = 'repository';
         }
 
-        $order = (!empty($_REQUEST['order']) && $_REQUEST['order'] === 'desc') ? 'desc' : 'asc';
-        $aValue = $this->getSortValue($a, $orderby);
-        $bValue = $this->getSortValue($b, $orderby);
+        $this->sortColumn = $orderby;
+        $this->sortAscending = empty($_REQUEST['order']) || $_REQUEST['order'] !== 'desc';
+    }
+
+    /**
+     * Keep available updates first, then compare the selected display values.
+     *
+     * @param array $a First display row.
+     * @param array $b Second display row.
+     * @return int Natural, case-insensitive comparison within each update group.
+     */
+    private function sortItems(array $a, array $b): int {
+        $aHasUpdate = !empty($a['hasUpdate']);
+        $bHasUpdate = !empty($b['hasUpdate']);
+
+        if ($aHasUpdate !== $bHasUpdate) {
+            return $aHasUpdate ? -1 : 1;
+        }
+
+        $aValue = $this->getSortValue($a, $this->sortColumn);
+        $bValue = $this->getSortValue($b, $this->sortColumn);
         $result = strnatcasecmp($aValue, $bValue);
 
-        if ($result === 0 && $orderby !== 'repository') {
+        if ($result === 0 && $this->sortColumn !== 'repository') {
             $result = strnatcasecmp((string) ($a['repository'] ?? ''), (string) ($b['repository'] ?? ''));
         }
 
-        return ($order === 'asc') ? $result : -$result;
+        return $this->sortAscending ? $result : -$result;
     }
 
+    /**
+     * Extract visible text while preserving the existing display-name fallback.
+     *
+     * @param array $item Display row.
+     * @param string $orderby Validated column key.
+     * @return string Plain text used for sorting.
+     */
     private function getSortValue(array $item, string $orderby): string {
         if ($orderby == 'repository' && !empty($item['displayName'])) {
             return wp_strip_all_tags((string) $item['displayName']);

@@ -20,14 +20,14 @@ class ConnListTable extends WP_List_Table
     /**
      * @var array $listData An array of connector data to be displayed in the table.
      */
-    public $listData;
+    public array $listData;
 
     /**
      * Constructor to Initialize Connector List Table
      *
      * @param array $listData An array of connector data to be displayed in the table.
      */
-    public function __construct($listData = [])
+    public function __construct(array $listData = [])
     {
         $this->listData = $listData;
 
@@ -158,23 +158,26 @@ class ConnListTable extends WP_List_Table
      * Prepare Table Items
      *
      * This method prepares the items to be displayed in the table,
-     * including sorting, pagination, and bulk action processing.
+     * including sorting and pagination only.
+     *
+     * @return void
      */
     public function prepare_items()
     {
+        $orderby = !empty($_REQUEST['orderby']) ? $_REQUEST['orderby'] : 'display';
+        $orderby = in_array($orderby, ['display', 'owner', 'repocount'], true) ? $orderby : 'display';
+        $ascending = empty($_REQUEST['order']) || $_REQUEST['order'] === 'asc';
+
         /**
-         * Compares scalar columns, ignoring unsupported sort parameters.
+         * Compare connector columns using the established lexical ordering.
          *
          * @param array $a First connector row.
          * @param array $b Second connector row.
-         * @return int Sort comparison.
+         * @return int Comparison in the requested direction.
          */
-        usort($this->listData, function ($a, $b) {
-            $orderby = (!empty($_REQUEST['orderby'])) ? $_REQUEST['orderby'] : 'display'; // If no sort, default to display
-            $orderby = in_array($orderby, ['display', 'owner', 'repocount'], true) ? $orderby : 'display';
-            $order = (!empty($_REQUEST['order'])) ? $_REQUEST['order'] : 'asc'; // If no order, default to asc
-            $result = strcmp((string) $a[$orderby], (string) $b[$orderby]); // Determine sort order
-            return ($order === 'asc') ? $result : -$result; // Send final sort direction to usort
+        usort($this->listData, static function (array $a, array $b) use ($orderby, $ascending): int {
+            $result = strcmp((string) $a[$orderby], (string) $b[$orderby]);
+            return $ascending ? $result : -$result;
         });
 
         $this->_column_headers = $this->get_column_info();

@@ -50,7 +50,7 @@ $settings->plugins[0]->localVersion = $settings->themes[0]->localVersion = 'old'
 $settings->plugins[0]->remoteVersion = $settings->themes[0]->remoteVersion = 'new';
 $source_test_themes = ['target' => new AdminThemeFixture(['Name' => 'Example theme'])];
 $wp_filter = [];
-$admin = new AdminIntegration($settings, $controller, new Config());
+$admin = new AdminIntegration($settings, new Controller($settings), new Config());
 $admin->register();
 foreach (['plugins', 'plugins-network', 'themes', 'themes-network', 'update-core', 'update-core-network', 'dashboard', 'toplevel_page_rrze-updater'] as $base) {
     $admin_screen = (object) ['base' => $base];
@@ -77,21 +77,19 @@ foreach (['plugin' => 'target/target.php', 'theme' => 'target'] as $type => $tar
     $admin_network_screen = true;
 }
 
-$addData = new ReflectionMethod(Controller::class, 'addRepoUpdateData');
-$bulk = new ReflectionMethod(Controller::class, 'getBulkMaintenanceNotice');
-$pluginRow = $addData->invoke($controller, ['installationFolder' => 'target'], $settings->plugins[0], 'plugin');
-$themeRow = $addData->invoke($controller, ['installationFolder' => 'target'], $settings->themes[0], 'theme');
+$pluginRow = $controller->presenter->addRepoUpdateData(['installationFolder' => 'target'], $settings->plugins[0], 'plugin');
+$themeRow = $controller->presenter->addRepoUpdateData(['installationFolder' => 'target'], $settings->themes[0], 'theme');
 check($pluginRow['maintenanceNotice'] === '' && $themeRow['maintenanceNotice'] !== '', 'Overview marks only manual updates that enter maintenance.');
-check($bulk->invoke($controller, [$pluginRow]) === '', 'Plugin-only overview selection receives no false bulk warning.');
-check(str_contains($bulk->invoke($controller, [$pluginRow, $themeRow]), 'Selecting a theme marked'), 'Mixed overview explains which selected item can trigger maintenance.');
+check($controller->presenter->getBulkMaintenanceNotice([$pluginRow]) === '', 'Plugin-only overview selection receives no false bulk warning.');
+check(str_contains($controller->presenter->getBulkMaintenanceNotice([$pluginRow, $themeRow]), 'Selecting a theme marked'), 'Mixed overview explains which selected item can trigger maintenance.');
 foreach ([RepoListTable::class, ThemesListTable::class] as $class) {
-    $table = (new ReflectionClass($class))->newInstanceWithoutConstructor();
+    $table = new $class();
     $html = $table->column_version($themeRow + ['version' => '1.0']);
     check(str_contains($html, esc_url($themeRow['updateUrl'])) && str_contains($html, 'rrze-updater-maintenance-hint'), 'The existing update link retains its nearby notice.');
 }
 $settings->themes[0]->remoteVersion = 'old';
-$upToDate = $addData->invoke($controller, ['installationFolder' => 'target'], $settings->themes[0], 'theme');
-check($upToDate['maintenanceNotice'] === '' && $bulk->invoke($controller, [$upToDate]) === '', 'An up-to-date theme does not warn about a nonexistent update action.');
+$upToDate = $controller->presenter->addRepoUpdateData(['installationFolder' => 'target'], $settings->themes[0], 'theme');
+check($upToDate['maintenanceNotice'] === '' && $controller->presenter->getBulkMaintenanceNotice([$upToDate]) === '', 'An up-to-date theme does not warn about a nonexistent update action.');
 
 $review = (new PluginRepairServiceFixture())->review;
 $html = adminOutput(static function () use ($review): void {

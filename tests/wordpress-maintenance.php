@@ -11,6 +11,8 @@ require __DIR__ . '/wordpress-repair.php';
 use RRZE\Updater\{AdminIntegration, Config, Controller, MaintenanceNotice, Settings};
 use RRZE\Updater\Core\{GithubConnector, Plugin, Theme};
 use RRZE\Updater\Upgrader\PluginPackageReplacement;
+use RRZE\Updater\Admin\{AdminRenderer, RepositoryUpdateRunner};
+use RRZE\Updater\InstalledExtensions;
 
 if (!is_multisite()) {
     throw new RuntimeException('The maintenance integration requires a disposable Multisite.');
@@ -82,6 +84,25 @@ class MaintenanceMeasuredReplacement extends PluginPackageReplacement
             rrzeRepairAssert(is_file(ABSPATH . '.maintenance'), 'Replacement activates real WordPress maintenance.');
         }
         return $result;
+    }
+}
+
+/** Render production progress fragments without requiring the plugin lifecycle proxy to expose paths. */
+class MaintenanceProgressRenderer extends AdminRenderer
+{
+    /** @param string $source Absolute source repository directory. */
+    public function __construct(private string $source) {}
+
+    /**
+     * Include the same fragments used by a normal administrative update.
+     *
+     * @param string $view Relative view name.
+     * @param array $data Explicit rendering data.
+     * @return void
+     */
+    public function partial(string $view, array $data = []): void
+    {
+        include $this->source . '/includes/views/' . $view . '.php';
     }
 }
 
@@ -178,6 +199,46 @@ try {
             'Notice classification matches actual maintenance: ' . $action . '/' . $folder . ' observed=' . wp_json_encode($maintenanceObserved));
         rrzeRepairAssert(!file_exists(ABSPATH . '.maintenance'), 'Core cleans its maintenance marker after updating.');
     }
+
+    // Exercise the extracted runner itself with both real single upgraders.
+    $runnerSettings = new Settings();
+    $runnerOffers = [];
+    foreach (['plugin' => 'maintenance-plugin', 'theme' => 'maintenance-theme'] as $type => $folder) {
+        $archive = $maintenanceTemp . '/runner-' . $type . '.zip';
+        maintenancePackage($type, $folder);
+        maintenancePackage($type, $folder, $archive);
+        $target = $type === 'plugin' ? $folder . '/main.php' : $folder;
+        $definition = ['id' => 'runner-' . $type, 'repository' => $folder, 'installationFolder' => $folder,
+            'localVersion' => 'before', 'remoteVersion' => 'after'];
+        $runnerSettings->{$type . 's'} = [$type === 'plugin' ? Plugin::createFromArray($definition) : Theme::createFromArray($definition)];
+        $offer = ['slug' => $folder, $type => $target, 'new_version' => '2.0', 'package' => $archive, 'url' => 'https://fixture.invalid'];
+        $runnerOffers[$type] = (object) ['last_checked' => time(), 'checked' => [$target => '1.0'],
+            'response' => [$target => $type === 'plugin' ? (object) $offer : $offer], 'no_update' => []];
+    }
+    /** @return object Local plugin offer, even after the runner refreshes core caches. */
+    $runnerPluginOffer = static fn() => $runnerOffers['plugin'];
+    /** @return object Local theme offer, even after the runner refreshes core caches. */
+    $runnerThemeOffer = static fn() => $runnerOffers['theme'];
+    add_filter('site_transient_update_plugins', $runnerPluginOffer);
+    add_filter('site_transient_update_themes', $runnerThemeOffer);
+    wp_clean_plugins_cache(false);
+    wp_clean_themes_cache(false);
+    $maintenanceObserved = [];
+    $runnerBufferLevel = ob_get_level();
+    ob_start();
+    try {
+        (new RepositoryUpdateRunner($runnerSettings, new InstalledExtensions(), new MaintenanceProgressRenderer($repairSource)))
+            ->run(['runner-plugin', 'runner-theme']);
+    } finally {
+        // Core may flush and remove progress buffers while it installs files.
+        while (ob_get_level() > $runnerBufferLevel) ob_end_clean();
+        remove_filter('site_transient_update_plugins', $runnerPluginOffer);
+        remove_filter('site_transient_update_themes', $runnerThemeOffer);
+    }
+    rrzeRepairAssert($maintenanceObserved === [false, true], 'The real mixed runner preserves plugin-single then current-theme maintenance behavior.');
+    rrzeRepairAssert(get_plugin_data(WP_PLUGIN_DIR . '/maintenance-plugin/main.php')['Version'] === '2.0'
+        && wp_get_theme('maintenance-theme')->get('Version') === '2.0', 'Both real single upgraders install the target files through the extracted runner.');
+    rrzeRepairAssert(!file_exists(ABSPATH . '.maintenance'), 'The mixed runner leaves no maintenance marker.');
 
     $durations = [];
     foreach ([0, 1500] as $files) {

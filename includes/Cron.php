@@ -17,9 +17,9 @@ class Cron
     private $settings;
 
     /**
-     * @var Controller The controller object for handling updates and synchronization.
+     * @var SettingsSynchronizer The service that reconciles installed repositories.
      */
-    private $controller;
+    private SettingsSynchronizer $synchronizer;
 
     /** WordPress can dispatch both the recurring and continuation hooks in one request. */
     private bool $batchRan = false;
@@ -27,12 +27,12 @@ class Cron
     /**
      * Cron constructor.
      *
-     * Initializes the Cron object with settings and controller.
+     * Initializes scheduled jobs with settings and installation synchronization.
      *
-     * @param Settings   $settings   The settings object.
-     * @param Controller $controller The controller object.
+     * @param Settings $settings The settings object.
+     * @param SettingsSynchronizer $synchronizer Installation synchronization service.
      */
-    public function __construct(Settings $settings, Controller $controller)
+    public function __construct(Settings $settings, SettingsSynchronizer $synchronizer)
     {
         $blogId = get_current_blog_id();
         $actionHook = $this->getActionHook();
@@ -53,9 +53,9 @@ class Cron
             return;
         }
 
-        // Initialize the settings and controller for this network's main site.
+        // Initialize the shared services for this network's main site.
         $this->settings = $settings;
-        $this->controller = $controller;
+        $this->synchronizer = $synchronizer;
 
         // Add action hooks to run events and activate scheduled events.
         add_action($actionHook, [$this, 'runEvents']);
@@ -88,6 +88,8 @@ class Cron
      * Activate scheduled events.
      *
      * Schedule the configured update check event.
+     *
+     * @return void
      */
     public function activateScheduledEvents()
     {
@@ -102,7 +104,7 @@ class Cron
             wp_schedule_event(time(), $schedule, $actionHook);
         }
 
-        (new UpdateCheckBatch($this->settings, $this->controller))->ensureContinuation();
+        (new UpdateCheckBatch($this->settings, $this->synchronizer))->ensureContinuation();
 
         $emailActionHook = $this->getEmailActionHook();
         if (!$this->isEmailEnabled()) {
@@ -124,6 +126,8 @@ class Cron
      * Run scheduled events.
      *
      * Start or resume a persisted queue, checking one repository in this request.
+     *
+     * @return void
      */
     public function runEvents()
     {
@@ -131,12 +135,17 @@ class Cron
             return;
         }
         $this->batchRan = true;
-        (new UpdateCheckBatch($this->settings, $this->controller))->run();
+        (new UpdateCheckBatch($this->settings, $this->synchronizer))->run();
     }
 
+    /**
+     * Resume a pending batch once per request without starting another cycle.
+     *
+     * @return void
+     */
     public function resumeEvents(): void
     {
-        $batch = new UpdateCheckBatch($this->settings, $this->controller);
+        $batch = new UpdateCheckBatch($this->settings, $this->synchronizer);
         if ($this->batchRan || !$batch->hasPending()) {
             return;
         }
@@ -265,9 +274,16 @@ class Cron
         return (new Config())->getCronMainBlogId();
     }
 
+    /**
+     * Prepare email rows using the established email-specific local version fallback.
+     *
+     * @param Settings $settings Managed extension definitions.
+     * @return array[] Repositories with pending updates and their version labels.
+     */
     private static function getOpenUpdatesForSettings(Settings $settings): array
     {
         $updates = [];
+        $installed = new InstalledExtensions();
 
         foreach (array_merge($settings->plugins, $settings->themes) as $extension) {
             if (!self::extensionHasUpdate($extension)) {
@@ -276,7 +292,7 @@ class Cron
 
             $updates[] = [
                 'repository' => $extension->repository,
-                'current-version' => self::getCurrentVersion($extension),
+                'current-version' => $installed->emailVersion($extension),
                 'new-version' => method_exists($extension, 'getRemoteVersionLabel') ? $extension->getRemoteVersionLabel() : $extension->remoteVersion
             ];
         }
@@ -289,119 +305,6 @@ class Cron
         return !empty($extension->remoteVersion)
             && $extension->remoteVersion != $extension->localVersion
             && empty($extension->lastError);
-    }
-
-    private static function getCurrentVersion(object $extension): string
-    {
-        if ($extension instanceof Core\Plugin) {
-            return self::getPluginVersion($extension->installationFolder, $extension->repository);
-        }
-
-        if ($extension instanceof Core\Theme) {
-            $theme = wp_get_theme($extension->installationFolder);
-            return $theme->exists() ? ($theme->get('Version') ?: 'n/a') : 'n/a';
-        }
-
-        return 'n/a';
-    }
-
-    private static function getPluginVersion(string $installationFolder, string $repository): string
-    {
-        if (!function_exists('get_plugin_data')) {
-            require_once ABSPATH . 'wp-admin/includes/plugin.php';
-        }
-
-        $candidates = self::getPluginFileCandidates($installationFolder, $repository);
-
-        foreach ($candidates as $candidate) {
-            $pluginFile = WP_PLUGIN_DIR . '/' . $candidate;
-            if (!file_exists($pluginFile)) {
-                continue;
-            }
-
-            $pluginData = get_plugin_data($pluginFile);
-            if (!empty($pluginData['Version'])) {
-                return $pluginData['Version'];
-            }
-        }
-
-        $packageVersion = self::getPackageVersion(WP_PLUGIN_DIR . '/' . $installationFolder);
-        if ($packageVersion !== '') {
-            return $packageVersion;
-        }
-
-        return 'n/a';
-    }
-
-    private static function getPluginFileCandidates(string $installationFolder, string $repository): array {
-        $candidates = [];
-
-        if (!function_exists('get_plugins')) {
-            require_once ABSPATH . 'wp-admin/includes/plugin.php';
-        }
-
-        foreach (array_keys(get_plugins()) as $pluginFile) {
-            if (dirname($pluginFile) == $installationFolder) {
-                $candidates[] = $pluginFile;
-            }
-        }
-
-        $candidates[] = $installationFolder . '/' . $repository . '.php';
-        $candidates[] = $installationFolder . '/' . $installationFolder . '.php';
-
-        $headerPluginFile = self::findPluginFileByHeader($installationFolder);
-        if ($headerPluginFile !== '') {
-            $candidates[] = $headerPluginFile;
-        }
-
-        return array_values(array_unique($candidates));
-    }
-
-    private static function findPluginFileByHeader(string $installationFolder): string {
-        $directory = trailingslashit(WP_PLUGIN_DIR) . $installationFolder;
-
-        if (!is_dir($directory) || !is_readable($directory)) {
-            return '';
-        }
-
-        $files = scandir($directory);
-        if (!is_array($files)) {
-            return '';
-        }
-
-        foreach ($files as $file) {
-            if ($file === '' || $file[0] === '.' || pathinfo($file, PATHINFO_EXTENSION) !== 'php') {
-                continue;
-            }
-
-            $relativeFile = trailingslashit($installationFolder) . $file;
-            $pluginData = get_plugin_data(trailingslashit(WP_PLUGIN_DIR) . $relativeFile);
-            if (!empty($pluginData['Name'])) {
-                return $relativeFile;
-            }
-        }
-
-        return '';
-    }
-
-    private static function getPackageVersion(string $directory): string {
-        $file = trailingslashit($directory) . (new Config())->getPackageFile();
-
-        if (!is_readable($file)) {
-            return '';
-        }
-
-        $content = file_get_contents($file);
-        if (!is_string($content)) {
-            return '';
-        }
-
-        $package = json_decode($content, true);
-        if (!is_array($package) || empty($package['version']) || !is_string($package['version'])) {
-            return '';
-        }
-
-        return sanitize_text_field(trim($package['version']));
     }
 
     private static function getServerName(): string

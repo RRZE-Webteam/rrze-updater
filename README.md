@@ -448,6 +448,9 @@ private implementation APIs. Transitive Babel runtime and UUID overrides apply
 security fixes without raising the WordPress minimum. The normal `npm run build`
 and release scripts also rebuild the installer.
 
+The [classical administration architecture](docs/admin-architecture.md) describes
+the controller boundaries, compatibility rules and follow-up refactoring tasks.
+
 The standalone PHP tests cover recommended bundles, discovered repositories,
 GitHub/GitLab pagination and owner boundaries, package inspection, immutable refs,
 retries, parent dependencies, authorization, network isolation, and file installation
@@ -462,6 +465,13 @@ For a disposable WordPress installation backed by MySQL, add
 ```sh
 wp eval-file /path/to/rrze-updater/tests/wordpress-repair.php /path/to/rrze-updater --path=/path/to/disposable-wordpress --skip-plugins --skip-themes --user=1
 ```
+
+Use the same command with `tests/wordpress-admin.php` on an empty updater registry
+to exercise the real administration pages on both Single-Site and Multisite.
+It verifies the compatibility facade, actual list-table rendering, form content,
+shared save-failure notices and the handling of incomplete installations. The
+standalone PHP command also runs isolated metadata, optional-tool and table/update
+runner tests; these require no database or live service credentials.
 
 On the disposable Multisite, `tests/wordpress-maintenance.php` runs that repair
 suite plus real core single, bulk/AJAX-equivalent and automatic plugin/theme

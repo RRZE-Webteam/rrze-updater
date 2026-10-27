@@ -27,6 +27,13 @@ class BatchCheckpointSettingsFixture extends CronSettingsFixture {
     }
 }
 
+/**
+ * Build a persisted queue with explicit synchronization and connector fixtures.
+ *
+ * @param int $plugins Number of queued plugin definitions.
+ * @param int $themes Number of queued theme definitions.
+ * @return array Settings, synchronizer, connector, and batch under test.
+ */
 function checkBatchFixture(int $plugins = 3, int $themes = 0): array {
     $GLOBALS['wp_filter'] = $GLOBALS['storage'] = $GLOBALS['cron_events'] = $GLOBALS['batch_errors'] = [];
     $GLOBALS['multisite'] = true; $GLOBALS['bundle_network'] = $GLOBALS['fixture_blog_id'] = 1;
@@ -50,17 +57,23 @@ function checkBatchFixture(int $plugins = 3, int $themes = 0): array {
         }
     }
     check($settings->save(), 'Persist the batch fixture.');
-    $controller = new CronControllerFixture($settings);
+    $synchronizer = new CronSynchronizerFixture($settings);
     add_action('rrze.log.error', static function ($message, $context) { $GLOBALS['batch_errors'][] = $context['error'] ?? $message; }, 10, 2);
-    return ['settings' => $settings, 'controller' => $controller, 'connector' => $connector,
-        'batch' => new UpdateCheckBatch($settings, $controller)];
+    return ['settings' => $settings, 'synchronizer' => $synchronizer, 'connector' => $connector,
+        'batch' => new UpdateCheckBatch($settings, $synchronizer)];
 }
 
+/**
+ * Resume pending work using the fresh services of a separate cron request.
+ *
+ * @param array $fixture Batch fixture from checkBatchFixture().
+ * @return void
+ */
 function resumeCheckBatch(array $fixture): void {
     // A fresh request rehydrates settings; WordPress consumes single events before dispatch.
     unset($GLOBALS['cron_events'][get_current_blog_id()][(new Config())->getCronContinuationHook()]);
     $settings = CronSettingsFixture::fromSettings($fixture['settings']);
-    (new UpdateCheckBatch($settings, new CronControllerFixture($settings)))->run(false);
+    (new UpdateCheckBatch($settings, new CronSynchronizerFixture($settings)))->run(false);
 }
 
 function drainCheckBatch(array $fixture): void {
@@ -72,8 +85,17 @@ function drainCheckBatch(array $fixture): void {
 
 $beforeBatches = $checks;
 $continuation = (new Config())->getCronContinuationHook();
+$f = checkBatchFixture(1);
+$f['synchronizer']->error = new WP_Error('rrze_updater_filesystem_busy', 'Busy');
+$f['batch']->run();
+check($f['connector']->checked === [] && !isset($storage['rrze_updater_check_batch']) && $batch_errors !== [],
+    'Synchronization errors are logged before creating a queue or contacting a repository.');
+$f['synchronizer']->error = null;
+$f['batch']->run();
+check($f['connector']->checked === ['plugins-1'], 'A later request can start the cycle after synchronization recovers.');
+
 $f = checkBatchFixture();
-new Cron($f['settings'], $f['controller']);
+new Cron($f['settings'], $f['synchronizer']);
 do_action($continuation); // A stale empty continuation must not consume the regular cycle.
 do_action((new Config())->getCronActionHook());
 do_action($continuation);
@@ -90,7 +112,7 @@ check(count($storage['rrze_updater_check_batch']['pending']) === 3, 'The remaini
 check(wp_next_scheduled($continuation) >= time() + 4, 'The configured delay is scheduled instead of sleeping.');
 drainCheckBatch($f);
 check($f['connector']->checked === ['plugins-1', 'plugins-2', 'plugins-3', 'themes-1'], 'Fresh requests resume both plugins and themes without repeating successes.');
-check(wp_next_scheduled($continuation) === false && $f['controller']->synchronizations === 1, 'Completion clears recovery and only the initial request synchronizes installed files.');
+check(wp_next_scheduled($continuation) === false && $f['synchronizer']->synchronizations === 1, 'Completion clears recovery and only the initial request synchronizes installed files.');
 $f['batch']->run(false);
 check(count($f['connector']->checked) === 4, 'A stale continuation does not start a new cycle.');
 
@@ -193,7 +215,7 @@ check(wp_next_scheduled($continuation) !== false, 'Reactivation or settings chan
 $firstStorage = $storage;
 $bundle_network = 2; $fixture_blog_id = 42; $storage = [];
 $other = new CronSettingsFixture();
-(new UpdateCheckBatch($other, new CronControllerFixture($other)))->run(false);
+(new UpdateCheckBatch($other, new CronSynchronizerFixture($other)))->run(false);
 check($storage === [], 'A continuation in another network cannot adopt the first network’s queue.');
 $bundle_network = $fixture_blog_id = 1; $storage = $firstStorage;
 drainCheckBatch($f);
