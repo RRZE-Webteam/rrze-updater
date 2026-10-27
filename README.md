@@ -163,9 +163,10 @@ measurement or a guaranteed upper limit. Multiple updates, large packages, slow
 servers and recovery can take longer. No timing history or additional settings
 are stored, and the notices add no confirmation steps.
 
-Core plugin/theme lists and the Updates page explain WordPress bulk/AJAX
-maintenance through a shared page notice. Automatic-update controls do not repeat
-the explanation under each entry. The Updater overview uses individual
+The core theme list and the Updates page explain WordPress bulk/AJAX maintenance
+through a shared page notice. The plugin list omits this page notice, and
+automatic-update controls do not repeat the explanation under each entry.
+The Updater overview uses individual
 updates instead of core bulk updates, so only its maintenance-triggering theme
 updates receive warnings, including a conditional note for mixed selections.
 Manual plugin single updates, ordinary first installation, source edits and update

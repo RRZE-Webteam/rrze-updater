@@ -55,7 +55,7 @@ $admin->register();
 foreach (['plugins', 'plugins-network', 'themes', 'themes-network', 'update-core', 'update-core-network', 'dashboard', 'toplevel_page_rrze-updater'] as $base) {
     $admin_screen = (object) ['base' => $base];
     $html = adminOutput(fn() => $admin->maintenanceNotice());
-    $expected = in_array($base, ['plugins', 'plugins-network', 'themes', 'themes-network', 'update-core', 'update-core-network']);
+    $expected = in_array($base, ['themes', 'themes-network', 'update-core', 'update-core-network'], true);
     check(substr_count($html, 'rrze-updater-maintenance-notice') === ($expected ? 1 : 0), 'Only relevant core screens get one bulk notice: ' . $base);
 }
 $admin_screen = (object) ['base' => 'update-core'];

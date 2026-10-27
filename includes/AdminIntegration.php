@@ -47,10 +47,11 @@ class AdminIntegration
     }
 
     /**
-     * Explain core bulk/AJAX maintenance before network update controls are used.
+     * Explain core bulk/AJAX maintenance on network theme and Updates screens.
      *
      * The notice remains outside the table that WordPress replaces after AJAX
-     * searches. Only screens with an installed managed extension are relevant.
+     * searches. Only screens with an installed managed extension are relevant;
+     * the plugin overview deliberately omits this shared page notice.
      *
      * @return void
      */
@@ -59,7 +60,6 @@ class AdminIntegration
         $base = get_current_screen()->base ?? '';
         $base = preg_replace('/-network$/', '', $base);
         $types = match ($base) {
-            'plugins' => ['plugin'],
             'themes' => ['theme'],
             'update-core' => ['plugin', 'theme'],
             default => [],

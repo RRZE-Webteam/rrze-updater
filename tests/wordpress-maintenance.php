@@ -262,7 +262,8 @@ try {
     foreach (['plugins-network', 'themes-network', 'update-core-network', 'plugins'] as $screen) {
         set_current_screen($screen);
         ob_start(); $admin->maintenanceNotice(); $html = ob_get_clean();
-        rrzeRepairAssert(($html !== '') === ($screen !== 'plugins'), 'Native network screen scope: ' . $screen);
+        $expected = in_array($screen, ['themes-network', 'update-core-network'], true);
+        rrzeRepairAssert(($html !== '') === $expected, 'Native network screen scope: ' . $screen);
     }
     set_current_screen('plugins-network');
     $admin->register();
