@@ -62,7 +62,8 @@ class PluginReplacement
                 }
             }
             try {
-                $definition = $this->manager->preparePluginDefinition($repository, $options);
+                $definition = $stored && $stored->isReleasePinned()
+                    ? clone $stored : $this->manager->preparePluginDefinition($repository, $options);
                 if (is_wp_error($definition)) {
                     return $this->safeRemoteError();
                 }
@@ -73,30 +74,162 @@ class PluginReplacement
                 if (is_wp_error($snapshot)) {
                     return $snapshot;
                 }
-                $commit = $definition->connector->getRemoteCommit($repository, $definition->remoteVersion);
+                $commit = $definition->isReleasePinned() ? $definition->pinnedRelease['commit']
+                    : $definition->connector->getRemoteCommit($repository, $definition->remoteVersion);
                 if (!is_string($commit) || !preg_match('/\A(?:[a-f0-9]{40}|[a-f0-9]{64})\z/i', $commit)) {
                     return $this->safeRemoteError();
                 }
-                $id = bin2hex(random_bytes(24));
-                $review = [
-                    'id' => $id, 'plugin_id' => $pluginId, 'repository' => $repository,
-                    'folder' => $definition->installationFolder,
-                    'source_url' => $definition->connector->getUrl($repository),
-                    'ref' => $definition->remoteVersion, 'commit' => $commit,
-                    'version' => $definition->remoteReadableVersion ?: $definition->remoteVersion,
-                    'expires_at' => $this->now() + 900, 'mode' => $pluginId === null ? 'replace' : 'reinstall',
-                    'owner' => get_current_user_id(), 'scope' => $this->scope(),
-                    'options' => $this->options($definition), 'source' => RepositorySource::fingerprint($definition),
-                    'snapshot' => $snapshot,
-                ];
-                if (!$this->writeReview($id, $review)) {
-                    return $this->error('review_save_failed', __('The confirmation could not be saved. No plugin files were changed.', 'rrze-updater'));
-                }
-                return $this->publicReview($review);
+                return $this->createReview($definition, $pluginId, $snapshot, $commit);
             } catch (\Throwable) {
                 return $this->safeRemoteError();
             }
         });
+    }
+
+    /**
+     * Read published GitHub releases for an authorized plugin in Releases mode.
+     *
+     * @param string $pluginId Existing managed plugin ID.
+     * @param int $page One-based API page.
+     * @return array|WP_Error Release page or a safe permission/provider failure.
+     */
+    public function listReleases(string $pluginId, int $page = 1): array|WP_Error
+    {
+        $allowed = $this->authorize();
+        if (is_wp_error($allowed)) {
+            return $allowed;
+        }
+        $this->settings->reload();
+        $plugin = $this->releasePlugin($pluginId);
+        if (is_wp_error($plugin)) {
+            return $plugin;
+        }
+        $connector = clone $plugin->connector;
+        $result = $connector->getReleasePage($plugin->repository, $page);
+        return is_array($result) ? $result : $this->safeRemoteError();
+    }
+
+    /**
+     * Prepare an exact release, including older versions and explicit prereleases.
+     *
+     * Only the saved plugin ID and repository-scoped GitHub release ID are accepted.
+     * The tag is resolved in the tag namespace, then every file is read by commit.
+     *
+     * @param string $pluginId Existing managed plugin ID.
+     * @param string $releaseId Positive GitHub release ID from the list.
+     * @return array|WP_Error Single-use review of the exact target, or a safe failure.
+     */
+    public function prepareRelease(string $pluginId, string $releaseId): array|WP_Error
+    {
+        return FilesystemLock::withLock(function () use ($pluginId, $releaseId): array|WP_Error {
+            $allowed = $this->authorize();
+            if (is_wp_error($allowed)) {
+                return $allowed;
+            }
+            $this->settings->reload();
+            $stored = $this->releasePlugin($pluginId);
+            if (is_wp_error($stored)) {
+                return $stored;
+            }
+            try {
+                $definition = clone $stored;
+                $definition->connector = clone $stored->connector;
+                $release = $definition->connector->getReleaseById($definition->repository, $releaseId);
+                if (!is_array($release)) {
+                    return $this->safeRemoteError();
+                }
+                $commit = $definition->connector->getRemoteCommit($definition->repository, 'refs/tags/' . $release['tag']);
+                if (!is_string($commit) || !preg_match('/\A[a-f0-9]{40}\z/i', $commit)) {
+                    return $this->safeRemoteError();
+                }
+                $snapshot = $this->packages->snapshot($definition->installationFolder);
+                if (is_wp_error($snapshot)) {
+                    return $snapshot;
+                }
+                $definition->selectReleaseTarget($release, $commit);
+                return $this->createReview($definition, $pluginId, $snapshot, $commit, true);
+            } catch (\Throwable) {
+                return $this->safeRemoteError();
+            }
+        });
+    }
+
+    /**
+     * Resume normal release updates without downloading or changing plugin files.
+     *
+     * @param string $pluginId Existing managed plugin ID.
+     * @return true|WP_Error Whether the release hold was durably removed.
+     */
+    public function resumeReleaseUpdates(string $pluginId): true|WP_Error
+    {
+        return FilesystemLock::withLock(function () use ($pluginId): true|WP_Error {
+            $allowed = $this->authorize();
+            if (is_wp_error($allowed)) {
+                return $allowed;
+            }
+            $this->settings->reload();
+            $plugin = $this->releasePlugin($pluginId);
+            if (is_wp_error($plugin)) {
+                return $plugin;
+            }
+            $plugin->pinnedRelease = [];
+            $plugin->remoteRelease = [];
+            $plugin->remoteVersion = $plugin->remoteReadableVersion = '';
+            $plugin->lastChecked = 0;
+            $plugin->lastWarning = $plugin->lastError = '';
+            if (!$this->settings->save()) {
+                $this->settings->reload();
+                return $this->error('save_failed', __('The release hold could not be removed. Please try again.', 'rrze-updater'));
+            }
+            delete_site_transient('update_plugins');
+            return true;
+        });
+    }
+
+    /**
+     * Restrict manual release actions to existing GitHub plugins in Releases mode.
+     *
+     * @param string $pluginId Trusted registry lookup key.
+     * @return Plugin|WP_Error Eligible plugin or an actionable mode error.
+     */
+    private function releasePlugin(string $pluginId): Plugin|WP_Error
+    {
+        $plugin = $this->findPlugin($pluginId);
+        return $plugin && $plugin->updates === 'releases' && $plugin->connector instanceof GithubConnector
+            ? $plugin : $this->error('release_selection_unavailable', __('Release selection requires a managed GitHub plugin in Releases mode.', 'rrze-updater'));
+    }
+
+    /**
+     * Store one immutable, user-owned replacement review for both repair and release selection.
+     *
+     * @param Plugin $definition Verified source and target metadata.
+     * @param string|null $pluginId Existing association ID, or null for repair registration.
+     * @param array $snapshot Exact current directory contents.
+     * @param string $commit Immutable download commit.
+     * @param bool $selectRelease Whether successful installation must hold this release.
+     * @return array|WP_Error Public review or a storage failure.
+     */
+    private function createReview(Plugin $definition, ?string $pluginId, array $snapshot, string $commit, bool $selectRelease = false): array|WP_Error
+    {
+        $id = bin2hex(random_bytes(24));
+        $review = [
+            'id' => $id, 'plugin_id' => $pluginId, 'repository' => $definition->repository,
+            'folder' => $definition->installationFolder,
+            'source_url' => $definition->connector->getUrl($definition->repository),
+            'ref' => $definition->remoteVersion, 'commit' => $commit,
+            'version' => $definition->remoteReadableVersion ?: $definition->remoteVersion,
+            'installed_ref' => (string) $definition->localVersion,
+            'release' => $definition->remoteRelease,
+            'expires_at' => $this->now() + 900,
+            'mode' => $selectRelease ? 'release' : ($pluginId === null ? 'replace' : 'reinstall'),
+            'owner' => get_current_user_id(), 'scope' => $this->scope(),
+            'options' => $this->options($definition), 'source' => RepositorySource::fingerprint($definition),
+            'snapshot' => $snapshot,
+        ];
+        if (!$this->writeReview($id, $review)) {
+            return $this->error('review_save_failed', __('The confirmation could not be saved. No plugin files were changed.', 'rrze-updater'));
+        }
+        return $this->publicReview($review);
     }
 
     /**
@@ -148,6 +281,13 @@ class PluginReplacement
                     $plugin->localVersion = $review['ref'];
                     $plugin->remoteVersion = $review['ref'];
                     $plugin->remoteReadableVersion = $review['version'];
+                    $plugin->remoteRelease = $review['release'] ?? [];
+                    if ($review['mode'] === 'release') {
+                        $plugin->pinnedRelease = [
+                            'id' => $review['release']['id'], 'tag' => $review['ref'], 'commit' => $review['commit'],
+                            'version' => $review['version'], 'release' => $review['release'],
+                        ];
+                    }
                     $plugin->lastChecked = $this->now();
                     $plugin->lastError = $plugin->lastWarning = '';
                     if ($review['plugin_id'] === null) {
@@ -161,6 +301,7 @@ class PluginReplacement
                     }
                     $expected = $plugin->asArray();
                     $expectedSource = RepositorySource::fingerprint($plugin);
+                    $this->settings->markSourceValidated($plugin);
                     $saveThrew = false;
                     try {
                         $saved = $this->settings->save();
@@ -219,6 +360,9 @@ class PluginReplacement
     {
         $existing = $review['plugin_id'] !== null ? $this->findPlugin($review['plugin_id']) : null;
         if ($review['plugin_id'] !== null && (!$existing || !$this->matches($existing, $review['repository'], $review['options']))) {
+            return $this->changed();
+        }
+        if ($review['mode'] === 'release' && (!$existing || (string) $existing->localVersion !== $review['installed_ref'])) {
             return $this->changed();
         }
         foreach ($this->settings->plugins as $candidate) {
@@ -352,7 +496,7 @@ class PluginReplacement
      */
     private function publicReview(array $review): array
     {
-        return array_intersect_key($review, array_flip(['id', 'plugin_id', 'repository', 'folder', 'source_url', 'ref', 'commit', 'version', 'expires_at', 'mode']));
+        return array_intersect_key($review, array_flip(['id', 'plugin_id', 'repository', 'folder', 'source_url', 'ref', 'commit', 'version', 'expires_at', 'mode', 'installed_ref', 'release']));
     }
 
     /**

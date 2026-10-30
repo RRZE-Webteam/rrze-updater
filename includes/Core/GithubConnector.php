@@ -285,6 +285,7 @@ class GithubConnector extends Connector
     private function releaseMetadata(object $release): array
     {
         return [
+            'id' => (string) ($release->id ?? ''),
             'tag' => (string) ($release->tag_name ?? ''),
             'title' => (string) ($release->name ?? ''),
             'url' => (string) ($release->html_url ?? ''),
@@ -295,6 +296,72 @@ class GithubConnector extends Connector
             'body' => (string) ($release->body ?? ''),
             'body_html' => (string) ($release->body_html ?? ''),
         ];
+    }
+
+    /**
+     * List one page of published releases, including explicitly selectable prereleases.
+     *
+     * @param string $repository Repository name within the configured owner.
+     * @param int $page One-based page number.
+     * @return array|false Display metadata and pagination state, or false on API failure.
+     */
+    public function getReleasePage(string $repository, int $page = 1): array|false
+    {
+        if ($page < 1 || $page > 10000) {
+            return false;
+        }
+        $url = sprintf('https://%s/repos/%s/%s/releases?per_page=20&page=%d',
+            $this->getApiHost(), rawurlencode($this->owner), rawurlencode($repository), $page);
+        $response = $this->api($url, ['headers' => $this->getHeaders()], [
+            'logContext' => $this->getRepositoryLogContext($repository, 'releases'),
+        ]);
+        if (!is_array($response)) {
+            return false;
+        }
+        $items = [];
+        foreach ($response as $release) {
+            if ($this->isSelectableRelease($release)) {
+                $items[] = $this->releaseMetadata($release);
+            }
+        }
+        return ['items' => $items, 'page' => $page, 'has_more' => count($response) === 20];
+    }
+
+    /**
+     * Verify a selected release ID inside this repository, without using a posted tag or URL.
+     *
+     * @param string $repository Repository name within the configured owner.
+     * @param string $id Positive decimal GitHub release ID.
+     * @return array|false Published release metadata, including prereleases, or false.
+     */
+    public function getReleaseById(string $repository, string $id): array|false
+    {
+        if (!preg_match('/\A[1-9][0-9]*\z/', $id)) {
+            return false;
+        }
+        $url = sprintf('https://%s/repos/%s/%s/releases/%s',
+            $this->getApiHost(), rawurlencode($this->owner), rawurlencode($repository), $id);
+        $response = $this->api($url, ['headers' => array_merge($this->getHeaders(), ['Accept' => 'application/vnd.github.full+json'])], [
+            'logContext' => $this->getRepositoryLogContext($repository, 'releases', $id),
+        ]);
+        return $this->isSelectableRelease($response) && (string) $response->id === $id
+            ? $this->releaseMetadata($response) : false;
+    }
+
+    /**
+     * Exclude drafts and malformed/unpublished releases from manual installation.
+     *
+     * @param mixed $release Decoded GitHub record.
+     * @return bool Whether the record identifies a published release and a valid tag.
+     */
+    private function isSelectableRelease(mixed $release): bool
+    {
+        return is_object($release) && empty($release->draft)
+            && preg_match('/\A[1-9][0-9]*\z/', (string) ($release->id ?? ''))
+            && is_string($release->tag_name ?? null) && $release->tag_name !== ''
+            && !preg_match('/[\x00-\x20\x7f]/', $release->tag_name)
+            && is_string($release->published_at ?? null)
+            && ($published = strtotime($release->published_at)) !== false && $published <= time();
     }
 
     /**

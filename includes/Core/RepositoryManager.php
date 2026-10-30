@@ -117,7 +117,21 @@ class RepositoryManager
             return $this->error('unknown_plugin', __('The managed plugin no longer exists. Reload the plugin overview.', 'rrze-updater'));
         }
         $before = RepositorySource::fingerprint($previous);
-        $candidate = $this->preparePluginDefinition($repository, array_merge($options, ['folder' => $previous->installationFolder]));
+        $options = array_merge($options, ['folder' => $previous->installationFolder]);
+        if ($previous->isReleasePinned()) {
+            $candidate = $this->definition('plugin', $repository, $options);
+            if (!is_wp_error($candidate)
+                && RepositorySource::installedFingerprint($candidate) !== RepositorySource::installedFingerprint($previous)) {
+                return $this->error('release_pinned', __('Resume release updates before changing the update source of this plugin.', 'rrze-updater'));
+            }
+            if (!is_wp_error($candidate)) {
+                $candidate = clone $previous;
+                $candidate->ignorePrereleases = !empty($options['ignore-prereleases']);
+                $candidate->checkForUpdates();
+            }
+        } else {
+            $candidate = $this->preparePluginDefinition($repository, $options);
+        }
         if (is_wp_error($candidate)) {
             $this->settings->reload();
             return $candidate;

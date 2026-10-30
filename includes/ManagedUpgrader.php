@@ -339,6 +339,9 @@ class ManagedUpgrader
             return false;
         }
         $sourceFingerprint = RepositorySource::fingerprint($extension);
+        if ($extension->isReleasePinned()) {
+            return new WP_Error('rrze_updater_release_pinned', __('This plugin is held at a selected release. Resume release updates or choose another release in its Updater settings.', 'rrze-updater'));
+        }
         if ($extension->connector instanceof GitlabConnector) {
             $package = remove_query_arg('private_token', $package);
         }

@@ -317,7 +317,11 @@ class Settings
                 }
                 $beforeInstalled = $before;
                 $beforeInstalled['ignorePrereleases'] = false;
+                $beforeInstalled['pinnedRelease'] = [];
                 if (RepositorySource::installedFingerprint($effective) !== RepositorySource::fingerprintRecord($beforeInstalled, $beforeConnectors)) {
+                    if (!empty($before['pinnedRelease'])) {
+                        throw new \UnexpectedValueException('Resume release updates before changing a pinned plugin source.');
+                    }
                     $extension->localVersion = '';
                 }
                 if (($this->validatedSources[$extension->id] ?? '') !== $fingerprint) {

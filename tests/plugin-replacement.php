@@ -118,8 +118,53 @@ class ReplacementConnectorFixture extends GithubConnector {
     public string $downloadedCommit = '';
     public bool $downloadFails = false;
     public bool $downloadThrows = false;
-    /** Resolve any selected policy ref to an immutable commit. */
-    public function getRemoteCommit(string $repository, string $branch = 'main'): string|bool { return str_repeat('a', 40); }
+    public array $releases = [];
+    public string $resolvedRef = '';
+    public string $commit = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    public int $latestChecks = 0;
+    /**
+     * Resolve a selected ref, requiring the tag namespace for manual releases.
+     *
+     * @param string $repository Fixture repository name.
+     * @param string $branch Reference to resolve.
+     * @return string Immutable fixture commit.
+     */
+    public function getRemoteCommit(string $repository, string $branch = 'main'): string|bool
+    {
+        if ($this->releases) {
+            replacementCheck($branch === 'refs/tags/' . reset($this->releases)['tag'], 'Release resolution cannot accidentally select a branch with the same name.');
+        }
+        $this->resolvedRef = $branch;
+        return $this->commit;
+    }
+    /**
+     * Return the repository-scoped published release prepared by a test.
+     *
+     * @param string $repository Fixture repository.
+     * @param string $id Release identifier.
+     * @return array|false Fixture release or missing-release result.
+     */
+    public function getReleaseById(string $repository, string $id): array|false { return $this->releases[$id] ?? false; }
+    /**
+     * Supply a version header only at the immutable commit, never at a mutable tag.
+     *
+     * @param string $repository Fixture repository.
+     * @param string $ref Selected immutable commit.
+     * @param string $filePath Requested version file.
+     * @return string|bool Header contents or false for other files.
+     */
+    public function getRemoteFile(string $repository, string $ref, string $filePath): string|bool
+    {
+        replacementCheck($ref === $this->commit, 'Release version files use the immutable commit.');
+        return $filePath === 'sample.php' ? "<?php\n/* Plugin Name: Sample\nVersion: 0.9\n*/" : false;
+    }
+    /**
+     * Record any unwanted latest-release lookup while a release is held.
+     *
+     * @param string $repository Fixture repository.
+     * @return string Newest fixture release tag.
+     */
+    public function getRemoteRelease(string $repository): string|false { $this->latestChecks++; return 'v9'; }
     /** Copy the prepared ZIP to the temporary download consumed by production code. */
     public function downloadRepoZipToTempFile(string $repository, string $branch = 'main'): string|bool {
         $this->downloadedCommit = $branch;
@@ -349,6 +394,7 @@ try {
     $replacementUser = 1;
     symlink('/tmp', WP_PLUGIN_DIR . '/sample/link');
     replacementError($f['service']->prepare('sample', $f['options'], 'managed-plugin'), 'unsafe_files');
+    require __DIR__ . '/release-installation.php';
     echo 'Passed ' . $replacementChecks . " replacement review, archive and rollback checks.\n";
 } finally {
     replacementRemove($replacementRoot);

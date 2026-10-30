@@ -211,9 +211,12 @@ class PluginController
         }
         $pluginId = $request['plugin_id'] ?? '';
         try {
-            $result = $request['replacement_action'] === 'prepare'
-                ? $this->prepareReplacement($request, $pluginId)
-                : $this->completeReplacement($request, $pluginId);
+            $result = match ($request['replacement_action']) {
+                'prepare' => $this->prepareReplacement($request, $pluginId),
+                'prepare-release' => $this->prepareSelectedRelease($request, $pluginId),
+                'resume-releases' => $this->resumeReleaseUpdates($pluginId),
+                default => $this->completeReplacement($request, $pluginId),
+            };
             if (!is_wp_error($result)) {
                 return;
             }
@@ -240,7 +243,7 @@ class PluginController
         $request = $_POST['rrze-updater'] ?? null;
         $operation = is_array($request) ? ($request['replacement_action'] ?? '') : '';
         $nonce = $_POST['rrze-updater-replacement-nonce'] ?? $_POST['rrze-updater-nonce'] ?? '';
-        if (!is_string($operation) || !in_array($operation, ['prepare', 'apply', 'cancel'], true)
+        if (!is_string($operation) || !in_array($operation, ['prepare', 'prepare-release', 'resume-releases', 'apply', 'cancel'], true)
             || !is_string($nonce) || !wp_verify_nonce($nonce, 'rrze-updater-plugin-replacement-' . $operation)) {
             wp_die(esc_html__('Unable to submit this form, please refresh and try again.', 'rrze-updater'));
         }
@@ -248,13 +251,85 @@ class PluginController
             $this->messages->add(new WP_Error('file_modifications_disabled', __('File modifications are disabled on this installation.', 'rrze-updater')));
             return null;
         }
-        foreach (['plugin_id', 'review_id', 'repository', 'connectorId', 'installationFolder', 'branch', 'updates'] as $field) {
+        foreach (['plugin_id', 'release_id', 'review_id', 'repository', 'connectorId', 'installationFolder', 'branch', 'updates'] as $field) {
             if (isset($request[$field]) && !is_string($request[$field])) {
                 $this->messages->add(new WP_Error('invalid_request', __('Invalid repository installation request.', 'rrze-updater')));
                 return null;
             }
         }
         return wp_unslash($request);
+    }
+
+    /**
+     * Display one read-only page of releases using the saved plugin source.
+     *
+     * @return void
+     */
+    public function getPluginReleases(): void
+    {
+        if (!$this->canReplacePluginFiles()) {
+            wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
+        }
+        $id = $_GET['id'] ?? '';
+        $page = $_GET['release_page'] ?? '1';
+        if (!is_string($id) || !is_string($page) || !preg_match('/\A[1-9][0-9]{0,3}\z/', $page)) {
+            $this->display('');
+            return;
+        }
+        try {
+            $result = $this->replacement->listReleases($id, (int) $page);
+        } catch (\Throwable) {
+            $result = new WP_Error('release_lookup_failed', __('Could not load releases. Check the repository service and try again.', 'rrze-updater'));
+        }
+        if (is_wp_error($result)) {
+            $this->displayReplacementError($result, $id);
+            return;
+        }
+        $plugin = $this->settings->getPluginById($id);
+        $this->display('plugins/releases', $this->presenter->pluginEditData($plugin, true) + $result);
+    }
+
+    /**
+     * Prepare only the chosen repository-scoped release ID, ignoring posted source or commit fields.
+     *
+     * @param array $request Validated POST fields.
+     * @param string $pluginId Saved plugin association ID.
+     * @return true|WP_Error True after rendering confirmation, or preparation error.
+     */
+    private function prepareSelectedRelease(array $request, string $pluginId): true|WP_Error
+    {
+        $review = $this->replacement->prepareRelease($pluginId, $request['release_id'] ?? '');
+        if (is_wp_error($review)) {
+            return $review;
+        }
+        $plugin = $this->settings->getPluginById($pluginId);
+        $this->display('plugins/replace', [
+            'review' => $review,
+            'installedVersion' => $this->installed->pluginVersion($plugin->installationFolder, $plugin->repository),
+        ]);
+        return true;
+    }
+
+    /**
+     * Remove a release hold and refresh the ordinary update offer without installing files.
+     *
+     * @param string $pluginId Saved plugin association ID.
+     * @return true|WP_Error True after rendering the editor, or persistence failure.
+     */
+    private function resumeReleaseUpdates(string $pluginId): true|WP_Error
+    {
+        $result = $this->replacement->resumeReleaseUpdates($pluginId);
+        if (is_wp_error($result)) {
+            return $result;
+        }
+        $this->messages->add(__('Release updates resumed. No plugin files have changed.', 'rrze-updater'));
+        $plugin = $this->settings->getPluginById($pluginId);
+        $result = $this->actions->check($plugin);
+        if (is_wp_error($result)) {
+            $this->messages->add($result);
+        }
+        $this->displayReplacementReturn($pluginId);
+        return true;
     }
 
     /**
@@ -496,6 +571,10 @@ class PluginController
      */
     public function getPluginIndex(): void
     {
+        if (($_GET['action'] ?? '') === 'releases') {
+            $this->getPluginReleases();
+            return;
+        }
         if (($_GET['action'] ?? '') === 'replace') {
             $this->postPluginReplacement();
             return;

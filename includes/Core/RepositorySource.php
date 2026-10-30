@@ -32,11 +32,14 @@ final class RepositorySource
             (string) $extension->branch, (string) $extension->updates,
             (string) $extension->installationFolder,
             $type === 'github' && $extension->updates === 'tags' && $extension->ignorePrereleases,
+            $extension->pinnedRelease['id'] ?? '',
+            $extension->pinnedRelease['tag'] ?? '',
+            $extension->pinnedRelease['commit'] ?? '',
         ], JSON_THROW_ON_ERROR));
     }
 
     /**
-     * Identify installed contents independently of the prerelease selection filter.
+     * Identify installed contents independently of prerelease filters and release holds.
      *
      * @param Extension $extension Managed extension with its effective connector.
      * @return string Source identity used to preserve the known installed ref.
@@ -45,6 +48,7 @@ final class RepositorySource
     {
         $source = clone $extension;
         $source->ignorePrereleases = false;
+        $source->pinnedRelease = [];
         return self::fingerprint($source);
     }
 

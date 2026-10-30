@@ -2290,3 +2290,135 @@ msgstr "Release-Notizen"
 #: includes/views/partials/release-preview.php
 msgid "No description provided."
 msgstr "Keine Beschreibung vorhanden."
+
+#: includes/views/plugins/releases.php includes/views/plugins/edit.php
+msgid "Choose release"
+msgstr "Release auswählen"
+
+#: includes/views/plugins/releases.php
+msgid "Back to plugin"
+msgstr "Zurück zum Plugin"
+
+#: includes/views/plugins/releases.php
+#, php-format
+msgid "Installed version: %1$s · Git reference: %2$s"
+msgstr "Installierte Version: %1$s · Git-Referenz: %2$s"
+
+#: includes/views/plugins/releases.php
+msgid "Choose a published release to install, including an older version or a pre-release. The next step confirms the exact version before replacing files."
+msgstr "Wähle einen veröffentlichten Release zur Installation aus, auch eine ältere Version oder einen Pre-Release. Im nächsten Schritt bestätigst du die genaue Version, bevor Dateien ersetzt werden."
+
+#: includes/views/plugins/releases.php includes/views/plugins/replace.php
+msgid "After installation, this release will be held until you resume release updates. Automatic updates will not undo your selection."
+msgstr "Nach der Installation bleibt dieser Release festgehalten, bis du Release-Updates wieder freigibst. Automatische Updates überschreiben deine Auswahl nicht."
+
+#: includes/views/plugins/releases.php
+msgid "Release"
+msgstr "Release"
+
+#: includes/views/plugins/releases.php
+msgid "Version / Tag"
+msgstr "Version / Tag"
+
+#: includes/views/plugins/releases.php
+msgid "Author"
+msgstr "Autor"
+
+#: includes/views/plugins/releases.php
+msgid "Published"
+msgstr "Veröffentlicht"
+
+#: includes/views/plugins/releases.php
+msgid "Installed release"
+msgstr "Installierter Release"
+
+#: includes/views/plugins/releases.php
+#, php-format
+msgid "Select release %s"
+msgstr "Release %s auswählen"
+
+#: includes/views/plugins/releases.php
+msgid "Select"
+msgstr "Auswählen"
+
+#: includes/views/plugins/releases.php
+msgid "No published releases found on this page."
+msgstr "Auf dieser Seite wurden keine veröffentlichten Releases gefunden."
+
+#: includes/views/plugins/releases.php
+msgid "Release pages"
+msgstr "Release-Seiten"
+
+#: includes/views/plugins/releases.php
+msgid "Previous page"
+msgstr "Vorherige Seite"
+
+#: includes/views/plugins/releases.php
+msgid "Next page"
+msgstr "Nächste Seite"
+
+#: includes/views/plugins/releases.php
+#, php-format
+msgid "Page %d"
+msgstr "Seite %d"
+
+#: includes/views/plugins/replace.php
+msgid "Confirm release installation"
+msgstr "Release-Installation bestätigen"
+
+#: includes/views/plugins/replace.php
+msgid "Only plugin files are restored. Database changes made by newer versions are not rolled back; the selected version must be compatible with the existing data."
+msgstr "Nur Plugin-Dateien werden zurückgesetzt. Datenbankänderungen neuerer Versionen werden nicht rückgängig gemacht. Die gewählte Version muss mit den bestehenden Daten kompatibel sein."
+
+#: includes/views/plugins/replace.php
+msgid "You selected a pre-release."
+msgstr "Du hast einen Pre-Release ausgewählt."
+
+#: includes/views/plugins/replace.php
+msgid "Installed version"
+msgstr "Installierte Version"
+
+#: includes/views/plugins/replace.php
+msgid "Selected release"
+msgstr "Ausgewählter Release"
+
+#: includes/views/plugins/replace.php
+msgid "Install and hold this release"
+msgstr "Diesen Release installieren und festhalten"
+
+#: includes/views/plugins/edit.php
+#, php-format
+msgid "Held at release %s"
+msgstr "Auf Release %s festgelegt"
+
+#: includes/views/plugins/edit.php
+msgid "Normal updates are paused for this plugin. Choose another release or resume release updates when you are ready."
+msgstr "Normale Updates sind für dieses Plugin pausiert. Du kannst einen anderen Release auswählen oder Release-Updates wieder freigeben."
+
+#: includes/views/plugins/edit.php
+msgid "Resume release updates"
+msgstr "Release-Updates wieder freigeben"
+
+#: includes/Core/PluginReplacement.php
+msgid "The release hold could not be removed. Please try again."
+msgstr "Die Release-Festlegung konnte nicht aufgehoben werden. Bitte versuche es erneut."
+
+#: includes/Core/PluginReplacement.php
+msgid "Release selection requires a managed GitHub plugin in Releases mode."
+msgstr "Die Release-Auswahl erfordert ein verwaltetes GitHub-Plugin im Modus „Releases“."
+
+#: includes/Core/RepositoryManager.php
+msgid "Resume release updates before changing the update source of this plugin."
+msgstr "Gib Release-Updates wieder frei, bevor du die Update-Quelle dieses Plugins änderst."
+
+#: includes/ManagedUpgrader.php
+msgid "This plugin is held at a selected release. Resume release updates or choose another release in its Updater settings."
+msgstr "Dieses Plugin ist auf einen ausgewählten Release festgelegt. Gib Release-Updates wieder frei oder wähle einen anderen Release in seinen Updater-Einstellungen."
+
+#: includes/Admin/PluginController.php
+msgid "Could not load releases. Check the repository service and try again."
+msgstr "Releases konnten nicht geladen werden. Prüfe den Repository-Dienst und versuche es erneut."
+
+#: includes/Admin/PluginController.php
+msgid "Release updates resumed. No plugin files have changed."
+msgstr "Release-Updates wurden wieder freigegeben. Es wurden keine Plugin-Dateien geändert."

@@ -90,6 +90,9 @@ class Extension
     /** @var array<string, mixed> Release details from the last successful target selection. */
     public array $remoteRelease = [];
 
+    /** @var array<string, mixed> Explicitly installed release and immutable commit, held until resumed. */
+    public array $pinnedRelease = [];
+
     /**
      * Timestamp of the last update check.
      *
@@ -133,6 +136,7 @@ class Extension
         $this->updates = $array['updates'] ?? '';
         $this->ignorePrereleases = !empty($array['ignorePrereleases']);
         $this->remoteRelease = is_array($array['remoteRelease'] ?? null) ? $array['remoteRelease'] : [];
+        $this->pinnedRelease = is_array($array['pinnedRelease'] ?? null) ? $array['pinnedRelease'] : [];
         $this->lastChecked = $array['lastChecked'] ?? 0;
         $this->lastWarning = isset($array['lastWarning']) ? unserialize($array['lastWarning']) : '';
         $this->lastError = isset($array['lastError']) ? unserialize($array['lastError']) : '';
@@ -160,6 +164,7 @@ class Extension
             'updates' => $this->updates,
             'ignorePrereleases' => $this->ignorePrereleases,
             'remoteRelease' => $this->remoteRelease,
+            'pinnedRelease' => $this->pinnedRelease,
             'lastChecked' => $this->lastChecked,
             'lastWarning' => serialize($this->lastWarning),
             'lastError' => serialize($this->lastError)
@@ -173,6 +178,14 @@ class Extension
      */
     public function checkForUpdates()
     {
+        if ($this->isReleasePinned()) {
+            $this->lastChecked = time();
+            $this->remoteVersion = $this->pinnedRelease['tag'];
+            $this->remoteReadableVersion = $this->pinnedRelease['version'];
+            $this->remoteRelease = $this->pinnedRelease['release'];
+            $this->lastWarning = $this->lastError = '';
+            return;
+        }
         // Check the configured update policy.
         // Query the connector object to get the remote version based on the update type.
         // Update 'lastChecked', 'lastWarning', 'lastError', and 'remoteVersion' properties accordingly.
@@ -227,6 +240,9 @@ class Extension
      */
     public function hasUpdate(): bool
     {
+        if ($this->isReleasePinned()) {
+            return false;
+        }
         if (!$this->remoteVersion || $this->lastError || $this->remoteVersion === $this->localVersion) {
             return false;
         }
@@ -238,6 +254,32 @@ class Extension
             }
         }
         return true;
+    }
+
+    /**
+     * Identify an explicit release hold independently of remote update metadata.
+     *
+     * @return bool Whether ordinary updates must remain paused for this extension.
+     */
+    public function isReleasePinned(): bool
+    {
+        return $this->pinnedRelease !== [];
+    }
+
+    /**
+     * Populate a manually verified release target using version files from its immutable commit.
+     *
+     * @param array $release Trusted published release metadata returned by the connector.
+     * @param string $commit Verified immutable commit underlying the release tag.
+     * @return void
+     */
+    public function selectReleaseTarget(array $release, string $commit): void
+    {
+        $this->remoteVersion = $release['tag'];
+        $this->remoteRelease = $release;
+        $this->remoteReadableVersion = $this->getRemoteReadableVersion($commit);
+        $this->lastChecked = time();
+        $this->lastWarning = $this->lastError = '';
     }
 
     public function getReadableRemoteVersion(): string

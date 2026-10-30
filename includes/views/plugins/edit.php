@@ -55,6 +55,9 @@ $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' =>
 
 <h2><?php esc_html_e('Plugin', 'rrze-updater'); ?>
     <a href="<?php echo esc_url(add_query_arg(['page' => 'rrze-updater-plugins', 'action' => 'check-updates', 'id' => $extension->id], self_admin_url('admin.php'))); ?>" class="add-new-h2"><?php esc_html_e('Check for updates', 'rrze-updater'); ?></a>
+    <?php if ($canReplace && $extension->updates === 'releases' && $extension->connector instanceof Core\GithubConnector) : ?>
+        <a href="<?php echo esc_url(add_query_arg(['page' => 'rrze-updater-plugins', 'action' => 'releases', 'id' => $extension->id], self_admin_url('admin.php'))); ?>" class="add-new-h2"><?php esc_html_e('Choose release', 'rrze-updater'); ?></a>
+    <?php endif; ?>
     <?php if ($pluginCheckUrl) : ?>
         <a href="<?php echo esc_url($pluginCheckUrl); ?>" class="add-new-h2"><?php esc_html_e('Plugin Check', 'rrze-updater'); ?></a>
     <?php endif; ?>
@@ -97,6 +100,25 @@ $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' =>
 <?php endif; ?>
 
 <?php require __DIR__ . '/../partials/release-preview.php'; ?>
+
+<?php if ($extension->isReleasePinned()) : ?>
+    <div class="notice notice-info inline">
+        <p><strong><?php printf(
+            /* translators: %s: Explicitly selected release tag. */
+            esc_html__('Held at release %s', 'rrze-updater'),
+            esc_html($extension->pinnedRelease['tag'])
+        ); ?></strong></p>
+        <p><?php esc_html_e('Normal updates are paused for this plugin. Choose another release or resume release updates when you are ready.', 'rrze-updater'); ?></p>
+        <?php if ($canReplace) : ?>
+            <form action="<?php echo esc_url(add_query_arg(['page' => 'rrze-updater-plugins', 'action' => 'replace'], self_admin_url('admin.php'))); ?>" method="post">
+                <?php wp_nonce_field('rrze-updater-plugin-replacement-resume-releases', 'rrze-updater-nonce'); ?>
+                <input type="hidden" name="rrze-updater[replacement_action]" value="resume-releases">
+                <input type="hidden" name="rrze-updater[plugin_id]" value="<?php echo esc_attr($extension->id); ?>">
+                <?php submit_button(__('Resume release updates', 'rrze-updater'), 'secondary'); ?>
+            </form>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
 
 <form action="<?php echo esc_url(add_query_arg(['page' => 'rrze-updater-plugins', 'action' => 'edit', 'id' => $extension->id], self_admin_url('admin.php'))); ?>" method="POST">
     <?php wp_nonce_field('rrze-updater-plugin-edit', 'rrze-updater-nonce'); ?>

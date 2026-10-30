@@ -139,6 +139,34 @@ inferred for a tag without one. Release notes are sanitized before rendering.
 Checks read paginated tags and releases (up to ten pages of 100 each) and fail
 instead of selecting from incomplete results after an API error or page limit.
 
+### Install a specific GitHub release or roll back
+
+For a managed GitHub plugin saved in **Releases** mode, **Choose release** opens
+a paginated list of published releases with their title, original version/tag,
+GitHub link, author, publication date and prerelease status. Drafts are excluded;
+published prereleases can be selected explicitly. This chooser is available even
+when the plugin is already up to date.
+
+Selecting a release opens a confirmation showing the installed version and the
+chosen release. The server verifies the release ID within the saved repository
+and resolves its tag to an immutable commit. Confirmation installs that exact
+commit through the existing recoverable plugin-directory replacement transaction,
+even if the tag moves afterwards. Nothing is installed while browsing or preparing
+the review. Ordinary update checks still never offer downgrades.
+
+After successful installation, the release is **held** until **Resume release
+updates** is used. Routine checks, update offers and queued WordPress update jobs
+cannot override the hold. Reinstalling uses the same saved commit. You can select
+another release at any time; resume updates before changing the repository source.
+Resuming only clears the hold and refreshes the ordinary update offer; it does not
+immediately replace plugin files or change WordPress's automatic-update settings.
+
+Only plugin files are rolled back. Activation and database contents are preserved;
+database migrations performed by a newer version are not reversed. The selected
+older version must be compatible with the current database. The operation requires
+plugin installation/update permissions and, on multisite, network administrator
+access. It applies to the shared plugin files throughout the network.
+
 ### Reinstall or repair plugin files
 
 **Reinstall plugin files** on the plugin editor downloads the offered target for

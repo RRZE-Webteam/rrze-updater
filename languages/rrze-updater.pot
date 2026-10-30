@@ -2102,3 +2102,135 @@ msgstr ""
 #: includes/views/partials/release-preview.php
 msgid "No description provided."
 msgstr ""
+
+#: includes/views/plugins/releases.php includes/views/plugins/edit.php
+msgid "Choose release"
+msgstr ""
+
+#: includes/views/plugins/releases.php
+msgid "Back to plugin"
+msgstr ""
+
+#: includes/views/plugins/releases.php
+#, php-format
+msgid "Installed version: %1$s · Git reference: %2$s"
+msgstr ""
+
+#: includes/views/plugins/releases.php
+msgid "Choose a published release to install, including an older version or a pre-release. The next step confirms the exact version before replacing files."
+msgstr ""
+
+#: includes/views/plugins/releases.php includes/views/plugins/replace.php
+msgid "After installation, this release will be held until you resume release updates. Automatic updates will not undo your selection."
+msgstr ""
+
+#: includes/views/plugins/releases.php
+msgid "Release"
+msgstr ""
+
+#: includes/views/plugins/releases.php
+msgid "Version / Tag"
+msgstr ""
+
+#: includes/views/plugins/releases.php
+msgid "Author"
+msgstr ""
+
+#: includes/views/plugins/releases.php
+msgid "Published"
+msgstr ""
+
+#: includes/views/plugins/releases.php
+msgid "Installed release"
+msgstr ""
+
+#: includes/views/plugins/releases.php
+#, php-format
+msgid "Select release %s"
+msgstr ""
+
+#: includes/views/plugins/releases.php
+msgid "Select"
+msgstr ""
+
+#: includes/views/plugins/releases.php
+msgid "No published releases found on this page."
+msgstr ""
+
+#: includes/views/plugins/releases.php
+msgid "Release pages"
+msgstr ""
+
+#: includes/views/plugins/releases.php
+msgid "Previous page"
+msgstr ""
+
+#: includes/views/plugins/releases.php
+msgid "Next page"
+msgstr ""
+
+#: includes/views/plugins/releases.php
+#, php-format
+msgid "Page %d"
+msgstr ""
+
+#: includes/views/plugins/replace.php
+msgid "Confirm release installation"
+msgstr ""
+
+#: includes/views/plugins/replace.php
+msgid "Only plugin files are restored. Database changes made by newer versions are not rolled back; the selected version must be compatible with the existing data."
+msgstr ""
+
+#: includes/views/plugins/replace.php
+msgid "You selected a pre-release."
+msgstr ""
+
+#: includes/views/plugins/replace.php
+msgid "Installed version"
+msgstr ""
+
+#: includes/views/plugins/replace.php
+msgid "Selected release"
+msgstr ""
+
+#: includes/views/plugins/replace.php
+msgid "Install and hold this release"
+msgstr ""
+
+#: includes/views/plugins/edit.php
+#, php-format
+msgid "Held at release %s"
+msgstr ""
+
+#: includes/views/plugins/edit.php
+msgid "Normal updates are paused for this plugin. Choose another release or resume release updates when you are ready."
+msgstr ""
+
+#: includes/views/plugins/edit.php
+msgid "Resume release updates"
+msgstr ""
+
+#: includes/Core/PluginReplacement.php
+msgid "The release hold could not be removed. Please try again."
+msgstr ""
+
+#: includes/Core/PluginReplacement.php
+msgid "Release selection requires a managed GitHub plugin in Releases mode."
+msgstr ""
+
+#: includes/Core/RepositoryManager.php
+msgid "Resume release updates before changing the update source of this plugin."
+msgstr ""
+
+#: includes/ManagedUpgrader.php
+msgid "This plugin is held at a selected release. Resume release updates or choose another release in its Updater settings."
+msgstr ""
+
+#: includes/Admin/PluginController.php
+msgid "Could not load releases. Check the repository service and try again."
+msgstr ""
+
+#: includes/Admin/PluginController.php
+msgid "Release updates resumed. No plugin files have changed."
+msgstr ""
