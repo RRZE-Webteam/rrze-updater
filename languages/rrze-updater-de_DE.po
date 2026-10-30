@@ -2234,3 +2234,59 @@ msgstr "Besucher können eine Wartungsmeldung sehen; Formularübermittlungen und
 #: includes/MaintenanceNotice.php:101
 msgid "Temporary interruption of all websites"
 msgstr "Vorübergehende Unterbrechung aller Websites"
+
+#: includes/Core/GithubConnector.php
+msgid "Too many tags or releases to select an update safely."
+msgstr "Zu viele Tags oder Releases, um ein Update zuverlässig auszuwählen."
+
+#: includes/views/partials/tag-policy.php
+msgid "GitHub tags"
+msgstr "GitHub-Tags"
+
+#: includes/views/partials/tag-policy.php
+msgid "Ignore pre-releases"
+msgstr "Pre-Releases ignorieren"
+
+#: includes/views/partials/tag-policy.php
+msgid "Applies to Tags: skip GitHub pre-releases and version tags with a prerelease suffix (e.g. beta or rc). Releases always excludes pre-releases."
+msgstr "Gilt für Tags: GitHub-Pre-Releases und Versions-Tags mit Vorabversionszusatz (z. B. beta oder rc) überspringen. Die Einstellung „Releases“ schließt Pre-Releases immer aus."
+
+#: includes/views/partials/tag-policy.php
+msgid "The highest version is selected, ignoring prefixes such as v or release-. If no version tags exist, the most recently published release is preferred; tags without a release retain GitHub ordering."
+msgstr "Ausgewählt wird die höchste Version; Präfixe wie v oder release- werden beim Vergleich ignoriert. Gibt es keine Versions-Tags, wird der zuletzt veröffentlichte Release bevorzugt. Tags ohne Release behalten die GitHub-Reihenfolge bei."
+
+#: includes/views/partials/release-preview.php
+msgid "Release for this update"
+msgstr "Release für dieses Update"
+
+#: includes/views/partials/release-preview.php
+msgid "The update will install the source archive at this tag:"
+msgstr "Das Update installiert das Quellcode-Archiv dieses Tags:"
+
+#: includes/views/partials/release-preview.php
+msgid "No release details are available for this tag. Run an update check to refresh the information; tags without a published GitHub release have no release notes."
+msgstr "Für diesen Tag liegen keine Release-Details vor. Eine Update-Prüfung aktualisiert die Angaben. Tags ohne veröffentlichten GitHub-Release haben keine Release-Notizen."
+
+#: includes/views/partials/release-preview.php
+msgid "Pre-release"
+msgstr "Pre-Release"
+
+#: includes/views/partials/release-preview.php
+msgid "Stable release"
+msgstr "Stabiler Release"
+
+#: includes/views/partials/release-preview.php
+msgid "Author:"
+msgstr "Autor:"
+
+#: includes/views/partials/release-preview.php
+msgid "Published:"
+msgstr "Veröffentlicht:"
+
+#: includes/views/partials/release-preview.php
+msgid "Release notes"
+msgstr "Release-Notizen"
+
+#: includes/views/partials/release-preview.php
+msgid "No description provided."
+msgstr "Keine Beschreibung vorhanden."

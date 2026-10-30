@@ -328,6 +328,7 @@ class PluginReplacement
         return $plugin->repository === $repository && $this->options($plugin) === [
             'connector' => $options['connector'] ?? '', 'folder' => $options['folder'] ?? $repository,
             'branch' => $options['branch'] ?? 'main', 'updates' => $options['updates'] ?? 'tags',
+            'ignore-prereleases' => !empty($options['ignore-prereleases']),
         ];
     }
 
@@ -339,7 +340,8 @@ class PluginReplacement
      */
     private function options(Plugin $plugin): array
     {
-        return ['connector' => $plugin->connectorId, 'folder' => $plugin->installationFolder, 'branch' => $plugin->branch, 'updates' => $plugin->updates];
+        return ['connector' => $plugin->connectorId, 'folder' => $plugin->installationFolder,
+            'branch' => $plugin->branch, 'updates' => $plugin->updates, 'ignore-prereleases' => $plugin->ignorePrereleases];
     }
 
     /**

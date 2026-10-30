@@ -31,7 +31,21 @@ final class RepositorySource
             $type === 'github' ? strtolower($repository) : $repository,
             (string) $extension->branch, (string) $extension->updates,
             (string) $extension->installationFolder,
+            $type === 'github' && $extension->updates === 'tags' && $extension->ignorePrereleases,
         ], JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * Identify installed contents independently of the prerelease selection filter.
+     *
+     * @param Extension $extension Managed extension with its effective connector.
+     * @return string Source identity used to preserve the known installed ref.
+     */
+    public static function installedFingerprint(Extension $extension): string
+    {
+        $source = clone $extension;
+        $source->ignorePrereleases = false;
+        return self::fingerprint($source);
     }
 
     /**

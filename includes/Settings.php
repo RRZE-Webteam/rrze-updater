@@ -315,9 +315,14 @@ class Settings
                 if ($fingerprint === RepositorySource::fingerprintRecord($before, $beforeConnectors)) {
                     continue;
                 }
-                $extension->localVersion = '';
+                $beforeInstalled = $before;
+                $beforeInstalled['ignorePrereleases'] = false;
+                if (RepositorySource::installedFingerprint($effective) !== RepositorySource::fingerprintRecord($beforeInstalled, $beforeConnectors)) {
+                    $extension->localVersion = '';
+                }
                 if (($this->validatedSources[$extension->id] ?? '') !== $fingerprint) {
                     $extension->remoteVersion = $extension->remoteReadableVersion = '';
+                    $extension->remoteRelease = [];
                     $extension->lastWarning = $extension->lastError = '';
                     $extension->lastChecked = 0;
                 }

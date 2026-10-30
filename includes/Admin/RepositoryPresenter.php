@@ -244,6 +244,9 @@ class RepositoryPresenter
      */
     public function extensionHasUpdate(object $extension): bool
     {
+        if ($extension instanceof \RRZE\Updater\Core\Extension) {
+            return $extension->hasUpdate();
+        }
         return !empty($extension->remoteVersion)
             && $extension->remoteVersion != $extension->localVersion
             && empty($extension->lastError);

@@ -300,8 +300,17 @@ class Cron
         return $updates;
     }
 
+    /**
+     * Apply the shared target policy before including an update in notifications.
+     *
+     * @param object $extension Managed extension or legacy metadata.
+     * @return bool Whether an eligible update is available.
+     */
     private static function extensionHasUpdate(object $extension): bool
     {
+        if ($extension instanceof \RRZE\Updater\Core\Extension) {
+            return $extension->hasUpdate();
+        }
         return !empty($extension->remoteVersion)
             && $extension->remoteVersion != $extension->localVersion
             && empty($extension->lastError);

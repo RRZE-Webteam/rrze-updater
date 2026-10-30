@@ -14,7 +14,7 @@ $incomplete = !empty($data['incomplete']);
 $canReplace = !empty($data['canReplace']);
 $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' => 'all'], self_admin_url('plugins.php'));
 ?>
-<?php if (!$incomplete && ($extension->localVersion != $extension->remoteVersion) && ($extension->lastError == "")) : ?>
+<?php if (!$incomplete && $extension->hasUpdate()) : ?>
     <div class="notice notice-info">
         <p><a href="<?php echo esc_url($searchPlugin); ?>"><?php printf(
             /* translators: %s: Remote extension version */
@@ -96,6 +96,8 @@ $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' =>
     </p>
 <?php endif; ?>
 
+<?php require __DIR__ . '/../partials/release-preview.php'; ?>
+
 <form action="<?php echo esc_url(add_query_arg(['page' => 'rrze-updater-plugins', 'action' => 'edit', 'id' => $extension->id], self_admin_url('admin.php'))); ?>" method="POST">
     <?php wp_nonce_field('rrze-updater-plugin-edit', 'rrze-updater-nonce'); ?>
     <input type="hidden" name="rrze-updater[action]" value="edit-plugin" />
@@ -164,6 +166,7 @@ $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' =>
                     </select>
                 </td>
             </tr>
+            <?php require __DIR__ . '/../partials/tag-policy.php'; ?>
             <tr>
                 <th scope="row">
                     <label><?php esc_html_e('Plugin folder', 'rrze-updater'); ?></label>

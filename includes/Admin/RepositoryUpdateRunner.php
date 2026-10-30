@@ -104,13 +104,16 @@ class RepositoryUpdateRunner
     }
 
     /**
-     * Check the established remote/local version and error criteria.
+     * Apply the shared target policy before preparing an update.
      *
      * @param object $extension Managed plugin or theme.
      * @return bool Whether a successful check offers a different version.
      */
     private function hasUpdate(object $extension): bool
     {
+        if ($extension instanceof \RRZE\Updater\Core\Extension) {
+            return $extension->hasUpdate();
+        }
         return !empty($extension->remoteVersion)
             && $extension->remoteVersion != $extension->localVersion
             && empty($extension->lastError);

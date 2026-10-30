@@ -193,6 +193,7 @@ class ThemeController
         $extension->repository = $request['repository'];
         $extension->branch = $request['branch'] ?: 'main';
         $extension->updates = $request['updates'];
+        $extension->ignorePrereleases = ($request['ignorePrereleases'] ?? '') === '1';
         $extension->remoteVersion = $request['branch'];
 
         $extension->checkForUpdates();

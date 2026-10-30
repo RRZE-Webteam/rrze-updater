@@ -123,7 +123,8 @@ class RepositoryManager
             return $candidate;
         }
         $candidate->id = $previous->id;
-        $candidate->localVersion = RepositorySource::fingerprint($candidate) === $before ? $previous->localVersion : '';
+        $candidate->localVersion = RepositorySource::installedFingerprint($candidate) === RepositorySource::installedFingerprint($previous)
+            ? $previous->localVersion : '';
 
         $result = FilesystemLock::withLock(function () use ($id, $before, $candidate): string|WP_Error {
             // HTTP ran outside the filesystem lock. Re-read before committing so
@@ -152,7 +153,7 @@ class RepositoryManager
             }
             // An update may have completed during validation without changing
             // the source. Preserve that installed ref when this is only a check.
-            if ($checkedSource === $before) {
+            if (RepositorySource::installedFingerprint($candidate) === RepositorySource::installedFingerprint($persisted)) {
                 $candidate->localVersion = $persisted->localVersion;
             }
             $extensions = $this->settings->plugins;
@@ -174,7 +175,14 @@ class RepositoryManager
         return $result;
     }
 
-    /** Build a read-only plan. No files or associations are changed. */
+    /**
+     * Build a read-only plan containing the selected ref and its release details.
+     *
+     * @param string $type Plugin or theme.
+     * @param string $repository Repository name.
+     * @param array $options Source and update policy options.
+     * @return array|WP_Error Checked installation plan or validation error.
+     */
     public function prepare(string $type, string $repository, array $options): array|WP_Error
     {
         $this->warnings = [];
@@ -197,6 +205,7 @@ class RepositoryManager
         return [
             'action' => $state['installed'] ? ($state['existing'] ? 'skip' : 'register') : 'install',
             'ref' => $extension->remoteVersion, 'readable' => $extension->remoteReadableVersion,
+            'release' => $extension->remoteRelease,
             'checked_at' => $extension->lastChecked, 'warning' => $extension->lastWarning,
             'parent' => $parent,
         ];
@@ -291,6 +300,7 @@ class RepositoryManager
             }
             $extension->remoteVersion = $prepared['ref'];
             $extension->remoteReadableVersion = $prepared['readable'] ?? '';
+            $extension->remoteRelease = is_array($prepared['release'] ?? null) ? $prepared['release'] : [];
             $extension->lastChecked = $prepared['checked_at'];
             $extension->lastWarning = $prepared['warning'] ?? '';
             if ($extension->lastWarning !== '') {
@@ -326,6 +336,13 @@ class RepositoryManager
             : "$repository registered. The installed Git ref is unknown; the next update can install the selected remote ref.";
     }
 
+    /**
+     * Check installation presence and conflicts with an existing source policy.
+     *
+     * @param string $type Plugin or theme.
+     * @param Extension $extension Proposed association.
+     * @return array|WP_Error Existing association and installation state, or a conflict.
+     */
     private function localState(string $type, Extension $extension): array|WP_Error
     {
         $existing = null;
@@ -337,7 +354,8 @@ class RepositoryManager
                 continue;
             }
             if (!$sameRepository || !$sameFolder
-                || $candidate->branch !== $extension->branch || $candidate->updates !== $extension->updates) {
+                || $candidate->branch !== $extension->branch || $candidate->updates !== $extension->updates
+                || $candidate->ignorePrereleases !== $extension->ignorePrereleases) {
                 return $this->error('conflicting_repository', 'The repository or folder already has a different association. Unregister it before changing the configuration.');
             }
             $existing = $candidate;
@@ -391,6 +409,7 @@ class RepositoryManager
         $extension = $class::createFromArray([
             'connectorId' => $connector->id, 'repository' => $repository,
             'installationFolder' => $folder, 'branch' => $branch, 'updates' => $updates,
+            'ignorePrereleases' => !empty($options['ignore-prereleases']),
         ]);
         $extension->connector = $connector;
         return $extension;

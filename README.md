@@ -116,6 +116,29 @@ as unknown for that source, so even an identical tag name offers an update from
 the newly selected repository. The version read from installed files remains
 visible. Existing automatic-update settings continue to apply.
 
+### GitHub tags and release previews
+
+Tag checks compare numeric versions independently of the API response order.
+Prefixes such as `v`, `V`, `release-` or `release/` and build metadata are ignored
+for comparison; the original tag is preserved for downloading. The highest
+eligible version wins. A later maintenance release of an older version does not
+replace a higher version. If no numeric version tags exist, the most recently
+published associated release wins; undated tags retain GitHub's order.
+
+On the plugin/theme detail page, **Ignore pre-releases** excludes both GitHub's
+prerelease flag (even for a plain numeric tag) and version suffixes such as beta
+or rc. Draft releases are excluded. The filter is opt-in and applies to Tags;
+Releases mode continues to select GitHub's latest stable release. Changing only
+this filter preserves the known installed ref. Comparable GitHub version tags
+never offer an equivalent version or a downgrade.
+
+When an update is available, the detail page shows the exact tag, release title
+and link, GitHub author, publication date, stability status and release notes.
+These details come from the same check as the selected archive; no release is
+inferred for a tag without one. Release notes are sanitized before rendering.
+Checks read paginated tags and releases (up to ten pages of 100 each) and fail
+instead of selecting from incomplete results after an API error or page limit.
+
 ### Reinstall or repair plugin files
 
 **Reinstall plugin files** on the plugin editor downloads the offered target for
@@ -252,6 +275,7 @@ Both commands accept:
 - `--folder=<name>`: installation folder, defaulting to the repository name.
 - `--branch=<ref>`: branch for commit updates, defaulting to `main`.
 - `--updates=tags|commits|releases`: update policy, defaulting to **tags**.
+- `--ignore-prereleases`: persist the GitHub prerelease filter for tag checks.
 - `--only-release`: select release mode and persist it for
   future update checks. This flag conflicts with `--updates=tags|commits`.
 

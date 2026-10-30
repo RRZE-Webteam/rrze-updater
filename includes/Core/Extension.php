@@ -84,6 +84,12 @@ class Extension
      */
     public $updates;
 
+    /** @var bool Exclude GitHub prereleases when checking tags; opt-in for existing records. */
+    public bool $ignorePrereleases = false;
+
+    /** @var array<string, mixed> Release details from the last successful target selection. */
+    public array $remoteRelease = [];
+
     /**
      * Timestamp of the last update check.
      *
@@ -125,6 +131,8 @@ class Extension
         $this->remoteVersion = $array['remoteVersion'] ?? '';
         $this->remoteReadableVersion = $array['remoteReadableVersion'] ?? '';
         $this->updates = $array['updates'] ?? '';
+        $this->ignorePrereleases = !empty($array['ignorePrereleases']);
+        $this->remoteRelease = is_array($array['remoteRelease'] ?? null) ? $array['remoteRelease'] : [];
         $this->lastChecked = $array['lastChecked'] ?? 0;
         $this->lastWarning = isset($array['lastWarning']) ? unserialize($array['lastWarning']) : '';
         $this->lastError = isset($array['lastError']) ? unserialize($array['lastError']) : '';
@@ -150,6 +158,8 @@ class Extension
             'remoteVersion' => $this->remoteVersion,
             'remoteReadableVersion' => $this->remoteReadableVersion,
             'updates' => $this->updates,
+            'ignorePrereleases' => $this->ignorePrereleases,
+            'remoteRelease' => $this->remoteRelease,
             'lastChecked' => $this->lastChecked,
             'lastWarning' => serialize($this->lastWarning),
             'lastError' => serialize($this->lastError)
@@ -174,6 +184,9 @@ class Extension
         $this->lastChecked = time();
         $this->connector->error = '';
         $this->connector->warning = '';
+        $this->connector->ignorePrereleases = $this->ignorePrereleases;
+        $this->connector->remoteRelease = [];
+        $this->remoteRelease = [];
 
         $remoteVersion = false;
         switch ($this->updates) {
@@ -199,8 +212,32 @@ class Extension
         $this->remoteReadableVersion = '';
 
         if ($remoteVersion) {
+            $this->remoteRelease = $this->connector->remoteRelease;
             $this->remoteReadableVersion = $this->getRemoteReadableVersion((string) $remoteVersion);
         }
+    }
+
+    /**
+     * Determine whether the checked target should be offered as an update.
+     *
+     * GitHub version tags never offer an equivalent version or a downgrade.
+     * Unknown installed refs and other update policies retain ref-based behavior.
+     *
+     * @return bool Whether a successfully checked target is newer or uninstalled.
+     */
+    public function hasUpdate(): bool
+    {
+        if (!$this->remoteVersion || $this->lastError || $this->remoteVersion === $this->localVersion) {
+            return false;
+        }
+        if ($this->connector instanceof GithubConnector && in_array($this->updates, ['tags', 'releases'], true)) {
+            $local = TagVersion::normalize((string) $this->localVersion);
+            $remote = TagVersion::normalize((string) $this->remoteVersion);
+            if ($local !== '' && $remote !== '') {
+                return version_compare($remote, $local, '>');
+            }
+        }
+        return true;
     }
 
     public function getReadableRemoteVersion(): string

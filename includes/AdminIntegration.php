@@ -365,8 +365,17 @@ class AdminIntegration
         );
     }
 
+    /**
+     * Use the shared update policy for managed extensions and legacy display objects.
+     *
+     * @param object $extension Managed extension or legacy metadata.
+     * @return bool Whether the extension has an eligible update.
+     */
     private function extensionHasUpdate(object $extension): bool
     {
+        if ($extension instanceof \RRZE\Updater\Core\Extension) {
+            return $extension->hasUpdate();
+        }
         return !empty($extension->remoteVersion)
             && $extension->remoteVersion != $extension->localVersion
             && empty($extension->lastError);

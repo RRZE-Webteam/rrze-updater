@@ -17,6 +17,12 @@ use RRZE\Updater\TokenNotice;
  */
 abstract class Connector
 {
+    /** @var bool Whether this check excludes GitHub prerelease tags. */
+    public bool $ignorePrereleases = false;
+
+    /** @var array<string, mixed> Release metadata belonging to the selected Git ref. */
+    public array $remoteRelease = [];
+
     /**
      * Unique identifier for the connector.
      *

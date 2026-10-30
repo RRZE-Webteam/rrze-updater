@@ -187,55 +187,139 @@ class GithubConnector extends Connector
     }
 
     /**
-     * Get the latest remote tag of a GitHub repository.
+     * Select the highest eligible version tag, independently of GitHub's ordering.
+     *
+     * Alphabetic prefixes are ignored for comparison only. If there are no
+     * version tags, prefer the most recently published release; otherwise retain
+     * GitHub's tag order. Release metadata is attached only to the selected tag.
      *
      * @param string $repository The name of the repository.
      * @return string|boolean The latest remote tag name or false on failure.
      */
     public function getRemoteTag(string $repository): string|bool
     {
-        // Query the GitHub API to get the latest remote tag.
-        // Return the tag name or false on failure.
-
-        $url = sprintf(
-            'https://%1$s/repos/%2$s/%3$s/tags',
-            $this->getApiHost(),
-            $this->owner,
-            $repository
-        );
-
-        $getArgs = [
-            'headers' => $this->getHeaders()
-        ];
-
-        $response = $this->api(
-            $url,
-            $getArgs,
-            [
-                'logContext' => $this->getRepositoryLogContext($repository, 'tags')
-            ]
-        );
-
-        $ret = false;
-        if (is_array($response) && count($response) > 0) {
-            $ret = $response[0]->name;
+        $this->remoteRelease = [];
+        $tags = $this->getTagSelectionPages($repository, 'tags');
+        if ($tags === false || !$tags) {
+            return false;
         }
-        return $ret;
+        $releases = $this->getTagSelectionPages($repository, 'releases');
+        // An API outage must not silently bypass a prerelease flag or select
+        // a different target using an incomplete release list.
+        if ($releases === false) {
+            return false;
+        }
+        $byTag = [];
+        foreach ($releases as $release) {
+            if (is_object($release) && is_string($release->tag_name ?? null)) {
+                $byTag[$release->tag_name] = $release;
+            }
+        }
+        $selected = '';
+        $selectedVersion = '';
+        $selectedDate = 0;
+        foreach ($tags as $tag) {
+            $name = is_object($tag) ? ($tag->name ?? '') : '';
+            if (!is_string($name) || $name === '') {
+                continue;
+            }
+            $release = $byTag[$name] ?? null;
+            if (!empty($release->draft) || ($this->ignorePrereleases
+                && (!empty($release->prerelease) || TagVersion::isPrerelease($name)))) {
+                continue;
+            }
+            $version = TagVersion::normalize($name);
+            $date = strtotime((string) ($release->published_at ?? '')) ?: 0;
+            $higherVersion = $version !== '' && ($selectedVersion === '' || version_compare($version, $selectedVersion, '>'));
+            $sameVersion = $version !== '' && $selectedVersion !== '' && version_compare($version, $selectedVersion, '==');
+            if ($selected === '' || $higherVersion || (($sameVersion || ($version === '' && $selectedVersion === '')) && $date > $selectedDate)) {
+                $selected = $name;
+                $selectedVersion = $version;
+                $selectedDate = $date;
+            }
+        }
+        if ($selected === '') {
+            return false;
+        }
+        if (isset($byTag[$selected])) {
+            $this->remoteRelease = $this->releaseMetadata($byTag[$selected]);
+        }
+        return $selected;
     }
 
+    /**
+     * Load complete tag/release pages with a bound on API work per check.
+     *
+     * @param string $repository Repository name.
+     * @param string $resource Tags or releases endpoint.
+     * @return array|false Complete records or false on failure/overflow.
+     */
+    private function getTagSelectionPages(string $repository, string $resource): array|false
+    {
+        $items = [];
+        for ($page = 1; $page <= 10; $page++) {
+            $url = sprintf('https://%s/repos/%s/%s/%s?per_page=100&page=%d',
+                $this->getApiHost(), rawurlencode($this->owner), rawurlencode($repository), $resource, $page);
+            $headers = array_merge($this->getHeaders(), ['Accept' => 'application/vnd.github.full+json']);
+            $response = $this->api($url, ['headers' => $headers], [
+                'logContext' => $this->getRepositoryLogContext($repository, $resource),
+            ]);
+            if (!is_array($response)) {
+                return false;
+            }
+            $items = array_merge($items, $response);
+            if (count($response) < 100) {
+                return $items;
+            }
+        }
+        $this->error = __('Too many tags or releases to select an update safely.', 'rrze-updater');
+        return false;
+    }
+
+    /**
+     * Retain only release fields needed by the update preview.
+     *
+     * @param object $release GitHub release response.
+     * @return array<string, mixed> Credential-free display data; escaped at output.
+     */
+    private function releaseMetadata(object $release): array
+    {
+        return [
+            'tag' => (string) ($release->tag_name ?? ''),
+            'title' => (string) ($release->name ?? ''),
+            'url' => (string) ($release->html_url ?? ''),
+            'author' => (string) ($release->author->login ?? ''),
+            'author_url' => (string) ($release->author->html_url ?? ''),
+            'published_at' => (string) ($release->published_at ?? ''),
+            'prerelease' => !empty($release->prerelease),
+            'body' => (string) ($release->body ?? ''),
+            'body_html' => (string) ($release->body_html ?? ''),
+        ];
+    }
+
+    /**
+     * Resolve GitHub's latest stable release and retain its display metadata.
+     *
+     * @param string $repository Repository name.
+     * @return string|false Published release tag, or false when unavailable.
+     */
     public function getRemoteRelease(string $repository): string|false
     {
+        $this->remoteRelease = [];
         $url = sprintf('https://%s/repos/%s/%s/releases/latest',
             $this->getApiHost(), rawurlencode($this->owner), rawurlencode($repository));
-        $response = $this->api($url, ['headers' => $this->getHeaders()], [
+        $response = $this->api($url, ['headers' => array_merge($this->getHeaders(), ['Accept' => 'application/vnd.github.full+json'])], [
             'logContext' => $this->getRepositoryLogContext($repository, 'releases/latest'),
         ]);
         if (!is_object($response)
             || !empty($response->draft) || !empty($response->prerelease)) {
             return false;
         }
-        return isset($response->tag_name) && is_string($response->tag_name) && $response->tag_name !== ''
-            ? $response->tag_name : false;
+        if (!isset($response->tag_name) || !is_string($response->tag_name) || $response->tag_name === '') {
+            return false;
+        }
+        $this->remoteRelease = $this->releaseMetadata($response);
+        return $response->tag_name;
     }
 
     public function downloadRepoZip(string $repository, string $branch = 'main'): string

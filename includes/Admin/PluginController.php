@@ -277,6 +277,7 @@ class PluginController
                 'folder' => $plugin->installationFolder,
                 'branch' => $plugin->branch,
                 'updates' => $plugin->updates,
+                'ignore-prereleases' => $plugin->ignorePrereleases,
             ], $pluginId);
         } else {
             $repository = trim($request['repository'] ?? '');
@@ -412,6 +413,7 @@ class PluginController
             'connector' => $request['connectorId'],
             'branch' => $request['branch'] ?: 'main',
             'updates' => $request['updates'],
+            'ignore-prereleases' => ($request['ignorePrereleases'] ?? '') === '1',
         ]);
         $this->messages->add($result);
         foreach ($manager->getWarnings() as $warning) {

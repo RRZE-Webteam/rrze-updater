@@ -2046,3 +2046,59 @@ msgstr ""
 #: includes/MaintenanceNotice.php:101
 msgid "Temporary interruption of all websites"
 msgstr ""
+
+#: includes/Core/GithubConnector.php
+msgid "Too many tags or releases to select an update safely."
+msgstr ""
+
+#: includes/views/partials/tag-policy.php
+msgid "GitHub tags"
+msgstr ""
+
+#: includes/views/partials/tag-policy.php
+msgid "Ignore pre-releases"
+msgstr ""
+
+#: includes/views/partials/tag-policy.php
+msgid "Applies to Tags: skip GitHub pre-releases and version tags with a prerelease suffix (e.g. beta or rc). Releases always excludes pre-releases."
+msgstr ""
+
+#: includes/views/partials/tag-policy.php
+msgid "The highest version is selected, ignoring prefixes such as v or release-. If no version tags exist, the most recently published release is preferred; tags without a release retain GitHub ordering."
+msgstr ""
+
+#: includes/views/partials/release-preview.php
+msgid "Release for this update"
+msgstr ""
+
+#: includes/views/partials/release-preview.php
+msgid "The update will install the source archive at this tag:"
+msgstr ""
+
+#: includes/views/partials/release-preview.php
+msgid "No release details are available for this tag. Run an update check to refresh the information; tags without a published GitHub release have no release notes."
+msgstr ""
+
+#: includes/views/partials/release-preview.php
+msgid "Pre-release"
+msgstr ""
+
+#: includes/views/partials/release-preview.php
+msgid "Stable release"
+msgstr ""
+
+#: includes/views/partials/release-preview.php
+msgid "Author:"
+msgstr ""
+
+#: includes/views/partials/release-preview.php
+msgid "Published:"
+msgstr ""
+
+#: includes/views/partials/release-preview.php
+msgid "Release notes"
+msgstr ""
+
+#: includes/views/partials/release-preview.php
+msgid "No description provided."
+msgstr ""

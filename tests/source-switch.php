@@ -261,4 +261,22 @@ check($heldDuringRollback && !$wpdb->locked, 'The shared lock covers core rollba
 
 FilesystemLock::releaseAll();
 $multisite = $savedSourceMultisite;
+
+// Filtering future targets must not erase knowledge of already installed files.
+[$settings, $manager, $original] = sourceSwitchFixture();
+check(is_string($manager->changePluginSource($original->id, 'package', [
+    'connector' => $original->connectorId, 'branch' => 'main', 'updates' => 'tags', 'ignore-prereleases' => true,
+])), 'Save a validated prerelease policy change.');
+$filtered = (new Settings())->plugins[0];
+check($filtered->ignorePrereleases && $filtered->localVersion === 'v1.2' && $filtered->remoteVersion === 'v1.2',
+    'A checked filter change preserves the installed ref and the fresh target.');
+$staleFilterSettings = new Settings();
+$freshFilterSettings = new Settings();
+$freshFilterSettings->plugins[0]->ignorePrereleases = false;
+check($freshFilterSettings->save(), 'Persist an unchecked policy change.');
+$filtered = (new Settings())->plugins[0];
+check($filtered->localVersion === 'v1.2' && $filtered->remoteVersion === '' && $filtered->remoteRelease === [],
+    'An unchecked filter change invalidates the target and preview, but keeps the installed ref.');
+$staleFilterSettings->plugins[0]->remoteVersion = 'v9';
+check(!$staleFilterSettings->save(), 'A check using the previous prerelease policy cannot publish its stale result.');
 echo 'Passed ' . ($checks - $beforeSourceSwitch) . " source migration and stale package checks.\n";

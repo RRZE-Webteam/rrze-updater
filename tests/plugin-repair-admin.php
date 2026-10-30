@@ -125,7 +125,7 @@ foreach ([false, true] as $network) {
     $before = $settings->asArray();
     $controller->plugins->getPluginIndex();
     check($controller->renderer->shown['view'] === 'plugins/replace' && $service->calls === [
-        ['prepare', 'package', ['connector' => 'admin-connector', 'folder' => 'package', 'branch' => 'master', 'updates' => 'commits'], 'admin-plugin'],
+        ['prepare', 'package', ['connector' => 'admin-connector', 'folder' => 'package', 'branch' => 'master', 'updates' => 'commits', 'ignore-prereleases' => false], 'admin-plugin'],
     ], 'Reinstallation prepares only the saved source and immutable folder on single-site and multisite.');
     check($settings->asArray() === $before && (new Settings())->asArray() === $before, 'Preparing a review cannot change source settings.');
 
