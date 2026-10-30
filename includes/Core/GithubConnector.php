@@ -133,6 +133,89 @@ class GithubConnector extends Connector
         return $ret;
     }
 
+    /**
+     * List a bounded page of commits reachable from the configured branch.
+     *
+     * @param string $repository Saved repository name.
+     * @param string $branch Saved branch name, never a posted source override.
+     * @param int $page One-based history page.
+     * @return array|false Commit metadata and pagination state, or an API failure.
+     */
+    public function getCommitPage(string $repository, string $branch, int $page = 1): array|false
+    {
+        if ($page < 1 || $page > 9999) {
+            return false;
+        }
+        $url = sprintf('https://%s/repos/%s/%s/commits?sha=%s&per_page=20&page=%d',
+            $this->getApiHost(), rawurlencode($this->owner), rawurlencode($repository), rawurlencode('refs/heads/' . $branch), $page);
+        $response = $this->api($url, ['headers' => $this->getHeaders()], [
+            'logContext' => $this->getRepositoryLogContext($repository, 'commits', $branch),
+        ]);
+        if (!is_array($response)) {
+            return false;
+        }
+        $items = [];
+        foreach ($response as $commit) {
+            if ($metadata = $this->commitMetadata($commit)) {
+                $items[] = $metadata;
+            }
+        }
+        return ['items' => $items, 'page' => $page, 'has_more' => count($response) === 20];
+    }
+
+    /**
+     * Verify an exact commit and its ancestry inside the saved repository and branch.
+     *
+     * @param string $repository Saved repository name.
+     * @param string $branch Saved branch whose history may be selected.
+     * @param string $sha Full commit ID submitted by the chooser.
+     * @return array|false Verified metadata, or false for unknown/diverged commits or API errors.
+     */
+    public function getCommitForBranch(string $repository, string $branch, string $sha): array|false
+    {
+        if (!preg_match('/\A[a-f0-9]{40}\z/i', $sha)) {
+            return false;
+        }
+        $sha = strtolower($sha);
+        $base = sprintf('https://%s/repos/%s/%s', $this->getApiHost(), rawurlencode($this->owner), rawurlencode($repository));
+        $args = ['headers' => $this->getHeaders()];
+        $context = ['logContext' => $this->getRepositoryLogContext($repository, 'commits', $sha)];
+        $metadata = $this->commitMetadata($this->api($base . '/commits/' . $sha, $args, $context));
+        if (!$metadata || $metadata['sha'] !== $sha) {
+            return false;
+        }
+        $comparison = $this->api($base . '/compare/' . $sha . '...'
+            . rawurlencode('refs/heads/' . $branch) . '?per_page=1', $args, $context);
+        return is_object($comparison) && in_array($comparison->status ?? '', ['ahead', 'identical'], true)
+            && ($comparison->merge_base_commit->sha ?? '') === $sha ? $metadata : false;
+    }
+
+    /**
+     * Normalize display fields without retaining author email addresses or file diffs.
+     *
+     * @param mixed $commit Decoded GitHub commit response.
+     * @return array|false Credential-free metadata, or false for a malformed record.
+     */
+    private function commitMetadata(mixed $commit): array|false
+    {
+        if (!is_object($commit) || !is_string($commit->sha ?? null)
+            || !preg_match('/\A[a-f0-9]{40}\z/i', $commit->sha)
+            || !is_string($commit->commit->message ?? null)
+            || !is_string($commit->commit->committer->date ?? null)
+            || strtotime($commit->commit->committer->date) === false) {
+            return false;
+        }
+        return [
+            'sha' => strtolower($commit->sha),
+            'title' => strtok($commit->commit->message, "\r\n") ?: substr($commit->sha, 0, 12),
+            'message' => $commit->commit->message,
+            'url' => (string) ($commit->html_url ?? ''),
+            'author' => (string) ($commit->commit->author->name ?? $commit->author->login ?? ''),
+            'author_url' => (string) ($commit->author->html_url ?? ''),
+            'committed_at' => $commit->commit->committer->date,
+        ];
+    }
+
     public function remoteBranchExists(string $repository, string $branch): bool
     {
         $url = sprintf(

@@ -6,12 +6,16 @@ defined('ABSPATH') || exit;
 
 $review = $data['review'];
 $selectRelease = $review['mode'] === 'release';
+$selectCommit = $review['mode'] === 'commit';
 $actionUrl = add_query_arg(['page' => 'rrze-updater-plugins', 'action' => 'replace'], self_admin_url('admin.php'));
 ?>
-<h2><?php echo $selectRelease ? esc_html__('Confirm release installation', 'rrze-updater') : esc_html__('Confirm plugin file replacement', 'rrze-updater'); ?></h2>
-<?php if ($selectRelease) : ?>
+<h2><?php echo $selectRelease ? esc_html__('Confirm release installation', 'rrze-updater')
+    : ($selectCommit ? esc_html__('Confirm commit installation', 'rrze-updater') : esc_html__('Confirm plugin file replacement', 'rrze-updater')); ?></h2>
+<?php if ($selectRelease || $selectCommit) : ?>
     <div class="notice notice-info inline">
-        <p><strong><?php esc_html_e('After installation, this release will be held until you resume release updates. Automatic updates will not undo your selection.', 'rrze-updater'); ?></strong></p>
+        <p><strong><?php echo $selectRelease
+            ? esc_html__('After installation, this release will be held until you resume release updates. Automatic updates will not undo your selection.', 'rrze-updater')
+            : esc_html__('After installation, this commit will be held until you resume commit updates. Automatic updates will not undo your selection.', 'rrze-updater'); ?></strong></p>
         <p><?php esc_html_e('Only plugin files are restored. Database changes made by newer versions are not rolled back; the selected version must be compatible with the existing data.', 'rrze-updater'); ?></p>
         <?php if (!empty($review['release']['prerelease'])) : ?>
             <p><strong><?php esc_html_e('You selected a pre-release.', 'rrze-updater'); ?></strong></p>
@@ -25,14 +29,32 @@ $actionUrl = add_query_arg(['page' => 'rrze-updater-plugins', 'action' => 'repla
 <?php echo MaintenanceNotice::render('replacement'); ?>
 <table class="widefat striped">
     <tbody>
-        <?php if ($selectRelease) : ?>
+        <?php if ($selectRelease || $selectCommit) : ?>
             <tr>
                 <th scope="row"><?php esc_html_e('Installed version', 'rrze-updater'); ?></th>
                 <td><?php echo esc_html($data['installedVersion'] ?? ($review['installed_ref'] ?: '—')); ?> (<?php echo esc_html($review['installed_ref'] ?: '—'); ?>)</td>
             </tr>
+        <?php endif; ?>
+        <?php if ($selectRelease) : ?>
             <tr>
                 <th scope="row"><?php esc_html_e('Selected release', 'rrze-updater'); ?></th>
                 <td><a href="<?php echo esc_url($review['release']['url']); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html($review['release']['title'] ?: $review['ref']); ?></a></td>
+            </tr>
+        <?php endif; ?>
+        <?php if ($selectCommit) : ?>
+            <tr>
+                <th scope="row"><?php esc_html_e('Selected commit', 'rrze-updater'); ?></th>
+                <td><a href="<?php echo esc_url($review['selected_commit']['url']); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html($review['selected_commit']['title']); ?></a>
+                    <pre style="white-space: pre-wrap; overflow-wrap: anywhere;"><?php echo esc_html($review['selected_commit']['message']); ?></pre>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><?php esc_html_e('Author', 'rrze-updater'); ?></th>
+                <td><?php echo esc_html($review['selected_commit']['author'] ?: '—'); ?></td>
+            </tr>
+            <tr>
+                <th scope="row"><?php esc_html_e('Committed', 'rrze-updater'); ?></th>
+                <td><?php echo esc_html(wp_date(get_option('date_format') . ' H:i', strtotime($review['selected_commit']['committed_at']))); ?></td>
             </tr>
         <?php endif; ?>
         <tr>
@@ -62,7 +84,8 @@ $actionUrl = add_query_arg(['page' => 'rrze-updater-plugins', 'action' => 'repla
     <?php wp_nonce_field('rrze-updater-plugin-replacement-apply', 'rrze-updater-nonce'); ?>
     <input type="hidden" name="rrze-updater[replacement_action]" value="apply">
     <input type="hidden" name="rrze-updater[review_id]" value="<?php echo esc_attr($review['id']); ?>">
-    <?php submit_button($selectRelease ? __('Install and hold this release', 'rrze-updater') : __('Confirm and replace plugin files', 'rrze-updater')); ?>
+    <?php submit_button($selectRelease ? __('Install and hold this release', 'rrze-updater')
+        : ($selectCommit ? __('Install and hold this commit', 'rrze-updater') : __('Confirm and replace plugin files', 'rrze-updater'))); ?>
 </form>
 <form action="<?php echo esc_url($actionUrl); ?>" method="post">
     <?php wp_nonce_field('rrze-updater-plugin-replacement-cancel', 'rrze-updater-nonce'); ?>

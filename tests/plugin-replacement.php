@@ -119,6 +119,7 @@ class ReplacementConnectorFixture extends GithubConnector {
     public bool $downloadFails = false;
     public bool $downloadThrows = false;
     public array $releases = [];
+    public array $commits = [];
     public string $resolvedRef = '';
     public string $commit = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
     public int $latestChecks = 0;
@@ -145,6 +146,19 @@ class ReplacementConnectorFixture extends GithubConnector {
      * @return array|false Fixture release or missing-release result.
      */
     public function getReleaseById(string $repository, string $id): array|false { return $this->releases[$id] ?? false; }
+    /**
+     * Supply verified historical commits from the saved fixture repository and branch.
+     *
+     * @param string $repository Saved repository name.
+     * @param string $branch Saved branch name.
+     * @param string $sha Requested immutable commit.
+     * @return array|false Fixture commit or a denied selection.
+     */
+    public function getCommitForBranch(string $repository, string $branch, string $sha): array|false
+    {
+        replacementCheck($repository === 'sample' && $branch === 'main', 'Commit reviews use the saved repository and branch.');
+        return $this->commits[$sha] ?? false;
+    }
     /**
      * Supply a version header only at the immutable commit, never at a mutable tag.
      *
@@ -395,6 +409,7 @@ try {
     symlink('/tmp', WP_PLUGIN_DIR . '/sample/link');
     replacementError($f['service']->prepare('sample', $f['options'], 'managed-plugin'), 'unsafe_files');
     require __DIR__ . '/release-installation.php';
+    require __DIR__ . '/commit-installation.php';
     echo 'Passed ' . $replacementChecks . " replacement review, archive and rollback checks.\n";
 } finally {
     replacementRemove($replacementRoot);

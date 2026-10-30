@@ -35,11 +35,12 @@ final class RepositorySource
             $extension->pinnedRelease['id'] ?? '',
             $extension->pinnedRelease['tag'] ?? '',
             $extension->pinnedRelease['commit'] ?? '',
+            $extension->pinnedCommit['commit'] ?? '',
         ], JSON_THROW_ON_ERROR));
     }
 
     /**
-     * Identify installed contents independently of prerelease filters and release holds.
+     * Identify installed contents independently of prerelease filters and target holds.
      *
      * @param Extension $extension Managed extension with its effective connector.
      * @return string Source identity used to preserve the known installed ref.
@@ -49,6 +50,7 @@ final class RepositorySource
         $source = clone $extension;
         $source->ignorePrereleases = false;
         $source->pinnedRelease = [];
+        $source->pinnedCommit = [];
         return self::fingerprint($source);
     }
 

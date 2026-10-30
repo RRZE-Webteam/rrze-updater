@@ -213,8 +213,10 @@ class PluginController
         try {
             $result = match ($request['replacement_action']) {
                 'prepare' => $this->prepareReplacement($request, $pluginId),
-                'prepare-release' => $this->prepareSelectedRelease($request, $pluginId),
-                'resume-releases' => $this->resumeReleaseUpdates($pluginId),
+                'prepare-release' => $this->prepareSelectedTarget($request, $pluginId, 'releases'),
+                'prepare-commit' => $this->prepareSelectedTarget($request, $pluginId, 'commits'),
+                'resume-releases' => $this->resumeSelectedUpdates($pluginId, 'releases'),
+                'resume-commits' => $this->resumeSelectedUpdates($pluginId, 'commits'),
                 default => $this->completeReplacement($request, $pluginId),
             };
             if (!is_wp_error($result)) {
@@ -243,7 +245,7 @@ class PluginController
         $request = $_POST['rrze-updater'] ?? null;
         $operation = is_array($request) ? ($request['replacement_action'] ?? '') : '';
         $nonce = $_POST['rrze-updater-replacement-nonce'] ?? $_POST['rrze-updater-nonce'] ?? '';
-        if (!is_string($operation) || !in_array($operation, ['prepare', 'prepare-release', 'resume-releases', 'apply', 'cancel'], true)
+        if (!is_string($operation) || !in_array($operation, ['prepare', 'prepare-release', 'prepare-commit', 'resume-releases', 'resume-commits', 'apply', 'cancel'], true)
             || !is_string($nonce) || !wp_verify_nonce($nonce, 'rrze-updater-plugin-replacement-' . $operation)) {
             wp_die(esc_html__('Unable to submit this form, please refresh and try again.', 'rrze-updater'));
         }
@@ -251,7 +253,7 @@ class PluginController
             $this->messages->add(new WP_Error('file_modifications_disabled', __('File modifications are disabled on this installation.', 'rrze-updater')));
             return null;
         }
-        foreach (['plugin_id', 'release_id', 'review_id', 'repository', 'connectorId', 'installationFolder', 'branch', 'updates'] as $field) {
+        foreach (['plugin_id', 'release_id', 'commit_sha', 'review_id', 'repository', 'connectorId', 'installationFolder', 'branch', 'updates'] as $field) {
             if (isset($request[$field]) && !is_string($request[$field])) {
                 $this->messages->add(new WP_Error('invalid_request', __('Invalid repository installation request.', 'rrze-updater')));
                 return null;
@@ -267,38 +269,64 @@ class PluginController
      */
     public function getPluginReleases(): void
     {
+        $this->displaySelection('releases');
+    }
+
+    /**
+     * Display commit history for the saved plugin branch without changing files.
+     *
+     * @return void
+     */
+    public function getPluginCommits(): void
+    {
+        $this->displaySelection('commits');
+    }
+
+    /**
+     * Render a paginated release or commit chooser using only saved source settings.
+     *
+     * @param string $mode Releases or commits, chosen by the controller route.
+     * @return void
+     */
+    private function displaySelection(string $mode): void
+    {
         if (!$this->canReplacePluginFiles()) {
             wp_die(esc_html__('You need a higher level of permission.', 'rrze-updater'));
         }
         $id = $_GET['id'] ?? '';
-        $page = $_GET['release_page'] ?? '1';
+        $page = $_GET[$mode === 'releases' ? 'release_page' : 'commit_page'] ?? '1';
         if (!is_string($id) || !is_string($page) || !preg_match('/\A[1-9][0-9]{0,3}\z/', $page)) {
             $this->display('');
             return;
         }
         try {
-            $result = $this->replacement->listReleases($id, (int) $page);
+            $result = $mode === 'releases' ? $this->replacement->listReleases($id, (int) $page)
+                : $this->replacement->listCommits($id, (int) $page);
         } catch (\Throwable) {
-            $result = new WP_Error('release_lookup_failed', __('Could not load releases. Check the repository service and try again.', 'rrze-updater'));
+            $result = new WP_Error('selection_lookup_failed', $mode === 'releases'
+                ? __('Could not load releases. Check the repository service and try again.', 'rrze-updater')
+                : __('Could not load commits. Check the repository service and try again.', 'rrze-updater'));
         }
         if (is_wp_error($result)) {
             $this->displayReplacementError($result, $id);
             return;
         }
         $plugin = $this->settings->getPluginById($id);
-        $this->display('plugins/releases', $this->presenter->pluginEditData($plugin, true) + $result);
+        $this->display('plugins/' . $mode, $this->presenter->pluginEditData($plugin, true) + $result);
     }
 
     /**
-     * Prepare only the chosen repository-scoped release ID, ignoring posted source or commit fields.
+     * Prepare a selected release ID or commit SHA, ignoring posted source overrides.
      *
      * @param array $request Validated POST fields.
      * @param string $pluginId Saved plugin association ID.
+     * @param string $mode Releases or commits, chosen by the validated operation.
      * @return true|WP_Error True after rendering confirmation, or preparation error.
      */
-    private function prepareSelectedRelease(array $request, string $pluginId): true|WP_Error
+    private function prepareSelectedTarget(array $request, string $pluginId, string $mode): true|WP_Error
     {
-        $review = $this->replacement->prepareRelease($pluginId, $request['release_id'] ?? '');
+        $review = $mode === 'releases' ? $this->replacement->prepareRelease($pluginId, $request['release_id'] ?? '')
+            : $this->replacement->prepareCommit($pluginId, $request['commit_sha'] ?? '');
         if (is_wp_error($review)) {
             return $review;
         }
@@ -311,18 +339,22 @@ class PluginController
     }
 
     /**
-     * Remove a release hold and refresh the ordinary update offer without installing files.
+     * Remove a target hold and refresh the ordinary update offer without installing files.
      *
      * @param string $pluginId Saved plugin association ID.
+     * @param string $mode Releases or commits, chosen by the validated operation.
      * @return true|WP_Error True after rendering the editor, or persistence failure.
      */
-    private function resumeReleaseUpdates(string $pluginId): true|WP_Error
+    private function resumeSelectedUpdates(string $pluginId, string $mode): true|WP_Error
     {
-        $result = $this->replacement->resumeReleaseUpdates($pluginId);
+        $result = $mode === 'releases' ? $this->replacement->resumeReleaseUpdates($pluginId)
+            : $this->replacement->resumeCommitUpdates($pluginId);
         if (is_wp_error($result)) {
             return $result;
         }
-        $this->messages->add(__('Release updates resumed. No plugin files have changed.', 'rrze-updater'));
+        $this->messages->add($mode === 'releases'
+            ? __('Release updates resumed. No plugin files have changed.', 'rrze-updater')
+            : __('Commit updates resumed. No plugin files have changed.', 'rrze-updater'));
         $plugin = $this->settings->getPluginById($pluginId);
         $result = $this->actions->check($plugin);
         if (is_wp_error($result)) {
@@ -571,6 +603,10 @@ class PluginController
      */
     public function getPluginIndex(): void
     {
+        if (($_GET['action'] ?? '') === 'commits') {
+            $this->getPluginCommits();
+            return;
+        }
         if (($_GET['action'] ?? '') === 'releases') {
             $this->getPluginReleases();
             return;

@@ -118,11 +118,13 @@ class RepositoryManager
         }
         $before = RepositorySource::fingerprint($previous);
         $options = array_merge($options, ['folder' => $previous->installationFolder]);
-        if ($previous->isReleasePinned()) {
+        if ($previous->isUpdatePinned()) {
             $candidate = $this->definition('plugin', $repository, $options);
             if (!is_wp_error($candidate)
                 && RepositorySource::installedFingerprint($candidate) !== RepositorySource::installedFingerprint($previous)) {
-                return $this->error('release_pinned', __('Resume release updates before changing the update source of this plugin.', 'rrze-updater'));
+                return $previous->isReleasePinned()
+                    ? $this->error('release_pinned', __('Resume release updates before changing the update source of this plugin.', 'rrze-updater'))
+                    : $this->error('commit_pinned', __('Resume commit updates before changing the update source of this plugin.', 'rrze-updater'));
             }
             if (!is_wp_error($candidate)) {
                 $candidate = clone $previous;

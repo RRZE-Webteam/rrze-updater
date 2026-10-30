@@ -2422,3 +2422,89 @@ msgstr "Releases konnten nicht geladen werden. Prüfe den Repository-Dienst und 
 #: includes/Admin/PluginController.php
 msgid "Release updates resumed. No plugin files have changed."
 msgstr "Release-Updates wurden wieder freigegeben. Es wurden keine Plugin-Dateien geändert."
+
+#: includes/views/plugins/commits.php includes/views/plugins/edit.php
+msgid "Choose commit"
+msgstr "Commit auswählen"
+
+#: includes/views/plugins/commits.php includes/views/plugins/replace.php
+msgid "After installation, this commit will be held until you resume commit updates. Automatic updates will not undo your selection."
+msgstr "Nach der Installation bleibt dieser Commit festgehalten, bis du Commit-Updates wieder freigibst. Automatische Updates überschreiben deine Auswahl nicht."
+
+#: includes/views/plugins/commits.php
+msgid "Installed commit"
+msgstr "Installierter Commit"
+
+#: includes/views/plugins/commits.php
+#, php-format
+msgid "Select commit %s"
+msgstr "Commit %s auswählen"
+
+#: includes/views/plugins/commits.php
+msgid "Commit pages"
+msgstr "Commit-Seiten"
+
+#: includes/views/plugins/replace.php
+msgid "Confirm commit installation"
+msgstr "Commit-Installation bestätigen"
+
+#: includes/views/plugins/replace.php
+msgid "Selected commit"
+msgstr "Ausgewählter Commit"
+
+#: includes/views/plugins/replace.php
+msgid "Install and hold this commit"
+msgstr "Diesen Commit installieren und festhalten"
+
+#: includes/views/plugins/edit.php
+#, php-format
+msgid "Held at commit %s"
+msgstr "Auf Commit %s festgelegt"
+
+#: includes/views/plugins/edit.php
+msgid "Normal updates are paused for this plugin. Choose another commit or resume commit updates when you are ready."
+msgstr "Normale Updates sind für dieses Plugin pausiert. Du kannst einen anderen Commit auswählen oder Commit-Updates wieder freigeben."
+
+#: includes/views/plugins/edit.php
+msgid "Resume commit updates"
+msgstr "Commit-Updates wieder freigeben"
+
+#: includes/Core/PluginReplacement.php
+msgid "The commit hold could not be removed. Please try again."
+msgstr "Die Commit-Festlegung konnte nicht aufgehoben werden. Bitte versuche es erneut."
+
+#: includes/Core/PluginReplacement.php
+msgid "Commit selection requires a managed GitHub plugin in Commits mode."
+msgstr "Die Commit-Auswahl erfordert ein verwaltetes GitHub-Plugin im Modus „Commits“."
+
+#: includes/Core/RepositoryManager.php
+msgid "Resume commit updates before changing the update source of this plugin."
+msgstr "Gib Commit-Updates wieder frei, bevor du die Update-Quelle dieses Plugins änderst."
+
+#: includes/ManagedUpgrader.php
+msgid "This plugin is held at a selected commit. Resume commit updates or choose another commit in its Updater settings."
+msgstr "Dieses Plugin ist auf einen ausgewählten Commit festgelegt. Gib Commit-Updates wieder frei oder wähle einen anderen Commit in seinen Updater-Einstellungen."
+
+#: includes/Admin/PluginController.php
+msgid "Could not load commits. Check the repository service and try again."
+msgstr "Commits konnten nicht geladen werden. Prüfe den Repository-Dienst und versuche es erneut."
+
+#: includes/Admin/PluginController.php
+msgid "Commit updates resumed. No plugin files have changed."
+msgstr "Commit-Updates wurden wieder freigegeben. Es wurden keine Plugin-Dateien geändert."
+
+#: includes/views/plugins/commits.php
+msgid "Commit message"
+msgstr "Commit-Nachricht"
+
+#: includes/views/plugins/commits.php includes/views/plugins/replace.php
+msgid "Committed"
+msgstr "Commit-Datum"
+
+#: includes/views/plugins/commits.php
+msgid "No commits found on this page."
+msgstr "Auf dieser Seite wurden keine Commits gefunden."
+
+#: includes/views/plugins/commits.php
+msgid "Choose a commit from the history of the configured branch, including an older version. The next step confirms the exact commit before replacing files."
+msgstr "Wähle einen Commit aus der Historie des konfigurierten Branches aus, auch einen älteren Stand. Im nächsten Schritt bestätigst du den genauen Commit, bevor Dateien ersetzt werden."

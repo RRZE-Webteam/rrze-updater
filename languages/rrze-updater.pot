@@ -2234,3 +2234,89 @@ msgstr ""
 #: includes/Admin/PluginController.php
 msgid "Release updates resumed. No plugin files have changed."
 msgstr ""
+
+#: includes/views/plugins/commits.php includes/views/plugins/edit.php
+msgid "Choose commit"
+msgstr ""
+
+#: includes/views/plugins/commits.php includes/views/plugins/replace.php
+msgid "After installation, this commit will be held until you resume commit updates. Automatic updates will not undo your selection."
+msgstr ""
+
+#: includes/views/plugins/commits.php
+msgid "Installed commit"
+msgstr ""
+
+#: includes/views/plugins/commits.php
+#, php-format
+msgid "Select commit %s"
+msgstr ""
+
+#: includes/views/plugins/commits.php
+msgid "Commit pages"
+msgstr ""
+
+#: includes/views/plugins/replace.php
+msgid "Confirm commit installation"
+msgstr ""
+
+#: includes/views/plugins/replace.php
+msgid "Selected commit"
+msgstr ""
+
+#: includes/views/plugins/replace.php
+msgid "Install and hold this commit"
+msgstr ""
+
+#: includes/views/plugins/edit.php
+#, php-format
+msgid "Held at commit %s"
+msgstr ""
+
+#: includes/views/plugins/edit.php
+msgid "Normal updates are paused for this plugin. Choose another commit or resume commit updates when you are ready."
+msgstr ""
+
+#: includes/views/plugins/edit.php
+msgid "Resume commit updates"
+msgstr ""
+
+#: includes/Core/PluginReplacement.php
+msgid "The commit hold could not be removed. Please try again."
+msgstr ""
+
+#: includes/Core/PluginReplacement.php
+msgid "Commit selection requires a managed GitHub plugin in Commits mode."
+msgstr ""
+
+#: includes/Core/RepositoryManager.php
+msgid "Resume commit updates before changing the update source of this plugin."
+msgstr ""
+
+#: includes/ManagedUpgrader.php
+msgid "This plugin is held at a selected commit. Resume commit updates or choose another commit in its Updater settings."
+msgstr ""
+
+#: includes/Admin/PluginController.php
+msgid "Could not load commits. Check the repository service and try again."
+msgstr ""
+
+#: includes/Admin/PluginController.php
+msgid "Commit updates resumed. No plugin files have changed."
+msgstr ""
+
+#: includes/views/plugins/commits.php
+msgid "Commit message"
+msgstr ""
+
+#: includes/views/plugins/commits.php includes/views/plugins/replace.php
+msgid "Committed"
+msgstr ""
+
+#: includes/views/plugins/commits.php
+msgid "No commits found on this page."
+msgstr ""
+
+#: includes/views/plugins/commits.php
+msgid "Choose a commit from the history of the configured branch, including an older version. The next step confirms the exact commit before replacing files."
+msgstr ""

@@ -93,6 +93,9 @@ class Extension
     /** @var array<string, mixed> Explicitly installed release and immutable commit, held until resumed. */
     public array $pinnedRelease = [];
 
+    /** @var array<string, mixed> Explicitly installed commit, version and display details, held until resumed. */
+    public array $pinnedCommit = [];
+
     /**
      * Timestamp of the last update check.
      *
@@ -137,6 +140,7 @@ class Extension
         $this->ignorePrereleases = !empty($array['ignorePrereleases']);
         $this->remoteRelease = is_array($array['remoteRelease'] ?? null) ? $array['remoteRelease'] : [];
         $this->pinnedRelease = is_array($array['pinnedRelease'] ?? null) ? $array['pinnedRelease'] : [];
+        $this->pinnedCommit = is_array($array['pinnedCommit'] ?? null) ? $array['pinnedCommit'] : [];
         $this->lastChecked = $array['lastChecked'] ?? 0;
         $this->lastWarning = isset($array['lastWarning']) ? unserialize($array['lastWarning']) : '';
         $this->lastError = isset($array['lastError']) ? unserialize($array['lastError']) : '';
@@ -165,6 +169,7 @@ class Extension
             'ignorePrereleases' => $this->ignorePrereleases,
             'remoteRelease' => $this->remoteRelease,
             'pinnedRelease' => $this->pinnedRelease,
+            'pinnedCommit' => $this->pinnedCommit,
             'lastChecked' => $this->lastChecked,
             'lastWarning' => serialize($this->lastWarning),
             'lastError' => serialize($this->lastError)
@@ -178,11 +183,12 @@ class Extension
      */
     public function checkForUpdates()
     {
-        if ($this->isReleasePinned()) {
+        if ($this->isUpdatePinned()) {
+            $target = $this->getPinnedTarget();
             $this->lastChecked = time();
-            $this->remoteVersion = $this->pinnedRelease['tag'];
-            $this->remoteReadableVersion = $this->pinnedRelease['version'];
-            $this->remoteRelease = $this->pinnedRelease['release'];
+            $this->remoteVersion = $target['ref'];
+            $this->remoteReadableVersion = $target['version'];
+            $this->remoteRelease = $target['release'];
             $this->lastWarning = $this->lastError = '';
             return;
         }
@@ -240,7 +246,7 @@ class Extension
      */
     public function hasUpdate(): bool
     {
-        if ($this->isReleasePinned()) {
+        if ($this->isUpdatePinned()) {
             return false;
         }
         if (!$this->remoteVersion || $this->lastError || $this->remoteVersion === $this->localVersion) {
@@ -264,6 +270,47 @@ class Extension
     public function isReleasePinned(): bool
     {
         return $this->pinnedRelease !== [];
+    }
+
+    /**
+     * Detect either kind of explicit hold independently of cached update metadata.
+     *
+     * @return bool Whether normal updates must remain paused.
+     */
+    public function isUpdatePinned(): bool
+    {
+        return $this->isReleasePinned() || $this->pinnedCommit !== [];
+    }
+
+    /**
+     * Describe either held target through one shape for checks and reinstallation.
+     *
+     * @return array{ref:string, commit:string, version:string, release:array} Saved target fields.
+     */
+    public function getPinnedTarget(): array
+    {
+        $pin = $this->isReleasePinned() ? $this->pinnedRelease : $this->pinnedCommit;
+        return [
+            'ref' => (string) ($pin['tag'] ?? $pin['commit'] ?? ''),
+            'commit' => (string) ($pin['commit'] ?? ''),
+            'version' => (string) ($pin['version'] ?? ''),
+            'release' => is_array($pin['release'] ?? null) ? $pin['release'] : [],
+        ];
+    }
+
+    /**
+     * Read version metadata at a manually verified immutable commit.
+     *
+     * @param string $commit Full verified commit ID.
+     * @return void
+     */
+    public function selectCommitTarget(string $commit): void
+    {
+        $this->remoteVersion = $commit;
+        $this->remoteRelease = [];
+        $this->remoteReadableVersion = $this->getRemoteReadableVersion($commit);
+        $this->lastChecked = time();
+        $this->lastWarning = $this->lastError = '';
     }
 
     /**

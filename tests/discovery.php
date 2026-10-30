@@ -273,6 +273,7 @@ foreach ([
     'github-downloads.php', 'github-rate-limits.php', 'token-status.php',
     'plugin-repair-admin.php', 'source-switch.php', 'filesystem-lock.php',
     'maintenance-notices.php', 'admin-tables.php', 'github-tags.php', 'github-release-selection.php', 'release-selection-admin.php',
+    'github-commit-selection.php', 'commit-selection-admin.php',
 ] as $regressionFile) {
     require __DIR__ . '/' . $regressionFile;
     \RRZE\Updater\FilesystemLock::releaseAll();

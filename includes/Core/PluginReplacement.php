@@ -62,7 +62,7 @@ class PluginReplacement
                 }
             }
             try {
-                $definition = $stored && $stored->isReleasePinned()
+                $definition = $stored && $stored->isUpdatePinned()
                     ? clone $stored : $this->manager->preparePluginDefinition($repository, $options);
                 if (is_wp_error($definition)) {
                     return $this->safeRemoteError();
@@ -74,7 +74,10 @@ class PluginReplacement
                 if (is_wp_error($snapshot)) {
                     return $snapshot;
                 }
-                $commit = $definition->isReleasePinned() ? $definition->pinnedRelease['commit']
+                if ($definition->isUpdatePinned()) {
+                    $definition->checkForUpdates();
+                }
+                $commit = $definition->isUpdatePinned() ? $definition->getPinnedTarget()['commit']
                     : $definition->connector->getRemoteCommit($repository, $definition->remoteVersion);
                 if (!is_string($commit) || !preg_match('/\A(?:[a-f0-9]{40}|[a-f0-9]{64})\z/i', $commit)) {
                     return $this->safeRemoteError();
@@ -121,24 +124,81 @@ class PluginReplacement
      */
     public function prepareRelease(string $pluginId, string $releaseId): array|WP_Error
     {
-        return FilesystemLock::withLock(function () use ($pluginId, $releaseId): array|WP_Error {
+        return $this->prepareSelection($pluginId, 'release', $releaseId);
+    }
+
+    /**
+     * Read commit history from the saved GitHub repository and branch.
+     *
+     * @param string $pluginId Existing managed plugin ID.
+     * @param int $page One-based history page.
+     * @return array|WP_Error Commit page or a safe provider/permission failure.
+     */
+    public function listCommits(string $pluginId, int $page = 1): array|WP_Error
+    {
+        $allowed = $this->authorize();
+        if (is_wp_error($allowed)) {
+            return $allowed;
+        }
+        $this->settings->reload();
+        $plugin = $this->commitPlugin($pluginId);
+        if (is_wp_error($plugin)) {
+            return $plugin;
+        }
+        $connector = clone $plugin->connector;
+        $result = $connector->getCommitPage($plugin->repository, $plugin->branch, $page);
+        return is_array($result) ? $result : $this->safeRemoteError();
+    }
+
+    /**
+     * Prepare a historical commit without changing files or the update hold.
+     *
+     * @param string $pluginId Existing managed plugin ID.
+     * @param string $sha Full commit ID selected from the configured branch.
+     * @return array|WP_Error Single-use review for an immutable target, or a safe failure.
+     */
+    public function prepareCommit(string $pluginId, string $sha): array|WP_Error
+    {
+        return $this->prepareSelection($pluginId, 'commit', $sha);
+    }
+
+    /**
+     * Resolve either manual selection into the shared immutable installation review.
+     *
+     * @param string $pluginId Existing association ID.
+     * @param string $mode Release or commit, chosen by the service entrypoint.
+     * @param string $target Repository-scoped release ID or full commit SHA.
+     * @return array|WP_Error Review that will hold the target only after successful installation.
+     */
+    private function prepareSelection(string $pluginId, string $mode, string $target): array|WP_Error
+    {
+        return FilesystemLock::withLock(function () use ($pluginId, $mode, $target): array|WP_Error {
             $allowed = $this->authorize();
             if (is_wp_error($allowed)) {
                 return $allowed;
             }
             $this->settings->reload();
-            $stored = $this->releasePlugin($pluginId);
+            $stored = $mode === 'release' ? $this->releasePlugin($pluginId) : $this->commitPlugin($pluginId);
             if (is_wp_error($stored)) {
                 return $stored;
             }
             try {
                 $definition = clone $stored;
                 $definition->connector = clone $stored->connector;
-                $release = $definition->connector->getReleaseById($definition->repository, $releaseId);
-                if (!is_array($release)) {
-                    return $this->safeRemoteError();
+                $details = [];
+                if ($mode === 'release') {
+                    $release = $definition->connector->getReleaseById($definition->repository, $target);
+                    if (!is_array($release)) {
+                        return $this->safeRemoteError();
+                    }
+                    $commit = $definition->connector->getRemoteCommit($definition->repository, 'refs/tags/' . $release['tag']);
+                } else {
+                    $details = $definition->connector->getCommitForBranch($definition->repository, $definition->branch, $target);
+                    if (!is_array($details)) {
+                        return $this->safeRemoteError();
+                    }
+                    $commit = $details['sha'];
                 }
-                $commit = $definition->connector->getRemoteCommit($definition->repository, 'refs/tags/' . $release['tag']);
                 if (!is_string($commit) || !preg_match('/\A[a-f0-9]{40}\z/i', $commit)) {
                     return $this->safeRemoteError();
                 }
@@ -146,8 +206,12 @@ class PluginReplacement
                 if (is_wp_error($snapshot)) {
                     return $snapshot;
                 }
-                $definition->selectReleaseTarget($release, $commit);
-                return $this->createReview($definition, $pluginId, $snapshot, $commit, true);
+                if ($mode === 'release') {
+                    $definition->selectReleaseTarget($release, $commit);
+                } else {
+                    $definition->selectCommitTarget($commit);
+                }
+                return $this->createReview($definition, $pluginId, $snapshot, $commit, $mode, $details);
             } catch (\Throwable) {
                 return $this->safeRemoteError();
             }
@@ -162,24 +226,58 @@ class PluginReplacement
      */
     public function resumeReleaseUpdates(string $pluginId): true|WP_Error
     {
-        return FilesystemLock::withLock(function () use ($pluginId): true|WP_Error {
+        return $this->resumeUpdates($pluginId, 'release');
+    }
+
+    /**
+     * Resume tracking the saved branch without installing its latest commit.
+     *
+     * @param string $pluginId Existing managed plugin ID.
+     * @return true|WP_Error Whether the commit hold was durably removed.
+     */
+    public function resumeCommitUpdates(string $pluginId): true|WP_Error
+    {
+        return $this->resumeUpdates($pluginId, 'commit');
+    }
+
+    /**
+     * Clear a manually selected target under the same lock used by installation.
+     *
+     * @param string $pluginId Existing association ID.
+     * @param string $mode Release or commit, chosen by the service entrypoint.
+     * @return true|WP_Error Durable success or a failure preserving the saved hold.
+     */
+    private function resumeUpdates(string $pluginId, string $mode): true|WP_Error
+    {
+        return FilesystemLock::withLock(function () use ($pluginId, $mode): true|WP_Error {
             $allowed = $this->authorize();
             if (is_wp_error($allowed)) {
                 return $allowed;
             }
             $this->settings->reload();
-            $plugin = $this->releasePlugin($pluginId);
+            $plugin = $mode === 'release' ? $this->releasePlugin($pluginId) : $this->commitPlugin($pluginId);
             if (is_wp_error($plugin)) {
                 return $plugin;
             }
             $plugin->pinnedRelease = [];
+            $plugin->pinnedCommit = [];
             $plugin->remoteRelease = [];
             $plugin->remoteVersion = $plugin->remoteReadableVersion = '';
             $plugin->lastChecked = 0;
             $plugin->lastWarning = $plugin->lastError = '';
-            if (!$this->settings->save()) {
+            try {
+                $saved = $this->settings->save();
+            } catch (\Throwable) {
+                $saved = false;
+            }
+            if (!$saved) {
                 $this->settings->reload();
-                return $this->error('save_failed', __('The release hold could not be removed. Please try again.', 'rrze-updater'));
+                $stored = $this->findPlugin($pluginId);
+                if (!$stored || $stored->isUpdatePinned()) {
+                    return $this->error('save_failed', $mode === 'release'
+                        ? __('The release hold could not be removed. Please try again.', 'rrze-updater')
+                        : __('The commit hold could not be removed. Please try again.', 'rrze-updater'));
+                }
             }
             delete_site_transient('update_plugins');
             return true;
@@ -200,16 +298,30 @@ class PluginReplacement
     }
 
     /**
-     * Store one immutable, user-owned replacement review for both repair and release selection.
+     * Restrict commit selection to existing GitHub plugins in Commits mode.
+     *
+     * @param string $pluginId Trusted registry lookup key.
+     * @return Plugin|WP_Error Eligible plugin or a mode/provider error.
+     */
+    private function commitPlugin(string $pluginId): Plugin|WP_Error
+    {
+        $plugin = $this->findPlugin($pluginId);
+        return $plugin && $plugin->updates === 'commits' && $plugin->connector instanceof GithubConnector
+            ? $plugin : $this->error('commit_selection_unavailable', __('Commit selection requires a managed GitHub plugin in Commits mode.', 'rrze-updater'));
+    }
+
+    /**
+     * Store one immutable, user-owned review for repair, release or commit selection.
      *
      * @param Plugin $definition Verified source and target metadata.
      * @param string|null $pluginId Existing association ID, or null for repair registration.
      * @param array $snapshot Exact current directory contents.
      * @param string $commit Immutable download commit.
-     * @param bool $selectRelease Whether successful installation must hold this release.
+     * @param string $selection Release or commit for manual selection; empty for ordinary repair.
+     * @param array $commitDetails Verified commit display metadata, empty for other modes.
      * @return array|WP_Error Public review or a storage failure.
      */
-    private function createReview(Plugin $definition, ?string $pluginId, array $snapshot, string $commit, bool $selectRelease = false): array|WP_Error
+    private function createReview(Plugin $definition, ?string $pluginId, array $snapshot, string $commit, string $selection = '', array $commitDetails = []): array|WP_Error
     {
         $id = bin2hex(random_bytes(24));
         $review = [
@@ -220,8 +332,9 @@ class PluginReplacement
             'version' => $definition->remoteReadableVersion ?: $definition->remoteVersion,
             'installed_ref' => (string) $definition->localVersion,
             'release' => $definition->remoteRelease,
+            'selected_commit' => $commitDetails,
             'expires_at' => $this->now() + 900,
-            'mode' => $selectRelease ? 'release' : ($pluginId === null ? 'replace' : 'reinstall'),
+            'mode' => $selection ?: ($pluginId === null ? 'replace' : 'reinstall'),
             'owner' => get_current_user_id(), 'scope' => $this->scope(),
             'options' => $this->options($definition), 'source' => RepositorySource::fingerprint($definition),
             'snapshot' => $snapshot,
@@ -283,9 +396,16 @@ class PluginReplacement
                     $plugin->remoteReadableVersion = $review['version'];
                     $plugin->remoteRelease = $review['release'] ?? [];
                     if ($review['mode'] === 'release') {
+                        $plugin->pinnedCommit = [];
                         $plugin->pinnedRelease = [
                             'id' => $review['release']['id'], 'tag' => $review['ref'], 'commit' => $review['commit'],
                             'version' => $review['version'], 'release' => $review['release'],
+                        ];
+                    } elseif ($review['mode'] === 'commit') {
+                        $plugin->pinnedRelease = [];
+                        $plugin->pinnedCommit = [
+                            'commit' => $review['commit'], 'version' => $review['version'],
+                            'details' => $review['selected_commit'],
                         ];
                     }
                     $plugin->lastChecked = $this->now();
@@ -362,7 +482,7 @@ class PluginReplacement
         if ($review['plugin_id'] !== null && (!$existing || !$this->matches($existing, $review['repository'], $review['options']))) {
             return $this->changed();
         }
-        if ($review['mode'] === 'release' && (!$existing || (string) $existing->localVersion !== $review['installed_ref'])) {
+        if (in_array($review['mode'], ['release', 'commit'], true) && (!$existing || (string) $existing->localVersion !== $review['installed_ref'])) {
             return $this->changed();
         }
         foreach ($this->settings->plugins as $candidate) {
@@ -496,7 +616,7 @@ class PluginReplacement
      */
     private function publicReview(array $review): array
     {
-        return array_intersect_key($review, array_flip(['id', 'plugin_id', 'repository', 'folder', 'source_url', 'ref', 'commit', 'version', 'expires_at', 'mode', 'installed_ref', 'release']));
+        return array_intersect_key($review, array_flip(['id', 'plugin_id', 'repository', 'folder', 'source_url', 'ref', 'commit', 'version', 'expires_at', 'mode', 'installed_ref', 'release', 'selected_commit']));
     }
 
     /**

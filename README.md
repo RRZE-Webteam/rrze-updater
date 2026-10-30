@@ -167,6 +167,33 @@ older version must be compatible with the current database. The operation requir
 plugin installation/update permissions and, on multisite, network administrator
 access. It applies to the shared plugin files throughout the network.
 
+### Install a specific GitHub commit or roll back
+
+For a managed GitHub plugin saved in **Commits** mode, **Choose commit** lists the
+history of its configured branch, 20 commits per page. Each row shows the commit
+message, abbreviated ID, GitHub link, author and commit date in the WordPress
+timezone with a 24-hour time. Authors without linked GitHub accounts still appear
+by the name stored in the commit.
+
+Selecting a commit prepares a confirmation with its full message, immutable SHA
+and target plugin version. The server verifies that the SHA belongs to the saved
+repository and is reachable from the configured branch. Posted repository,
+branch or download URL overrides are ignored. A branch advancing after review
+does not change the confirmed installation target.
+
+Successful installation **holds the commit** until **Resume commit updates** is
+used. Normal checks, automatic updates and already queued managed WordPress
+updates cannot replace the held version. Another commit can be explicitly chosen
+while held. Reinstallation also uses the held SHA. Source changes require first
+resuming updates; resuming itself preserves the installed files and then checks
+the saved branch for a new update offer.
+
+Commit selection uses the same permissions, single-use confirmation, package
+validation and recovery transaction as release selection. Only files are rolled
+back: database migrations from newer plugin versions are not reversed, so the
+chosen version must remain compatible with the existing data. The chooser does
+not perform dependency builds or generate missing distribution files.
+
 ### Reinstall or repair plugin files
 
 **Reinstall plugin files** on the plugin editor downloads the offered target for
