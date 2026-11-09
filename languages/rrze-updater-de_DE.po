@@ -3,7 +3,7 @@ msgstr ""
 "Project-Id-Version: RRZE Updater\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/rrze-updater\n"
 "POT-Creation-Date: 2026-09-25T17:06:42+00:00\n"
-"PO-Revision-Date: 2026-09-04 13:00+0200\n"
+"PO-Revision-Date: 2026-10-26 15:45+0100\n"
 "Last-Translator: RRZE Webteam <webmaster@fau.de>\n"
 "Language-Team: German\n"
 "Language: de_DE\n"
@@ -12,8 +12,8 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 "X-Generator: Loco https://localise.biz/\n"
-"Project-Id-Version: RRZE Updater 2.5.17\n"
-"PO-Revision-Date: 2026-09-25 19:15+0200\n"
+"Project-Id-Version: RRZE Updater 2.5.18\n"
+"PO-Revision-Date: 2026-10-26 15:45+0100\n"
 "X-Generator: gettext-parser\n"
 
 #: rrze-updater.php
@@ -1819,3 +1819,692 @@ msgstr "Zurück zur Prüfung"
 msgctxt "Human time difference"
 msgid "in %s"
 msgstr "in %s"
+
+#. translators: %d: Number of services with a token warning.
+#: includes/AdminIntegration.php:193
+#, php-format
+msgid "Updater: Token warnings (%d)"
+msgstr "Updater: Token-Hinweise (%d)"
+
+#: includes/Controller.php:447
+msgid "Not configured"
+msgstr "Nicht hinterlegt"
+
+#: includes/Controller.php:448
+msgid "Configured"
+msgstr "Hinterlegt"
+
+#: includes/ListTable/ConnListTable.php:136
+msgid "Token status"
+msgstr "Token-Status"
+
+#. translators: %s: Localized expiration date and time.
+#: includes/TokenStatus.php:172
+#, php-format
+msgid "Token expired on %s. Replace the token."
+msgstr "Token am %s abgelaufen. Bitte ersetzen."
+
+#. translators: %s: Localized expiration date and time.
+#: includes/TokenStatus.php:176
+#, php-format
+msgid "Token expires on %s. Renew the token soon."
+msgstr "Token läuft am %s ab. Bitte rechtzeitig erneuern."
+
+#: includes/TokenStatus.php:178
+msgid "Token rejected or access denied. Check the token and its permissions."
+msgstr "Token abgelehnt oder Zugriff verweigert. Bitte Token und Berechtigungen prüfen."
+
+#. translators: %s: Localized expiration date and time.
+#: includes/TokenStatus.php:181
+#, php-format
+msgid "Token expires on %s."
+msgstr "Token läuft am %s ab."
+
+#: includes/TokenStatus.php:183
+msgid "No expiration date."
+msgstr "Kein Ablaufdatum."
+
+#: includes/TokenStatus.php:184
+msgid "Expiration date unknown. Check it in the service."
+msgstr "Ablaufdatum unbekannt. Bitte direkt beim Dienst prüfen."
+
+#: includes/TokenStatus.php:185
+msgid "Token check temporarily unavailable. Please try again later."
+msgstr "Token-Prüfung derzeit nicht möglich. Bitte später erneut versuchen."
+
+#: includes/TokenStatus.php:186
+msgid "No token configured."
+msgstr "Kein Token hinterlegt."
+
+#: includes/TokenStatus.php:187
+msgid "Token has not been checked yet."
+msgstr "Token wurde noch nicht geprüft."
+
+#. translators: %d: Number of days before expiration when token warnings start.
+#: includes/views/connectors/index.php:14
+#, php-format
+msgid "Tokens are checked twice daily and when opening this overview if the last check is due. Expiration warnings start %d days in advance."
+msgstr "Tokens werden zweimal täglich sowie beim Öffnen dieser Übersicht geprüft, sofern die letzte Prüfung fällig ist. Ablaufwarnungen erscheinen %d Tage im Voraus."
+
+#: includes/Bundles/JobStore.php:47
+msgid "A repository operation is still running. Wait, then resume."
+msgstr "Eine Repository-Aktion läuft noch. Bitte warten und anschließend fortsetzen."
+
+#: includes/Controller.php:1957
+msgid "Plugin replacement requires a form submission."
+msgstr "Zum Ersetzen der Plugin-Dateien muss das Formular abgesendet werden."
+
+#: includes/Controller.php:1989
+msgid "The managed plugin no longer exists. Reload the plugin list."
+msgstr "Das verwaltete Plugin ist nicht mehr vorhanden. Bitte die Plugin-Liste neu laden."
+
+#: includes/Controller.php:2019
+msgid "Plugin replacement cancelled. No files have changed."
+msgstr "Der Austausch der Plugin-Dateien wurde abgebrochen. Es wurden keine Dateien geändert."
+
+#: includes/Controller.php:2025
+msgid "Plugin files successfully reinstalled."
+msgstr "Die Plugin-Dateien wurden erfolgreich neu installiert."
+
+#: includes/Controller.php:2033
+msgid "Plugin replacement was interrupted. Inspect the installation before trying again."
+msgstr "Der Austausch der Plugin-Dateien wurde unterbrochen. Bitte die Installation vor einem erneuten Versuch prüfen."
+
+#: includes/Core/PluginReplacement.php:58
+msgid "This folder already belongs to a managed plugin. Open its settings to reinstall it or change its source."
+msgstr "Dieser Ordner gehört bereits zu einem verwalteten Plugin. Die Neuinstallation oder Änderung der Quelle ist über dessen Einstellungen möglich."
+
+#: includes/Core/PluginReplacement.php:61
+msgid "This repository is already assigned to another plugin folder."
+msgstr "Dieses Repository ist bereits einem anderen Plugin-Ordner zugeordnet."
+
+#: includes/Core/PluginReplacement.php:70
+#: includes/Upgrader/PluginPackageReplacement.php:53
+msgid "Reinstallation requires a GitHub or GitLab service."
+msgstr "Die Neuinstallation erfordert einen GitHub- oder GitLab-Dienst."
+
+#: includes/Core/PluginReplacement.php:93
+msgid "The confirmation could not be saved. No plugin files were changed."
+msgstr "Die Bestätigung konnte nicht gespeichert werden. Es wurden keine Plugin-Dateien geändert."
+
+#: includes/Core/PluginReplacement.php:129
+msgid "The confirmation could not be consumed safely. No files were changed."
+msgstr "Die Bestätigung konnte nicht sicher als verwendet markiert werden. Es wurden keine Dateien geändert."
+
+#: includes/Core/PluginReplacement.php:164
+msgid "The plugin association could not be saved. Previous plugin files were restored."
+msgstr "Die Plugin-Zuordnung konnte nicht gespeichert werden. Die bisherigen Plugin-Dateien wurden wiederhergestellt."
+
+#: includes/Core/PluginReplacement.php:176
+msgid "The plugin replacement could not be completed. Please review the installation again."
+msgstr "Der Austausch der Plugin-Dateien konnte nicht abgeschlossen werden. Bitte die Installation erneut prüfen."
+
+#: includes/Core/PluginReplacement.php:241
+msgid "This confirmation has expired, was already used, or belongs to another administrator. Please review the installation again."
+msgstr "Diese Bestätigung ist abgelaufen, wurde bereits verwendet oder gehört zu einem anderen Administratorkonto. Bitte die Installation erneut prüfen."
+
+#: includes/Core/PluginReplacement.php:256
+msgid "You are not allowed to replace plugin files on this installation."
+msgstr "Keine Berechtigung zum Ersetzen von Plugin-Dateien in dieser Installation."
+
+#: includes/Core/PluginReplacement.php:384
+msgid "The plugin source, assignment or files changed since review. Please review the installation again."
+msgstr "Quelle, Zuordnung oder Dateien des Plugins haben sich seit der Prüfung geändert. Bitte die Installation erneut prüfen."
+
+#: includes/Core/PluginReplacement.php:390
+msgid "The selected plugin source or commit could not be verified. Check the service, repository and update policy."
+msgstr "Die ausgewählte Plugin-Quelle oder der Commit konnte nicht verifiziert werden. Bitte Dienst, Repository und Update-Verfahren prüfen."
+
+#: includes/Core/RepositoryManager.php:117
+msgid "The managed plugin no longer exists. Reload the plugin overview."
+msgstr "Das verwaltete Plugin ist nicht mehr vorhanden. Bitte die Plugin-Übersicht neu laden."
+
+#: includes/Core/RepositoryManager.php:139
+msgid "The repository source changed during validation. Reload and check the source again."
+msgstr "Die Repository-Quelle hat sich während der Prüfung geändert. Bitte die Seite neu laden und die Quelle erneut prüfen."
+
+#: includes/Core/RepositoryManager.php:150
+msgid "The repository or installation folder already belongs to another managed plugin."
+msgstr "Das Repository oder der Installationsordner gehört bereits zu einem anderen verwalteten Plugin."
+
+#: includes/Core/RepositoryManager.php:169
+msgid "Repository source saved. Installed plugin files are unchanged."
+msgstr "Die Repository-Quelle wurde gespeichert. Die installierten Plugin-Dateien bleiben unverändert."
+
+#: includes/FilesystemLock.php:43
+#: includes/FilesystemLock.php:51
+msgid "Another repository operation is running. Wait for it to finish, then try again."
+msgstr "Eine andere Repository-Aktion läuft gerade. Bitte deren Abschluss abwarten und es erneut versuchen."
+
+#: includes/ListTable/PluginsListTable.php:157
+#: includes/ListTable/RepoListTable.php:197
+#: includes/views/plugins/edit.php:28
+msgid "Installation incomplete"
+msgstr "Installation unvollständig"
+
+#: includes/ListTable/PluginsListTable.php:159
+#: includes/ListTable/RepoListTable.php:199
+#: includes/views/plugins/edit.php:31
+#: includes/views/plugins/edit.php:182
+#: includes/views/plugins/edit.php:188
+msgid "Reinstall plugin files"
+msgstr "Plugin-Dateien neu installieren"
+
+#: includes/ManagedUpgrader.php:224
+msgid "The repository source changed or the package was not verified. Refresh update information before trying again."
+msgstr "Die Repository-Quelle hat sich geändert oder das Paket wurde nicht verifiziert. Bitte vor einem erneuten Versuch die Update-Informationen aktualisieren."
+
+#: includes/ManagedUpgrader.php:242
+msgid "The managed plugin folder must not be a symbolic link."
+msgstr "Der Ordner des verwalteten Plugins darf kein symbolischer Link sein."
+
+#: includes/ManagedUpgrader.php:257
+#, php-format
+msgid "The replacement package must preserve the plugin entrypoint %s and its Plugin Name header."
+msgstr "Das Ersatzpaket muss die Plugin-Hauptdatei %s und deren Angabe „Plugin Name“ beibehalten."
+
+#: includes/Upgrader/PluginPackageReplacement.php:22
+msgid "The installation folder is invalid."
+msgstr "Der Installationsordner ist ungültig."
+
+#: includes/Upgrader/PluginPackageReplacement.php:27
+msgid "The existing plugin folder is missing, unsafe, or a symbolic link. Check the folder before trying again."
+msgstr "Der vorhandene Plugin-Ordner fehlt, ist unsicher oder ein symbolischer Link. Bitte den Ordner vor einem erneuten Versuch prüfen."
+
+#: includes/Upgrader/PluginPackageReplacement.php:36
+msgid "The existing plugin folder could not be inspected completely."
+msgstr "Der vorhandene Plugin-Ordner konnte nicht vollständig geprüft werden."
+
+#: includes/Upgrader/PluginPackageReplacement.php:70
+msgid "Could not download the reviewed plugin commit. Existing files were kept."
+msgstr "Der geprüfte Plugin-Commit konnte nicht heruntergeladen werden. Die vorhandenen Dateien bleiben erhalten."
+
+#: includes/Upgrader/PluginPackageReplacement.php:86
+msgid "The plugin archive could not be extracted. Existing files were kept."
+msgstr "Das Plugin-Archiv konnte nicht entpackt werden. Die vorhandenen Dateien bleiben erhalten."
+
+#: includes/Upgrader/PluginPackageReplacement.php:99
+msgid "The plugin files changed since review. Please check the installation again."
+msgstr "Die Plugin-Dateien haben sich seit der Prüfung geändert. Bitte die Installation erneut prüfen."
+
+#: includes/Upgrader/PluginPackageReplacement.php:106
+msgid "The existing plugin folder could not be backed up. No replacement was started."
+msgstr "Der vorhandene Plugin-Ordner konnte nicht gesichert werden. Der Austausch wurde nicht gestartet."
+
+#: includes/Upgrader/PluginPackageReplacement.php:110
+msgid "The replacement files could not be installed."
+msgstr "Die Ersatzdateien konnten nicht installiert werden."
+
+#: includes/Upgrader/PluginPackageReplacement.php:115
+msgid "The plugin association could not be saved."
+msgstr "Die Plugin-Zuordnung konnte nicht gespeichert werden."
+
+#: includes/Upgrader/PluginPackageReplacement.php:139
+msgid "The plugin replacement was interrupted. The previous files were kept or restored."
+msgstr "Der Austausch der Plugin-Dateien wurde unterbrochen. Die bisherigen Dateien wurden beibehalten oder wiederhergestellt."
+
+#: includes/Upgrader/PluginPackageReplacement.php:167
+msgid "WordPress cannot access the filesystem for plugin replacement."
+msgstr "WordPress kann zum Ersetzen der Plugin-Dateien nicht auf das Dateisystem zugreifen."
+
+#: includes/Upgrader/PluginPackageReplacement.php:173
+msgid "Plugin replacement requires filesystem paths that WordPress can inspect locally."
+msgstr "Das Ersetzen der Plugin-Dateien erfordert Dateisystempfade, die WordPress lokal prüfen kann."
+
+#: includes/Upgrader/PluginPackageReplacement.php:194
+msgid "The maintenance window could not be started. Another update may be running, or the WordPress root is not writable. Existing plugin files were kept."
+msgstr "Der Wartungsmodus konnte nicht gestartet werden. Möglicherweise läuft ein anderes Update oder das WordPress-Hauptverzeichnis ist nicht beschreibbar. Die vorhandenen Plugin-Dateien bleiben erhalten."
+
+#: includes/Upgrader/PluginPackageReplacement.php:203
+msgid "The maintenance window could not be started. Existing plugin files were kept."
+msgstr "Der Wartungsmodus konnte nicht gestartet werden. Die vorhandenen Plugin-Dateien bleiben erhalten."
+
+#: includes/Upgrader/PluginPackageReplacement.php:235
+#: includes/Upgrader/PluginPackageReplacement.php:241
+msgid "The plugin recovery directory is unsafe."
+msgstr "Der Wiederherstellungsordner für das Plugin ist unsicher."
+
+#: includes/Upgrader/PluginPackageReplacement.php:238
+msgid "The plugin recovery directory could not be created."
+msgstr "Der Wiederherstellungsordner für das Plugin konnte nicht erstellt werden."
+
+#: includes/Upgrader/PluginPackageReplacement.php:248
+msgid "The plugin staging directory could not be created."
+msgstr "Der temporäre Plugin-Ordner konnte nicht erstellt werden."
+
+#: includes/Upgrader/PluginPackageReplacement.php:262
+msgid "The PHP ZIP extension is required to safely inspect a replacement archive."
+msgstr "Die PHP-Erweiterung ZIP wird benötigt, um das Ersatzarchiv sicher zu prüfen."
+
+#: includes/Upgrader/PluginPackageReplacement.php:266
+msgid "The downloaded file is not a readable ZIP archive."
+msgstr "Die heruntergeladene Datei ist kein lesbares ZIP-Archiv."
+
+#: includes/Upgrader/PluginPackageReplacement.php:270
+msgid "The plugin archive is empty."
+msgstr "Das Plugin-Archiv ist leer."
+
+#: includes/Upgrader/PluginPackageReplacement.php:282
+#: includes/Upgrader/PluginPackageReplacement.php:289
+msgid "The plugin archive contains unsafe or ambiguous file paths."
+msgstr "Das Plugin-Archiv enthält unsichere oder mehrdeutige Dateipfade."
+
+#: includes/Upgrader/PluginPackageReplacement.php:328
+msgid "The archive must contain a plugin at its root or inside one enclosing directory."
+msgstr "Das Archiv muss ein Plugin direkt auf der obersten Ebene oder in einem einzelnen übergeordneten Ordner enthalten."
+
+#: includes/Upgrader/PluginPackageReplacement.php:346
+msgid "The replacement must contain a valid plugin and preserve all existing plugin main filenames."
+msgstr "Das Ersatzpaket muss ein gültiges Plugin enthalten und die bisherigen Namen aller Plugin-Hauptdateien beibehalten."
+
+#: includes/Upgrader/PluginPackageReplacement.php:354
+msgid "The replacement requires a newer WordPress or PHP version."
+msgstr "Das Ersatzpaket erfordert eine neuere WordPress- oder PHP-Version."
+
+#: includes/Upgrader/PluginPackageReplacement.php:394
+msgid "Plugin replacement does not support symbolic links or special filesystem entries."
+msgstr "Das Ersetzen der Plugin-Dateien unterstützt keine symbolischen Links oder besonderen Dateisystemeinträge."
+
+#: includes/Upgrader/PluginPackageReplacement.php:399
+msgid "A plugin file could not be read completely."
+msgstr "Eine Plugin-Datei konnte nicht vollständig gelesen werden."
+
+#. translators: %s: Absolute path to the retained previous plugin directory.
+#: includes/Upgrader/PluginPackageReplacement.php:426
+#, php-format
+msgid "Automatic recovery failed. The previous plugin files are retained at %s. Restore this directory before trying again."
+msgstr "Die automatische Wiederherstellung ist fehlgeschlagen. Die bisherigen Plugin-Dateien sind unter %s gesichert. Bitte diesen Ordner vor einem erneuten Versuch wiederherstellen."
+
+#: includes/views/plugins/add.php:94
+msgid "This folder already belongs to a managed plugin. Change its source or reinstall its files from the existing entry."
+msgstr "Dieser Ordner gehört bereits zu einem verwalteten Plugin. Die Quelle kann über den vorhandenen Eintrag geändert und die Dateien können dort neu installiert werden."
+
+#: includes/views/plugins/add.php:95
+msgid "Open managed plugin"
+msgstr "Verwaltetes Plugin öffnen"
+
+#: includes/views/plugins/add.php:99
+msgid "The plugin folder already exists. You can review a replacement before any files are changed."
+msgstr "Der Plugin-Ordner ist bereits vorhanden. Vor dem Ändern von Dateien kann ein Austausch geprüft werden."
+
+#: includes/views/plugins/add.php:101
+msgid "Replace folder and install"
+msgstr "Ordner ersetzen und installieren"
+
+#: includes/views/plugins/edit.php:29
+msgid "WordPress no longer recognizes a plugin in this folder. Its repository association has been preserved so the plugin files can be reinstalled."
+msgstr "WordPress erkennt in diesem Ordner kein Plugin mehr. Die Repository-Zuordnung bleibt erhalten, damit die Plugin-Dateien neu installiert werden können."
+
+#: includes/views/plugins/edit.php:183
+msgid "Download the target version from the saved source again. The next step shows the exact version and asks for confirmation before replacing any files."
+msgstr "Die Zielversion aus der gespeicherten Quelle erneut herunterladen. Im nächsten Schritt wird die genaue Version angezeigt und eine Bestätigung angefordert, bevor Dateien ersetzt werden."
+
+#: includes/views/plugins/replace.php:10
+msgid "Confirm plugin file replacement"
+msgstr "Austausch der Plugin-Dateien bestätigen"
+
+#: includes/views/plugins/replace.php:12
+msgid "All files in the destination folder will be replaced, including custom changes and leftover files."
+msgstr "Alle Dateien im Zielordner werden ersetzt, einschließlich eigener Änderungen und verbliebener Restdateien."
+
+#: includes/views/plugins/replace.php:13
+msgid "The plugin will not be uninstalled. Plugin settings in the database and its activation state will be preserved."
+msgstr "Das Plugin wird nicht deinstalliert. Die Plugin-Einstellungen in der Datenbank und der Aktivierungszustand bleiben erhalten."
+
+#: includes/views/plugins/replace.php:26
+msgid "Target version"
+msgstr "Zielversion"
+
+#: includes/views/plugins/replace.php:30
+msgid "Git reference"
+msgstr "Git-Referenz"
+
+#: includes/views/plugins/replace.php:34
+msgid "Commit"
+msgstr "Commit"
+
+#: includes/views/plugins/replace.php:39
+msgid "This confirmation is valid once for 15 minutes. If the source or installation changes, prepare a new review."
+msgstr "Diese Bestätigung gilt 15 Minuten lang und kann einmal verwendet werden. Wenn sich Quelle oder Installation ändern, ist eine neue Prüfung erforderlich."
+
+#: includes/views/plugins/replace.php:44
+msgid "Confirm and replace plugin files"
+msgstr "Bestätigen und Plugin-Dateien ersetzen"
+
+#: includes/MaintenanceNotice.php:75
+msgid "After confirmation, replacing the plugin files activates WordPress maintenance mode."
+msgstr "Nach der Bestätigung wird beim Austausch der Plugin-Dateien der WordPress-Wartungsmodus aktiviert."
+
+#: includes/MaintenanceNotice.php:76
+msgid "Future automatic updates activate WordPress maintenance mode. Enabling automatic updates does not start maintenance by itself."
+msgstr "Künftige automatische Updates aktivieren den WordPress-Wartungsmodus. Das Einschalten automatischer Updates allein startet keinen Wartungsmodus."
+
+#: includes/MaintenanceNotice.php:77
+msgid "WordPress activates maintenance mode for bulk updates and updates that run directly within the list."
+msgstr "Bei Sammelaktualisierungen und Aktualisierungen, die direkt innerhalb der Liste ausgeführt werden, aktiviert WordPress den Wartungsmodus."
+
+#: includes/MaintenanceNotice.php:78
+msgid "Selecting a theme marked with a maintenance notice also activates maintenance mode during this Updater bulk action."
+msgstr "Wenn ein mit einem Wartungshinweis gekennzeichnetes Theme ausgewählt wird, aktiviert auch diese Updater-Sammelaktion den Wartungsmodus."
+
+#: includes/MaintenanceNotice.php:79
+msgid "This action activates WordPress maintenance mode."
+msgstr "Bei dieser Aktion wird der WordPress-Wartungsmodus aktiviert."
+
+#: includes/MaintenanceNotice.php:81
+msgid "All websites in this WordPress installation will temporarily be unavailable for normal use."
+msgstr "Dadurch sind alle Websites dieser WordPress-Installation vorübergehend nicht regulär erreichbar."
+
+#: includes/MaintenanceNotice.php:82
+msgid "Estimated interruption: a few seconds to a few minutes."
+msgstr "Geschätzte Unterbrechung: wenige Sekunden bis wenige Minuten."
+
+#: includes/MaintenanceNotice.php:83
+msgid "This is a rough estimate. Multiple updates, large packages, slow servers or recovery can take longer."
+msgstr "Dies ist eine grobe Orientierung. Bei mehreren Updates, großen Paketen, langsamen Servern oder einer Wiederherstellung kann es länger dauern."
+
+#: includes/MaintenanceNotice.php:84
+msgid "Visitors may see a maintenance message. Form submissions and other interactive requests may fail and need to be repeated."
+msgstr "Besucher können eine Wartungsmeldung sehen. Formularübermittlungen und andere interaktive Anfragen können fehlschlagen und müssen gegebenenfalls wiederholt werden."
+
+#: includes/MaintenanceNotice.php:86
+msgid "Download and package validation take place before maintenance mode starts."
+msgstr "Download und Paketprüfung erfolgen vor dem Wartungsmodus."
+
+#: includes/MaintenanceNotice.php:90
+msgid "Future automatic updates interrupt all websites in this WordPress installation. Enabling this setting alone does not start maintenance."
+msgstr "Künftige automatische Updates unterbrechen die Verfügbarkeit aller Websites dieser WordPress-Installation. Das Einschalten dieser Einstellung allein startet keinen Wartungsmodus."
+
+#: includes/MaintenanceNotice.php:92
+msgid "After confirmation, maintenance mode temporarily interrupts all websites in this WordPress installation."
+msgstr "Nach der Bestätigung unterbricht der Wartungsmodus vorübergehend die Verfügbarkeit aller Websites dieser WordPress-Installation."
+
+#: includes/MaintenanceNotice.php:93
+msgid "Maintenance mode temporarily interrupts all websites in this WordPress installation."
+msgstr "Der Wartungsmodus unterbricht vorübergehend die Verfügbarkeit aller Websites dieser WordPress-Installation."
+
+#: includes/MaintenanceNotice.php:96
+msgid "Rough estimate; large packages, slow servers or recovery can take longer."
+msgstr "Grobe Schätzung; bei großen Paketen, langsamen Servern oder einer Wiederherstellung kann es länger dauern."
+
+#: includes/MaintenanceNotice.php:97
+msgid "Visitors may see a maintenance message; form submissions and interactive requests may fail."
+msgstr "Besucher können eine Wartungsmeldung sehen; Formularübermittlungen und interaktive Anfragen können fehlschlagen."
+
+#: includes/MaintenanceNotice.php:101
+msgid "Temporary interruption of all websites"
+msgstr "Vorübergehende Unterbrechung aller Websites"
+
+#: includes/Core/GithubConnector.php
+msgid "Too many tags or releases to select an update safely."
+msgstr "Zu viele Tags oder Releases, um ein Update zuverlässig auszuwählen."
+
+#: includes/views/partials/tag-policy.php
+msgid "GitHub tags"
+msgstr "GitHub-Tags"
+
+#: includes/views/partials/tag-policy.php
+msgid "Ignore pre-releases"
+msgstr "Pre-Releases ignorieren"
+
+#: includes/views/partials/tag-policy.php
+msgid "Applies to Tags: skip GitHub pre-releases and version tags with a prerelease suffix (e.g. beta or rc). Releases always excludes pre-releases."
+msgstr "Gilt für Tags: GitHub-Pre-Releases und Versions-Tags mit Vorabversionszusatz (z. B. beta oder rc) überspringen. Die Einstellung „Releases“ schließt Pre-Releases immer aus."
+
+#: includes/views/partials/tag-policy.php
+msgid "The highest version is selected, ignoring prefixes such as v or release-. If no version tags exist, the most recently published release is preferred; tags without a release retain GitHub ordering."
+msgstr "Ausgewählt wird die höchste Version; Präfixe wie v oder release- werden beim Vergleich ignoriert. Gibt es keine Versions-Tags, wird der zuletzt veröffentlichte Release bevorzugt. Tags ohne Release behalten die GitHub-Reihenfolge bei."
+
+#: includes/views/partials/release-preview.php
+msgid "Release for this update"
+msgstr "Release für dieses Update"
+
+#: includes/views/partials/release-preview.php
+msgid "The update will install the source archive at this tag:"
+msgstr "Das Update installiert das Quellcode-Archiv dieses Tags:"
+
+#: includes/views/partials/release-preview.php
+msgid "No release details are available for this tag. Run an update check to refresh the information; tags without a published GitHub release have no release notes."
+msgstr "Für diesen Tag liegen keine Release-Details vor. Eine Update-Prüfung aktualisiert die Angaben. Tags ohne veröffentlichten GitHub-Release haben keine Release-Notizen."
+
+#: includes/views/partials/release-preview.php
+msgid "Pre-release"
+msgstr "Pre-Release"
+
+#: includes/views/partials/release-preview.php
+msgid "Stable release"
+msgstr "Stabiler Release"
+
+#: includes/views/partials/release-preview.php
+msgid "Author:"
+msgstr "Autor:"
+
+#: includes/views/partials/release-preview.php
+msgid "Published:"
+msgstr "Veröffentlicht:"
+
+#: includes/views/partials/release-preview.php
+msgid "Release notes"
+msgstr "Release-Notizen"
+
+#: includes/views/partials/release-preview.php
+msgid "No description provided."
+msgstr "Keine Beschreibung vorhanden."
+
+#: includes/views/plugins/releases.php includes/views/plugins/edit.php
+msgid "Choose release"
+msgstr "Release auswählen"
+
+#: includes/views/plugins/releases.php
+msgid "Back to plugin"
+msgstr "Zurück zum Plugin"
+
+#: includes/views/plugins/releases.php
+#, php-format
+msgid "Installed version: %1$s · Git reference: %2$s"
+msgstr "Installierte Version: %1$s · Git-Referenz: %2$s"
+
+#: includes/views/plugins/releases.php
+msgid "Choose a published release to install, including an older version or a pre-release. The next step confirms the exact version before replacing files."
+msgstr "Wähle einen veröffentlichten Release zur Installation aus, auch eine ältere Version oder einen Pre-Release. Im nächsten Schritt bestätigst du die genaue Version, bevor Dateien ersetzt werden."
+
+#: includes/views/plugins/releases.php includes/views/plugins/replace.php
+msgid "After installation, this release will be held until you resume release updates. Automatic updates will not undo your selection."
+msgstr "Nach der Installation bleibt dieser Release festgehalten, bis du Release-Updates wieder freigibst. Automatische Updates überschreiben deine Auswahl nicht."
+
+#: includes/views/plugins/releases.php
+msgid "Release"
+msgstr "Release"
+
+#: includes/views/plugins/releases.php
+msgid "Version / Tag"
+msgstr "Version / Tag"
+
+#: includes/views/plugins/releases.php
+msgid "Author"
+msgstr "Autor"
+
+#: includes/views/plugins/releases.php
+msgid "Published"
+msgstr "Veröffentlicht"
+
+#: includes/views/plugins/releases.php
+msgid "Installed release"
+msgstr "Installierter Release"
+
+#: includes/views/plugins/releases.php
+#, php-format
+msgid "Select release %s"
+msgstr "Release %s auswählen"
+
+#: includes/views/plugins/releases.php
+msgid "Select"
+msgstr "Auswählen"
+
+#: includes/views/plugins/releases.php
+msgid "No published releases found on this page."
+msgstr "Auf dieser Seite wurden keine veröffentlichten Releases gefunden."
+
+#: includes/views/plugins/releases.php
+msgid "Release pages"
+msgstr "Release-Seiten"
+
+#: includes/views/plugins/releases.php
+msgid "Previous page"
+msgstr "Vorherige Seite"
+
+#: includes/views/plugins/releases.php
+msgid "Next page"
+msgstr "Nächste Seite"
+
+#: includes/views/plugins/releases.php
+#, php-format
+msgid "Page %d"
+msgstr "Seite %d"
+
+#: includes/views/plugins/replace.php
+msgid "Confirm release installation"
+msgstr "Release-Installation bestätigen"
+
+#: includes/views/plugins/replace.php
+msgid "Only plugin files are restored. Database changes made by newer versions are not rolled back; the selected version must be compatible with the existing data."
+msgstr "Nur Plugin-Dateien werden zurückgesetzt. Datenbankänderungen neuerer Versionen werden nicht rückgängig gemacht. Die gewählte Version muss mit den bestehenden Daten kompatibel sein."
+
+#: includes/views/plugins/replace.php
+msgid "You selected a pre-release."
+msgstr "Du hast einen Pre-Release ausgewählt."
+
+#: includes/views/plugins/replace.php
+msgid "Installed version"
+msgstr "Installierte Version"
+
+#: includes/views/plugins/replace.php
+msgid "Selected release"
+msgstr "Ausgewählter Release"
+
+#: includes/views/plugins/replace.php
+msgid "Install and hold this release"
+msgstr "Diesen Release installieren und festhalten"
+
+#: includes/views/plugins/edit.php
+#, php-format
+msgid "Held at release %s"
+msgstr "Auf Release %s festgelegt"
+
+#: includes/views/plugins/edit.php
+msgid "Normal updates are paused for this plugin. Choose another release or resume release updates when you are ready."
+msgstr "Normale Updates sind für dieses Plugin pausiert. Du kannst einen anderen Release auswählen oder Release-Updates wieder freigeben."
+
+#: includes/views/plugins/edit.php
+msgid "Resume release updates"
+msgstr "Release-Updates wieder freigeben"
+
+#: includes/Core/PluginReplacement.php
+msgid "The release hold could not be removed. Please try again."
+msgstr "Die Release-Festlegung konnte nicht aufgehoben werden. Bitte versuche es erneut."
+
+#: includes/Core/PluginReplacement.php
+msgid "Release selection requires a managed GitHub plugin in Releases mode."
+msgstr "Die Release-Auswahl erfordert ein verwaltetes GitHub-Plugin im Modus „Releases“."
+
+#: includes/Core/RepositoryManager.php
+msgid "Resume release updates before changing the update source of this plugin."
+msgstr "Gib Release-Updates wieder frei, bevor du die Update-Quelle dieses Plugins änderst."
+
+#: includes/ManagedUpgrader.php
+msgid "This plugin is held at a selected release. Resume release updates or choose another release in its Updater settings."
+msgstr "Dieses Plugin ist auf einen ausgewählten Release festgelegt. Gib Release-Updates wieder frei oder wähle einen anderen Release in seinen Updater-Einstellungen."
+
+#: includes/Admin/PluginController.php
+msgid "Could not load releases. Check the repository service and try again."
+msgstr "Releases konnten nicht geladen werden. Prüfe den Repository-Dienst und versuche es erneut."
+
+#: includes/Admin/PluginController.php
+msgid "Release updates resumed. No plugin files have changed."
+msgstr "Release-Updates wurden wieder freigegeben. Es wurden keine Plugin-Dateien geändert."
+
+#: includes/views/plugins/commits.php includes/views/plugins/edit.php
+msgid "Choose commit"
+msgstr "Commit auswählen"
+
+#: includes/views/plugins/commits.php includes/views/plugins/replace.php
+msgid "After installation, this commit will be held until you resume commit updates. Automatic updates will not undo your selection."
+msgstr "Nach der Installation bleibt dieser Commit festgehalten, bis du Commit-Updates wieder freigibst. Automatische Updates überschreiben deine Auswahl nicht."
+
+#: includes/views/plugins/commits.php
+msgid "Installed commit"
+msgstr "Installierter Commit"
+
+#: includes/views/plugins/commits.php
+#, php-format
+msgid "Select commit %s"
+msgstr "Commit %s auswählen"
+
+#: includes/views/plugins/commits.php
+msgid "Commit pages"
+msgstr "Commit-Seiten"
+
+#: includes/views/plugins/replace.php
+msgid "Confirm commit installation"
+msgstr "Commit-Installation bestätigen"
+
+#: includes/views/plugins/replace.php
+msgid "Selected commit"
+msgstr "Ausgewählter Commit"
+
+#: includes/views/plugins/replace.php
+msgid "Install and hold this commit"
+msgstr "Diesen Commit installieren und festhalten"
+
+#: includes/views/plugins/edit.php
+#, php-format
+msgid "Held at commit %s"
+msgstr "Auf Commit %s festgelegt"
+
+#: includes/views/plugins/edit.php
+msgid "Normal updates are paused for this plugin. Choose another commit or resume commit updates when you are ready."
+msgstr "Normale Updates sind für dieses Plugin pausiert. Du kannst einen anderen Commit auswählen oder Commit-Updates wieder freigeben."
+
+#: includes/views/plugins/edit.php
+msgid "Resume commit updates"
+msgstr "Commit-Updates wieder freigeben"
+
+#: includes/Core/PluginReplacement.php
+msgid "The commit hold could not be removed. Please try again."
+msgstr "Die Commit-Festlegung konnte nicht aufgehoben werden. Bitte versuche es erneut."
+
+#: includes/Core/PluginReplacement.php
+msgid "Commit selection requires a managed GitHub plugin in Commits mode."
+msgstr "Die Commit-Auswahl erfordert ein verwaltetes GitHub-Plugin im Modus „Commits“."
+
+#: includes/Core/RepositoryManager.php
+msgid "Resume commit updates before changing the update source of this plugin."
+msgstr "Gib Commit-Updates wieder frei, bevor du die Update-Quelle dieses Plugins änderst."
+
+#: includes/ManagedUpgrader.php
+msgid "This plugin is held at a selected commit. Resume commit updates or choose another commit in its Updater settings."
+msgstr "Dieses Plugin ist auf einen ausgewählten Commit festgelegt. Gib Commit-Updates wieder frei oder wähle einen anderen Commit in seinen Updater-Einstellungen."
+
+#: includes/Admin/PluginController.php
+msgid "Could not load commits. Check the repository service and try again."
+msgstr "Commits konnten nicht geladen werden. Prüfe den Repository-Dienst und versuche es erneut."
+
+#: includes/Admin/PluginController.php
+msgid "Commit updates resumed. No plugin files have changed."
+msgstr "Commit-Updates wurden wieder freigegeben. Es wurden keine Plugin-Dateien geändert."
+
+#: includes/views/plugins/commits.php
+msgid "Commit message"
+msgstr "Commit-Nachricht"
+
+#: includes/views/plugins/commits.php includes/views/plugins/replace.php
+msgid "Committed"
+msgstr "Commit-Datum"
+
+#: includes/views/plugins/commits.php
+msgid "No commits found on this page."
+msgstr "Auf dieser Seite wurden keine Commits gefunden."
+
+#: includes/views/plugins/commits.php
+msgid "Choose a commit from the history of the configured branch, including an older version. The next step confirms the exact commit before replacing files."
+msgstr "Wähle einen Commit aus der Historie des konfigurierten Branches aus, auch einen älteren Stand. Im nächsten Schritt bestätigst du den genauen Commit, bevor Dateien ersetzt werden."

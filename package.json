@@ -1,7 +1,7 @@
 {
   "name": "rrze-updater",
   "title": "RRZE Updater",
-  "version": "2.5.17",
+  "version": "2.5.18",
   "description": "Sync Plugins and Themes with the corresponding GitHub or GitLab repositories.",
   "main": "rrze-updater.php",
   "textdomain": "rrze-updater",
@@ -17,7 +17,7 @@
     "prod": "npm run version:prod && npm run build",
     "release": "npm run version:release && npm run build",
     "build:installer": "node scripts/build-installer.mjs",
-    "test:php": "php tests/discovery.php",
+    "test:php": "php tests/discovery.php && php tests/plugin-replacement.php && php tests/installed-extensions.php && php tests/admin-links.php",
     "test:js": "node --test tests/*.test.mjs"
   },
   "compatibility": {

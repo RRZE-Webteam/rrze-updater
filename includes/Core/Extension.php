@@ -84,6 +84,18 @@ class Extension
      */
     public $updates;
 
+    /** @var bool Exclude GitHub prereleases when checking tags; opt-in for existing records. */
+    public bool $ignorePrereleases = false;
+
+    /** @var array<string, mixed> Release details from the last successful target selection. */
+    public array $remoteRelease = [];
+
+    /** @var array<string, mixed> Explicitly installed release and immutable commit, held until resumed. */
+    public array $pinnedRelease = [];
+
+    /** @var array<string, mixed> Explicitly installed commit, version and display details, held until resumed. */
+    public array $pinnedCommit = [];
+
     /**
      * Timestamp of the last update check.
      *
@@ -125,6 +137,10 @@ class Extension
         $this->remoteVersion = $array['remoteVersion'] ?? '';
         $this->remoteReadableVersion = $array['remoteReadableVersion'] ?? '';
         $this->updates = $array['updates'] ?? '';
+        $this->ignorePrereleases = !empty($array['ignorePrereleases']);
+        $this->remoteRelease = is_array($array['remoteRelease'] ?? null) ? $array['remoteRelease'] : [];
+        $this->pinnedRelease = is_array($array['pinnedRelease'] ?? null) ? $array['pinnedRelease'] : [];
+        $this->pinnedCommit = is_array($array['pinnedCommit'] ?? null) ? $array['pinnedCommit'] : [];
         $this->lastChecked = $array['lastChecked'] ?? 0;
         $this->lastWarning = isset($array['lastWarning']) ? unserialize($array['lastWarning']) : '';
         $this->lastError = isset($array['lastError']) ? unserialize($array['lastError']) : '';
@@ -150,6 +166,10 @@ class Extension
             'remoteVersion' => $this->remoteVersion,
             'remoteReadableVersion' => $this->remoteReadableVersion,
             'updates' => $this->updates,
+            'ignorePrereleases' => $this->ignorePrereleases,
+            'remoteRelease' => $this->remoteRelease,
+            'pinnedRelease' => $this->pinnedRelease,
+            'pinnedCommit' => $this->pinnedCommit,
             'lastChecked' => $this->lastChecked,
             'lastWarning' => serialize($this->lastWarning),
             'lastError' => serialize($this->lastError)
@@ -163,6 +183,15 @@ class Extension
      */
     public function checkForUpdates()
     {
+        if ($this->isUpdatePinned()) {
+            $target = $this->getPinnedTarget();
+            $this->lastChecked = time();
+            $this->remoteVersion = $target['ref'];
+            $this->remoteReadableVersion = $target['version'];
+            $this->remoteRelease = $target['release'];
+            $this->lastWarning = $this->lastError = '';
+            return;
+        }
         // Check the configured update policy.
         // Query the connector object to get the remote version based on the update type.
         // Update 'lastChecked', 'lastWarning', 'lastError', and 'remoteVersion' properties accordingly.
@@ -174,6 +203,9 @@ class Extension
         $this->lastChecked = time();
         $this->connector->error = '';
         $this->connector->warning = '';
+        $this->connector->ignorePrereleases = $this->ignorePrereleases;
+        $this->connector->remoteRelease = [];
+        $this->remoteRelease = [];
 
         $remoteVersion = false;
         switch ($this->updates) {
@@ -199,8 +231,102 @@ class Extension
         $this->remoteReadableVersion = '';
 
         if ($remoteVersion) {
+            $this->remoteRelease = $this->connector->remoteRelease;
             $this->remoteReadableVersion = $this->getRemoteReadableVersion((string) $remoteVersion);
         }
+    }
+
+    /**
+     * Determine whether the checked target should be offered as an update.
+     *
+     * GitHub version tags never offer an equivalent version or a downgrade.
+     * Unknown installed refs and other update policies retain ref-based behavior.
+     *
+     * @return bool Whether a successfully checked target is newer or uninstalled.
+     */
+    public function hasUpdate(): bool
+    {
+        if ($this->isUpdatePinned()) {
+            return false;
+        }
+        if (!$this->remoteVersion || $this->lastError || $this->remoteVersion === $this->localVersion) {
+            return false;
+        }
+        if ($this->connector instanceof GithubConnector && in_array($this->updates, ['tags', 'releases'], true)) {
+            $local = TagVersion::normalize((string) $this->localVersion);
+            $remote = TagVersion::normalize((string) $this->remoteVersion);
+            if ($local !== '' && $remote !== '') {
+                return version_compare($remote, $local, '>');
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Identify an explicit release hold independently of remote update metadata.
+     *
+     * @return bool Whether ordinary updates must remain paused for this extension.
+     */
+    public function isReleasePinned(): bool
+    {
+        return $this->pinnedRelease !== [];
+    }
+
+    /**
+     * Detect either kind of explicit hold independently of cached update metadata.
+     *
+     * @return bool Whether normal updates must remain paused.
+     */
+    public function isUpdatePinned(): bool
+    {
+        return $this->isReleasePinned() || $this->pinnedCommit !== [];
+    }
+
+    /**
+     * Describe either held target through one shape for checks and reinstallation.
+     *
+     * @return array{ref:string, commit:string, version:string, release:array} Saved target fields.
+     */
+    public function getPinnedTarget(): array
+    {
+        $pin = $this->isReleasePinned() ? $this->pinnedRelease : $this->pinnedCommit;
+        return [
+            'ref' => (string) ($pin['tag'] ?? $pin['commit'] ?? ''),
+            'commit' => (string) ($pin['commit'] ?? ''),
+            'version' => (string) ($pin['version'] ?? ''),
+            'release' => is_array($pin['release'] ?? null) ? $pin['release'] : [],
+        ];
+    }
+
+    /**
+     * Read version metadata at a manually verified immutable commit.
+     *
+     * @param string $commit Full verified commit ID.
+     * @return void
+     */
+    public function selectCommitTarget(string $commit): void
+    {
+        $this->remoteVersion = $commit;
+        $this->remoteRelease = [];
+        $this->remoteReadableVersion = $this->getRemoteReadableVersion($commit);
+        $this->lastChecked = time();
+        $this->lastWarning = $this->lastError = '';
+    }
+
+    /**
+     * Populate a manually verified release target using version files from its immutable commit.
+     *
+     * @param array $release Trusted published release metadata returned by the connector.
+     * @param string $commit Verified immutable commit underlying the release tag.
+     * @return void
+     */
+    public function selectReleaseTarget(array $release, string $commit): void
+    {
+        $this->remoteVersion = $release['tag'];
+        $this->remoteRelease = $release;
+        $this->remoteReadableVersion = $this->getRemoteReadableVersion($commit);
+        $this->lastChecked = time();
+        $this->lastWarning = $this->lastError = '';
     }
 
     public function getReadableRemoteVersion(): string

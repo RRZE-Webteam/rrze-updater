@@ -31,8 +31,9 @@ foreach ([true, false] as $multisite) {
     $first = new Settings(); $second = new Settings();
     $first->plugins[0]->branch = 'release';
     $second->plugins[0]->lastChecked = 5678;
-    check($first->save() && $second->save(), 'Independent fields on one record merge.');
-    check((new Settings())->plugins[0]->branch === 'release', 'Metadata does not revert branch.');
+    check($first->save() && !$second->save(), 'Source changes reject stale metadata from the former branch.');
+    check((new Settings())->plugins[0]->branch === 'release' && (new Settings())->plugins[0]->lastChecked === 0,
+        'Source changes invalidate old metadata and stale checks cannot restore it.');
 
     $first = new Settings(); $second = new Settings();
     $first->connectors[0]->token = 'new-token';

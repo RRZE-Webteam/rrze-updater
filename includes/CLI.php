@@ -80,6 +80,12 @@ class CLI
         ]];
     }
 
+    /**
+     * Describe the accepted repository arguments and persisted update filters.
+     *
+     * @param string $action Repository command name.
+     * @return array WP-CLI synopsis entries.
+     */
     private static function repositorySynopsis(string $action): array
     {
         if ($action === 'list') {
@@ -102,6 +108,8 @@ class CLI
                 'description' => 'Update policy (default: tags).', 'options' => ['tags', 'commits', 'releases']],
             ['type' => 'flag', 'name' => 'only-release', 'optional' => true,
                 'description' => 'Use published releases for installation and future updates.'],
+            ['type' => 'flag', 'name' => 'ignore-prereleases', 'optional' => true,
+                'description' => 'Exclude GitHub prereleases when checking tags.'],
         ]);
     }
 }

@@ -133,6 +133,89 @@ class GithubConnector extends Connector
         return $ret;
     }
 
+    /**
+     * List a bounded page of commits reachable from the configured branch.
+     *
+     * @param string $repository Saved repository name.
+     * @param string $branch Saved branch name, never a posted source override.
+     * @param int $page One-based history page.
+     * @return array|false Commit metadata and pagination state, or an API failure.
+     */
+    public function getCommitPage(string $repository, string $branch, int $page = 1): array|false
+    {
+        if ($page < 1 || $page > 9999) {
+            return false;
+        }
+        $url = sprintf('https://%s/repos/%s/%s/commits?sha=%s&per_page=20&page=%d',
+            $this->getApiHost(), rawurlencode($this->owner), rawurlencode($repository), rawurlencode('refs/heads/' . $branch), $page);
+        $response = $this->api($url, ['headers' => $this->getHeaders()], [
+            'logContext' => $this->getRepositoryLogContext($repository, 'commits', $branch),
+        ]);
+        if (!is_array($response)) {
+            return false;
+        }
+        $items = [];
+        foreach ($response as $commit) {
+            if ($metadata = $this->commitMetadata($commit)) {
+                $items[] = $metadata;
+            }
+        }
+        return ['items' => $items, 'page' => $page, 'has_more' => count($response) === 20];
+    }
+
+    /**
+     * Verify an exact commit and its ancestry inside the saved repository and branch.
+     *
+     * @param string $repository Saved repository name.
+     * @param string $branch Saved branch whose history may be selected.
+     * @param string $sha Full commit ID submitted by the chooser.
+     * @return array|false Verified metadata, or false for unknown/diverged commits or API errors.
+     */
+    public function getCommitForBranch(string $repository, string $branch, string $sha): array|false
+    {
+        if (!preg_match('/\A[a-f0-9]{40}\z/i', $sha)) {
+            return false;
+        }
+        $sha = strtolower($sha);
+        $base = sprintf('https://%s/repos/%s/%s', $this->getApiHost(), rawurlencode($this->owner), rawurlencode($repository));
+        $args = ['headers' => $this->getHeaders()];
+        $context = ['logContext' => $this->getRepositoryLogContext($repository, 'commits', $sha)];
+        $metadata = $this->commitMetadata($this->api($base . '/commits/' . $sha, $args, $context));
+        if (!$metadata || $metadata['sha'] !== $sha) {
+            return false;
+        }
+        $comparison = $this->api($base . '/compare/' . $sha . '...'
+            . rawurlencode('refs/heads/' . $branch) . '?per_page=1', $args, $context);
+        return is_object($comparison) && in_array($comparison->status ?? '', ['ahead', 'identical'], true)
+            && ($comparison->merge_base_commit->sha ?? '') === $sha ? $metadata : false;
+    }
+
+    /**
+     * Normalize display fields without retaining author email addresses or file diffs.
+     *
+     * @param mixed $commit Decoded GitHub commit response.
+     * @return array|false Credential-free metadata, or false for a malformed record.
+     */
+    private function commitMetadata(mixed $commit): array|false
+    {
+        if (!is_object($commit) || !is_string($commit->sha ?? null)
+            || !preg_match('/\A[a-f0-9]{40}\z/i', $commit->sha)
+            || !is_string($commit->commit->message ?? null)
+            || !is_string($commit->commit->committer->date ?? null)
+            || strtotime($commit->commit->committer->date) === false) {
+            return false;
+        }
+        return [
+            'sha' => strtolower($commit->sha),
+            'title' => strtok($commit->commit->message, "\r\n") ?: substr($commit->sha, 0, 12),
+            'message' => $commit->commit->message,
+            'url' => (string) ($commit->html_url ?? ''),
+            'author' => (string) ($commit->commit->author->name ?? $commit->author->login ?? ''),
+            'author_url' => (string) ($commit->author->html_url ?? ''),
+            'committed_at' => $commit->commit->committer->date,
+        ];
+    }
+
     public function remoteBranchExists(string $repository, string $branch): bool
     {
         $url = sprintf(
@@ -187,55 +270,206 @@ class GithubConnector extends Connector
     }
 
     /**
-     * Get the latest remote tag of a GitHub repository.
+     * Select the highest eligible version tag, independently of GitHub's ordering.
+     *
+     * Alphabetic prefixes are ignored for comparison only. If there are no
+     * version tags, prefer the most recently published release; otherwise retain
+     * GitHub's tag order. Release metadata is attached only to the selected tag.
      *
      * @param string $repository The name of the repository.
      * @return string|boolean The latest remote tag name or false on failure.
      */
     public function getRemoteTag(string $repository): string|bool
     {
-        // Query the GitHub API to get the latest remote tag.
-        // Return the tag name or false on failure.
-
-        $url = sprintf(
-            'https://%1$s/repos/%2$s/%3$s/tags',
-            $this->getApiHost(),
-            $this->owner,
-            $repository
-        );
-
-        $getArgs = [
-            'headers' => $this->getHeaders()
-        ];
-
-        $response = $this->api(
-            $url,
-            $getArgs,
-            [
-                'logContext' => $this->getRepositoryLogContext($repository, 'tags')
-            ]
-        );
-
-        $ret = false;
-        if (is_array($response) && count($response) > 0) {
-            $ret = $response[0]->name;
+        $this->remoteRelease = [];
+        $tags = $this->getTagSelectionPages($repository, 'tags');
+        if ($tags === false || !$tags) {
+            return false;
         }
-        return $ret;
+        $releases = $this->getTagSelectionPages($repository, 'releases');
+        // An API outage must not silently bypass a prerelease flag or select
+        // a different target using an incomplete release list.
+        if ($releases === false) {
+            return false;
+        }
+        $byTag = [];
+        foreach ($releases as $release) {
+            if (is_object($release) && is_string($release->tag_name ?? null)) {
+                $byTag[$release->tag_name] = $release;
+            }
+        }
+        $selected = '';
+        $selectedVersion = '';
+        $selectedDate = 0;
+        foreach ($tags as $tag) {
+            $name = is_object($tag) ? ($tag->name ?? '') : '';
+            if (!is_string($name) || $name === '') {
+                continue;
+            }
+            $release = $byTag[$name] ?? null;
+            if (!empty($release->draft) || ($this->ignorePrereleases
+                && (!empty($release->prerelease) || TagVersion::isPrerelease($name)))) {
+                continue;
+            }
+            $version = TagVersion::normalize($name);
+            $date = strtotime((string) ($release->published_at ?? '')) ?: 0;
+            $higherVersion = $version !== '' && ($selectedVersion === '' || version_compare($version, $selectedVersion, '>'));
+            $sameVersion = $version !== '' && $selectedVersion !== '' && version_compare($version, $selectedVersion, '==');
+            if ($selected === '' || $higherVersion || (($sameVersion || ($version === '' && $selectedVersion === '')) && $date > $selectedDate)) {
+                $selected = $name;
+                $selectedVersion = $version;
+                $selectedDate = $date;
+            }
+        }
+        if ($selected === '') {
+            return false;
+        }
+        if (isset($byTag[$selected])) {
+            $this->remoteRelease = $this->releaseMetadata($byTag[$selected]);
+        }
+        return $selected;
     }
 
+    /**
+     * Load complete tag/release pages with a bound on API work per check.
+     *
+     * @param string $repository Repository name.
+     * @param string $resource Tags or releases endpoint.
+     * @return array|false Complete records or false on failure/overflow.
+     */
+    private function getTagSelectionPages(string $repository, string $resource): array|false
+    {
+        $items = [];
+        for ($page = 1; $page <= 10; $page++) {
+            $url = sprintf('https://%s/repos/%s/%s/%s?per_page=100&page=%d',
+                $this->getApiHost(), rawurlencode($this->owner), rawurlencode($repository), $resource, $page);
+            $headers = array_merge($this->getHeaders(), ['Accept' => 'application/vnd.github.full+json']);
+            $response = $this->api($url, ['headers' => $headers], [
+                'logContext' => $this->getRepositoryLogContext($repository, $resource),
+            ]);
+            if (!is_array($response)) {
+                return false;
+            }
+            $items = array_merge($items, $response);
+            if (count($response) < 100) {
+                return $items;
+            }
+        }
+        $this->error = __('Too many tags or releases to select an update safely.', 'rrze-updater');
+        return false;
+    }
+
+    /**
+     * Retain only release fields needed by the update preview.
+     *
+     * @param object $release GitHub release response.
+     * @return array<string, mixed> Credential-free display data; escaped at output.
+     */
+    private function releaseMetadata(object $release): array
+    {
+        return [
+            'id' => (string) ($release->id ?? ''),
+            'tag' => (string) ($release->tag_name ?? ''),
+            'title' => (string) ($release->name ?? ''),
+            'url' => (string) ($release->html_url ?? ''),
+            'author' => (string) ($release->author->login ?? ''),
+            'author_url' => (string) ($release->author->html_url ?? ''),
+            'published_at' => (string) ($release->published_at ?? ''),
+            'prerelease' => !empty($release->prerelease),
+            'body' => (string) ($release->body ?? ''),
+            'body_html' => (string) ($release->body_html ?? ''),
+        ];
+    }
+
+    /**
+     * List one page of published releases, including explicitly selectable prereleases.
+     *
+     * @param string $repository Repository name within the configured owner.
+     * @param int $page One-based page number.
+     * @return array|false Display metadata and pagination state, or false on API failure.
+     */
+    public function getReleasePage(string $repository, int $page = 1): array|false
+    {
+        if ($page < 1 || $page > 10000) {
+            return false;
+        }
+        $url = sprintf('https://%s/repos/%s/%s/releases?per_page=20&page=%d',
+            $this->getApiHost(), rawurlencode($this->owner), rawurlencode($repository), $page);
+        $response = $this->api($url, ['headers' => $this->getHeaders()], [
+            'logContext' => $this->getRepositoryLogContext($repository, 'releases'),
+        ]);
+        if (!is_array($response)) {
+            return false;
+        }
+        $items = [];
+        foreach ($response as $release) {
+            if ($this->isSelectableRelease($release)) {
+                $items[] = $this->releaseMetadata($release);
+            }
+        }
+        return ['items' => $items, 'page' => $page, 'has_more' => count($response) === 20];
+    }
+
+    /**
+     * Verify a selected release ID inside this repository, without using a posted tag or URL.
+     *
+     * @param string $repository Repository name within the configured owner.
+     * @param string $id Positive decimal GitHub release ID.
+     * @return array|false Published release metadata, including prereleases, or false.
+     */
+    public function getReleaseById(string $repository, string $id): array|false
+    {
+        if (!preg_match('/\A[1-9][0-9]*\z/', $id)) {
+            return false;
+        }
+        $url = sprintf('https://%s/repos/%s/%s/releases/%s',
+            $this->getApiHost(), rawurlencode($this->owner), rawurlencode($repository), $id);
+        $response = $this->api($url, ['headers' => array_merge($this->getHeaders(), ['Accept' => 'application/vnd.github.full+json'])], [
+            'logContext' => $this->getRepositoryLogContext($repository, 'releases', $id),
+        ]);
+        return $this->isSelectableRelease($response) && (string) $response->id === $id
+            ? $this->releaseMetadata($response) : false;
+    }
+
+    /**
+     * Exclude drafts and malformed/unpublished releases from manual installation.
+     *
+     * @param mixed $release Decoded GitHub record.
+     * @return bool Whether the record identifies a published release and a valid tag.
+     */
+    private function isSelectableRelease(mixed $release): bool
+    {
+        return is_object($release) && empty($release->draft)
+            && preg_match('/\A[1-9][0-9]*\z/', (string) ($release->id ?? ''))
+            && is_string($release->tag_name ?? null) && $release->tag_name !== ''
+            && !preg_match('/[\x00-\x20\x7f]/', $release->tag_name)
+            && is_string($release->published_at ?? null)
+            && ($published = strtotime($release->published_at)) !== false && $published <= time();
+    }
+
+    /**
+     * Resolve GitHub's latest stable release and retain its display metadata.
+     *
+     * @param string $repository Repository name.
+     * @return string|false Published release tag, or false when unavailable.
+     */
     public function getRemoteRelease(string $repository): string|false
     {
+        $this->remoteRelease = [];
         $url = sprintf('https://%s/repos/%s/%s/releases/latest',
             $this->getApiHost(), rawurlencode($this->owner), rawurlencode($repository));
-        $response = $this->api($url, ['headers' => $this->getHeaders()], [
+        $response = $this->api($url, ['headers' => array_merge($this->getHeaders(), ['Accept' => 'application/vnd.github.full+json'])], [
             'logContext' => $this->getRepositoryLogContext($repository, 'releases/latest'),
         ]);
         if (!is_object($response)
             || !empty($response->draft) || !empty($response->prerelease)) {
             return false;
         }
-        return isset($response->tag_name) && is_string($response->tag_name) && $response->tag_name !== ''
-            ? $response->tag_name : false;
+        if (!isset($response->tag_name) || !is_string($response->tag_name) || $response->tag_name === '') {
+            return false;
+        }
+        $this->remoteRelease = $this->releaseMetadata($response);
+        return $response->tag_name;
     }
 
     public function downloadRepoZip(string $repository, string $branch = 'main'): string

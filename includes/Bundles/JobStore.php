@@ -6,6 +6,7 @@ defined('ABSPATH') || exit;
 
 use WP_Error;
 use RRZE\Updater\Config;
+use RRZE\Updater\FilesystemLock;
 
 /** Network-local progress; the database lock covers all networks sharing files. */
 class JobStore
@@ -25,16 +26,15 @@ class JobStore
         }
     }
 
+    /**
+     * Run a job step while excluding other repository filesystem operations.
+     *
+     * @param callable $operation Job step, including its settings reload.
+     * @return mixed Job result or a retryable error when files are in use.
+     */
     public function withLock(callable $operation): mixed
     {
-        global $wpdb;
-        // GET_LOCK is connection-owned: a crashed worker cannot leave an expired
-        // lease behind or keep writing after another worker takes over its lease.
-        $name = 'rrze_bundle_' . md5(DB_NAME . '|' . $wpdb->base_prefix);
-        if ((string) $wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, 0)', $name)) !== '1') {
-            return new WP_Error('bundle_busy', __('A bundle request is still running. Wait, then resume.', 'rrze-updater'));
-        }
-        try {
+        $result = FilesystemLock::withLock(static function () use ($operation) {
             // Plugin bootstrap may have primed these caches before the lock was
             // acquired. Reload current data before checking revisions or saving.
             $network = get_current_network_id();
@@ -42,8 +42,10 @@ class JobStore
                 wp_cache_delete("$network:$option", 'site-options');
             }
             return $operation();
-        } finally {
-            $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $name));
+        });
+        if (is_wp_error($result) && $result->get_error_code() === 'rrze_updater_filesystem_busy') {
+            return new WP_Error('bundle_busy', __('A repository operation is still running. Wait, then resume.', 'rrze-updater'));
         }
+        return $result;
     }
 }

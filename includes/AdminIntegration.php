@@ -15,8 +15,15 @@ class AdminIntegration
         private readonly Config $config
     ) {}
 
+    /**
+     * Registers admin presentation hooks and authorized toolbar styles.
+     *
+     * @return void
+     */
     public function register(): void
     {
+        add_action('admin_enqueue_scripts', [$this, 'enqueueTokenStyles']);
+        add_action('wp_enqueue_scripts', [$this, 'enqueueTokenStyles']);
         if (!is_multisite()) {
             add_action('admin_menu', [$this, 'adminMenu']);
             add_action('admin_notices', [$this, 'invalidTokenNotice']);
@@ -25,6 +32,7 @@ class AdminIntegration
             add_action('network_admin_menu', [$this, 'adminMenu']);
             add_action('network_admin_notices', [$this, 'invalidTokenNotice']);
             add_action('admin_bar_menu', [$this, 'adminBarMenu'], 100);
+            add_action('admin_bar_menu', [$this, 'tokenAdminBarMenu'], 110);
             add_filter('network_admin_plugin_action_links', [$this, 'pluginActionLinks'], 10, 2);
             add_filter('gettext', [$this, 'translateNetworkActivationLabel'], 10, 3);
         }
@@ -35,6 +43,57 @@ class AdminIntegration
         add_filter('set-screen-option', [$this, 'setScreenOption'], 10, 3);
         add_filter('plugin_row_meta', [$this, 'pluginRowMeta'], 10, 2);
         add_filter('theme_row_meta', [$this, 'themeRowMeta'], 10, 2);
+        add_action('network_admin_notices', [$this, 'maintenanceNotice']);
+    }
+
+    /**
+     * Explain core bulk/AJAX maintenance on network theme and Updates screens.
+     *
+     * The notice remains outside the table that WordPress replaces after AJAX
+     * searches. Only screens with an installed managed extension are relevant;
+     * the plugin overview deliberately omits this shared page notice.
+     *
+     * @return void
+     */
+    public function maintenanceNotice(): void
+    {
+        $base = get_current_screen()->base ?? '';
+        $base = preg_replace('/-network$/', '', $base);
+        $types = match ($base) {
+            'themes' => ['theme'],
+            'update-core' => ['plugin', 'theme'],
+            default => [],
+        };
+        foreach ($types as $type) {
+            if (!MaintenanceNotice::visible($type)) {
+                continue;
+            }
+            $installed = $type === 'plugin' ? array_keys(get_plugins()) : array_keys(wp_get_themes());
+            foreach ($installed as $target) {
+                if ($this->isManagedMaintenanceTarget($type, $target)) {
+                    echo MaintenanceNotice::render('core-bulk', $type);
+                    return; // One shared notice also covers mixed plugin/theme selections.
+                }
+            }
+        }
+    }
+
+    /**
+     * Match an installed asset to an exact managed folder without prefix collisions.
+     *
+     * @param string $type plugin or theme.
+     * @param string $target Plugin basename or theme stylesheet.
+     * @return bool Whether the asset belongs to a managed repository.
+     */
+    private function isManagedMaintenanceTarget(string $type, string $target): bool
+    {
+        $folder = $type === 'plugin' ? dirname($target) : $target;
+        foreach ($this->settings->{$type . 's'} as $extension) {
+            if ($extension->installationFolder === $folder) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Show rejected-token notices only on an authorized dashboard. */
@@ -156,6 +215,74 @@ class AdminIntegration
         ]);
     }
 
+    /**
+     * Shows token warnings in the top-level toolbar for multisite super admins.
+     *
+     * Rendering only reads cached metadata. Each affected service links directly
+     * to its editor in the current network, including from a subsite's frontend.
+     *
+     * @param \WP_Admin_Bar $wpAdminBar WordPress toolbar.
+     * @return void
+     */
+    public function tokenAdminBarMenu($wpAdminBar): void
+    {
+        if (!is_multisite() || !is_super_admin() || !current_user_can('manage_network_options')) {
+            return;
+        }
+        $statuses = array_filter(TokenStatus::getAll($this->settings), [TokenStatus::class, 'needsAttention']);
+        if (!$statuses) {
+            return;
+        }
+
+        $url = network_admin_url('admin.php?page=' . ($this->config->getMenuSettings()['settings_slug'] ?? 'rrze-updater-settings') . '&tab=services');
+        $hasError = false;
+        foreach ($statuses as $status) {
+            $hasError = $hasError || $status['state'] !== 'expiring';
+        }
+        $title = sprintf(
+            /* translators: %d: Number of services with a token warning. */
+            __('Updater: Token warnings (%d)', 'rrze-updater'),
+            count($statuses)
+        );
+        $wpAdminBar->add_node([
+            'id' => 'rrze-updater-token-warnings',
+            'title' => '<span class="ab-icon dashicons dashicons-warning" aria-hidden="true"></span><span class="ab-label">' . esc_html($title) . '</span>',
+            'href' => $url,
+            'meta' => [
+                'class' => $hasError ? 'rrze-updater-token-error' : 'rrze-updater-token-warning',
+                'title' => $title,
+            ],
+        ]);
+        foreach ($statuses as $id => $status) {
+            $connector = $this->settings->getConnectorById($id);
+            $wpAdminBar->add_node([
+                'id' => 'rrze-updater-token-' . $id,
+                'parent' => 'rrze-updater-token-warnings',
+                'title' => esc_html($connector->display . ' / ' . $connector->owner . ': ' . TokenStatus::label($status)),
+                'href' => add_query_arg(['action' => 'edit', 'id' => $id], $url),
+            ]);
+        }
+    }
+
+    /**
+     * Loads status colors for the service settings and visible token warnings.
+     *
+     * @return void
+     */
+    public function enqueueTokenStyles(): void
+    {
+        $capability = is_multisite() ? 'manage_network_options' : 'manage_options';
+        if (!current_user_can($capability)) {
+            return;
+        }
+        $settingsPage = ($_GET['page'] ?? '') === ($this->config->getMenuSettings()['settings_slug'] ?? 'rrze-updater-settings');
+        $toolbarWarning = is_multisite() && is_super_admin() && is_admin_bar_showing()
+            && array_filter(TokenStatus::getAll($this->settings), [TokenStatus::class, 'needsAttention']);
+        if ($settingsPage || $toolbarWarning) {
+            wp_enqueue_style('rrze-updater-token-status', plugins_url('assets/css/token-status.css', plugin()->getFile()), [], plugin()->getVersion());
+        }
+    }
+
     /** Register menu pages and their screen-option callbacks. */
     public function adminMenu()
     {
@@ -238,8 +365,17 @@ class AdminIntegration
         );
     }
 
+    /**
+     * Use the shared update policy for managed extensions and legacy display objects.
+     *
+     * @param object $extension Managed extension or legacy metadata.
+     * @return bool Whether the extension has an eligible update.
+     */
     private function extensionHasUpdate(object $extension): bool
     {
+        if ($extension instanceof \RRZE\Updater\Core\Extension) {
+            return $extension->hasUpdate();
+        }
         return !empty($extension->remoteVersion)
             && $extension->remoteVersion != $extension->localVersion
             && empty($extension->lastError);

@@ -10,15 +10,26 @@ $installedVersion = $data['installedVersion'] ?? '&mdash;';
 $repositoryUrl = $data['repositoryUrl'] ?? '';
 $pluginCheckUrl = $data['pluginCheckUrl'] ?? '';
 $multisiteManagerPluginsUrl = $data['multisiteManagerPluginsUrl'] ?? '';
+$incomplete = !empty($data['incomplete']);
+$canReplace = !empty($data['canReplace']);
 $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' => 'all'], self_admin_url('plugins.php'));
 ?>
-<?php if (($extension->localVersion != $extension->remoteVersion) && ($extension->lastError == "")) : ?>
+<?php if (!$incomplete && $extension->hasUpdate()) : ?>
     <div class="notice notice-info">
         <p><a href="<?php echo esc_url($searchPlugin); ?>"><?php printf(
             /* translators: %s: Remote extension version */
             esc_html__('A new version is available: %s.', 'rrze-updater'),
             esc_html($extension->getRemoteVersionLabel())
         ); ?></a></p>
+    </div>
+<?php endif; ?>
+<?php if ($incomplete) : ?>
+    <div class="notice notice-warning">
+        <p><strong><?php esc_html_e('Installation incomplete', 'rrze-updater'); ?></strong></p>
+        <p><?php esc_html_e('WordPress no longer recognizes a plugin in this folder. Its repository association has been preserved so the plugin files can be reinstalled.', 'rrze-updater'); ?></p>
+        <?php if ($canReplace) : ?>
+            <p><a href="#plugin-reinstall"><?php esc_html_e('Reinstall plugin files', 'rrze-updater'); ?></a></p>
+        <?php endif; ?>
     </div>
 <?php endif; ?>
 <?php if ($extension->lastWarning) : ?>
@@ -44,6 +55,12 @@ $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' =>
 
 <h2><?php esc_html_e('Plugin', 'rrze-updater'); ?>
     <a href="<?php echo esc_url(add_query_arg(['page' => 'rrze-updater-plugins', 'action' => 'check-updates', 'id' => $extension->id], self_admin_url('admin.php'))); ?>" class="add-new-h2"><?php esc_html_e('Check for updates', 'rrze-updater'); ?></a>
+    <?php if ($canReplace && $extension->updates === 'releases' && $extension->connector instanceof Core\GithubConnector) : ?>
+        <a href="<?php echo esc_url(add_query_arg(['page' => 'rrze-updater-plugins', 'action' => 'releases', 'id' => $extension->id], self_admin_url('admin.php'))); ?>" class="add-new-h2"><?php esc_html_e('Choose release', 'rrze-updater'); ?></a>
+    <?php endif; ?>
+    <?php if ($canReplace && $extension->updates === 'commits' && $extension->connector instanceof Core\GithubConnector) : ?>
+        <a href="<?php echo esc_url(add_query_arg(['page' => 'rrze-updater-plugins', 'action' => 'commits', 'id' => $extension->id], self_admin_url('admin.php'))); ?>" class="add-new-h2"><?php esc_html_e('Choose commit', 'rrze-updater'); ?></a>
+    <?php endif; ?>
     <?php if ($pluginCheckUrl) : ?>
         <a href="<?php echo esc_url($pluginCheckUrl); ?>" class="add-new-h2"><?php esc_html_e('Plugin Check', 'rrze-updater'); ?></a>
     <?php endif; ?>
@@ -83,6 +100,30 @@ $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' =>
             )
         )); ?>
     </p>
+<?php endif; ?>
+
+<?php require __DIR__ . '/../partials/release-preview.php'; ?>
+
+<?php if ($extension->isUpdatePinned()) : ?>
+    <?php $releaseHold = $extension->isReleasePinned(); ?>
+    <div class="notice notice-info inline">
+        <p><strong><?php printf(
+            /* translators: %s: Explicitly selected release tag or abbreviated commit ID. */
+            $releaseHold ? esc_html__('Held at release %s', 'rrze-updater') : esc_html__('Held at commit %s', 'rrze-updater'),
+            esc_html($releaseHold ? $extension->getPinnedTarget()['ref'] : substr($extension->getPinnedTarget()['commit'], 0, 12))
+        ); ?></strong></p>
+        <p><?php echo $releaseHold
+            ? esc_html__('Normal updates are paused for this plugin. Choose another release or resume release updates when you are ready.', 'rrze-updater')
+            : esc_html__('Normal updates are paused for this plugin. Choose another commit or resume commit updates when you are ready.', 'rrze-updater'); ?></p>
+        <?php if ($canReplace) : ?>
+            <form action="<?php echo esc_url(add_query_arg(['page' => 'rrze-updater-plugins', 'action' => 'replace'], self_admin_url('admin.php'))); ?>" method="post">
+                <?php wp_nonce_field('rrze-updater-plugin-replacement-resume-' . ($releaseHold ? 'releases' : 'commits'), 'rrze-updater-nonce'); ?>
+                <input type="hidden" name="rrze-updater[replacement_action]" value="<?php echo $releaseHold ? 'resume-releases' : 'resume-commits'; ?>">
+                <input type="hidden" name="rrze-updater[plugin_id]" value="<?php echo esc_attr($extension->id); ?>">
+                <?php submit_button($releaseHold ? __('Resume release updates', 'rrze-updater') : __('Resume commit updates', 'rrze-updater'), 'secondary'); ?>
+            </form>
+        <?php endif; ?>
+    </div>
 <?php endif; ?>
 
 <form action="<?php echo esc_url(add_query_arg(['page' => 'rrze-updater-plugins', 'action' => 'edit', 'id' => $extension->id], self_admin_url('admin.php'))); ?>" method="POST">
@@ -153,6 +194,7 @@ $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' =>
                     </select>
                 </td>
             </tr>
+            <?php require __DIR__ . '/../partials/tag-policy.php'; ?>
             <tr>
                 <th scope="row">
                     <label><?php esc_html_e('Plugin folder', 'rrze-updater'); ?></label>
@@ -165,3 +207,17 @@ $searchPlugin = add_query_arg(['s' => $extension->repository, 'plugin_status' =>
     </table>
     <?php submit_button(__('Save Changes', 'rrze-updater')); ?>
 </form>
+
+<?php if ($canReplace) : ?>
+    <section id="plugin-reinstall" aria-labelledby="plugin-reinstall-heading">
+        <h2 id="plugin-reinstall-heading"><?php esc_html_e('Reinstall plugin files', 'rrze-updater'); ?></h2>
+        <?php echo MaintenanceNotice::render('replacement', 'plugin', '', true); ?>
+        <p><?php esc_html_e('Download the target version from the saved source again. The next step shows the exact version and asks for confirmation before replacing any files.', 'rrze-updater'); ?></p>
+        <form action="<?php echo esc_url(add_query_arg(['page' => 'rrze-updater-plugins', 'action' => 'replace'], self_admin_url('admin.php'))); ?>" method="post">
+            <?php wp_nonce_field('rrze-updater-plugin-replacement-prepare', 'rrze-updater-nonce'); ?>
+            <input type="hidden" name="rrze-updater[replacement_action]" value="prepare">
+            <input type="hidden" name="rrze-updater[plugin_id]" value="<?php echo esc_attr($extension->id); ?>">
+            <?php submit_button(__('Reinstall plugin files', 'rrze-updater'), 'secondary'); ?>
+        </form>
+    </section>
+<?php endif; ?>

@@ -12,7 +12,7 @@ $multisiteManagerThemesUrl = $data['multisiteManagerThemesUrl'] ?? '';
 $themeCheckUrl = $data['themeCheckUrl'] ?? '';
 $searchTheme = add_query_arg(['s' => $extension->repository], self_admin_url('themes.php'));
 ?>
-<?php if (($extension->localVersion != $extension->remoteVersion) && ($extension->lastError == "")) : ?>
+<?php if ($extension->hasUpdate()) : ?>
     <div class="notice notice-info">
         <p><a href="<?php echo esc_url($searchTheme); ?>"><?php printf(
             /* translators: %s: Remote extension version */
@@ -79,6 +79,8 @@ $searchTheme = add_query_arg(['s' => $extension->repository], self_admin_url('th
         )); ?>
     </p>
 <?php endif; ?>
+
+<?php require __DIR__ . '/../partials/release-preview.php'; ?>
 
 <form action="<?php echo esc_url(add_query_arg(['page' => 'rrze-updater-themes', 'action' => 'edit', 'id' => $extension->id], self_admin_url('admin.php'))); ?>" method="POST">
     <?php wp_nonce_field('rrze-updater-theme-edit', 'rrze-updater-nonce'); ?>
@@ -148,6 +150,7 @@ $searchTheme = add_query_arg(['s' => $extension->repository], self_admin_url('th
                     </select>
                 </td>
             </tr>
+            <?php require __DIR__ . '/../partials/tag-policy.php'; ?>
             <tr>
                 <th scope="row">
                     <label><?php esc_html_e('Theme folder', 'rrze-updater'); ?></label>

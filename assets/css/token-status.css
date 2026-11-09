@@ -1,0 +1,54 @@
+.rrze-updater-token-status {
+    display: inline-block;
+    border-left: 4px solid #646970;
+    padding: 6px 10px;
+}
+
+.rrze-updater-token-warning {
+    --rrze-token-color: #996800;
+}
+
+.rrze-updater-token-error {
+    --rrze-token-color: #b32d2e;
+}
+
+.rrze-updater-token-status.rrze-updater-token-warning,
+.rrze-updater-token-status.rrze-updater-token-error {
+    border-color: var(--rrze-token-color);
+    color: var(--rrze-token-color);
+    font-weight: 600;
+}
+
+#wpadminbar #wp-admin-bar-rrze-updater-token-warnings > .ab-item {
+    background: var(--rrze-token-color);
+    color: #fff;
+}
+
+#wpadminbar #wp-admin-bar-rrze-updater-token-warnings > .ab-item .ab-icon::before {
+    color: #fff;
+    top: 2px;
+}
+
+#wpadminbar #wp-admin-bar-rrze-updater-token-warnings .ab-submenu .ab-item {
+    height: auto;
+    max-width: 480px;
+    white-space: normal;
+}
+
+@media screen and (max-width: 782px) {
+    #wpadminbar li#wp-admin-bar-rrze-updater-token-warnings {
+        display: block;
+    }
+
+    #wpadminbar #wp-admin-bar-rrze-updater-token-warnings > .ab-item {
+        padding: 0 8px;
+    }
+
+    #wpadminbar #wp-admin-bar-rrze-updater-token-warnings > .ab-item .ab-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+    }
+}

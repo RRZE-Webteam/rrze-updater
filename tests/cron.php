@@ -3,13 +3,20 @@
 require_once __DIR__ . '/bundles.php';
 require_once __DIR__ . '/admin-integration.php';
 
-use RRZE\Updater\{Config, Controller, Cron, Settings};
+use RRZE\Updater\{Config, Cron, Settings, SettingsSynchronizer};
 
 define('WEEK_IN_SECONDS', 7 * DAY_IN_SECONDS);
 
-class CronControllerFixture extends Controller {
+/** Count synchronization calls without depending on installed fixture files. */
+class CronSynchronizerFixture extends SettingsSynchronizer {
     public int $synchronizations = 0;
-    public function synchronizeSettings() { $this->synchronizations++; }
+    public ?WP_Error $error = null;
+    /**
+     * Record synchronization without modifying fixture definitions.
+     *
+     * @return true|WP_Error Configured synchronization result.
+     */
+    public function synchronize(): true|WP_Error { $this->synchronizations++; return $this->error ?? true; }
 }
 
 // Rehydrate real saved settings while retaining fixture-only HTTP connectors.
@@ -68,7 +75,7 @@ foreach ([
         $settings->options['email_schedule'] = $network === 2 ? 'rrze_updater_weekly' : 'rrze_updater_monthly';
         check($settings->save(), 'Persist this network’s configured schedules.');
         $settings = CronSettingsFixture::fromSettings($settings);
-        $controller = new CronControllerFixture($settings);
+        $synchronizer = new CronSynchronizerFixture($settings);
         $otherSite = $network === 2 ? 1 : 42;
         $oldEvent = ['time' => 1234567890, 'schedule' => 'twicedaily'];
         $cron_events = [
@@ -80,7 +87,7 @@ foreach ([
             $cron_events[$site][$continuationHook] = ['time' => 1234567890, 'schedule' => false];
         }
         $otherEvents = $cron_events[$otherSite];
-        $cron = new Cron($settings, $controller);
+        $cron = new Cron($settings, $synchronizer);
         $shouldRun = !$isMultisite || $site === $mainSite;
         check((has_action($checkHook, [$cron, 'runEvents']) !== false) === $shouldRun,
             "$label registers update checks only on its own main site.");
@@ -115,7 +122,7 @@ foreach ([
 
         // The real update callback uses a fixture connector: no HTTP or file changes.
         do_action($checkHook);
-        check($controller->synchronizations === ($shouldRun ? 1 : 0),
+        check($synchronizer->synchronizations === ($shouldRun ? 1 : 0),
             "$label dispatches update work only when it owns the network’s jobs.");
         $stored = new Settings();
         check(($stored->plugins[0]->lastChecked > 0) === $shouldRun,

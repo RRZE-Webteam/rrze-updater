@@ -35,7 +35,7 @@ Public documentation at:
 
 * WordPress ab 6.8
 * PHP ab 8.3
-* WordPress Multisite
+* WordPress Single-Site or Multisite (repository browser and bundles require Multisite)
 
 
 ## Installation
@@ -56,6 +56,38 @@ To select a service, proceed as follows:
 - Add a token for access if necessary.
 - Confirm by clicking "Add New Service".
 
+### Token expiration warnings
+
+**Network Admin → Updater → Settings → Services** shows a token status for each
+GitHub/GitLab service. Warnings start **30 days before expiration**. Expired
+tokens and rejected authentication/access are marked as errors. Multisite super
+administrators also see a warning in the top-level WordPress toolbar, including
+on subsites and the frontend while the toolbar is visible. Its menu links to the
+affected service editors. The overview shows whether a token is configured,
+without displaying the credential.
+
+The current network's main site checks tokens twice daily through WP-Cron,
+independently of repository update checks. Opening the service overview refreshes
+checks older than twelve hours (one hour after a temporary failure). The toolbar
+only reads cached results. Background execution requires normal WP-Cron traffic
+or a system cron. Replacing a token or changing its service configuration
+invalidates its cached result; revisiting the overview checks the replacement.
+
+GitLab uses `GET /personal_access_tokens/self`, relative to the configured API
+base; date-only expiration values mean midnight UTC. GitHub uses `GET /user` and
+the `GitHub-Authentication-Token-Expiration` response header. Dates are displayed
+in the WordPress timezone. Token types, scopes or older servers that cannot
+provide expiration metadata are shown as **unknown**, not as unlimited. Only an
+explicit GitLab `expires_at: null` means no expiration date. An already expired
+token may only return HTTP 401; without a previously known date, the plugin
+reports rejection rather than guessing the cause. Permission failures and rate
+limits are not treated as proof of expiration.
+
+Network option `rrze_updater_token_status` stores timestamps, status and salted
+credential/configuration fingerprints, never raw tokens or API response bodies.
+Known expiration dates remain usable during API outages. Token metadata requests
+use header authentication, TLS verification, a five-second timeout and no redirects.
+
 ## Add a Repository (Theme or Plugin)
 The steps are the same for themes.
 
@@ -67,8 +99,158 @@ The steps are the same for themes.
 - Change the branch to the name of the desired branch.
 - Choose whether to use commits or tags for checking for updates.
 - (Optional) Specify a different plugin or theme folder.
-- (Optional) Choose whether existing plugin files should be overwritten.
 - Confirm by clicking "Install Plugin".
+
+An existing plugin directory is never replaced by the ordinary Install button.
+After a directory conflict, **Replace folder and install** opens a separate
+confirmation. For a directory already managed by Updater, open its existing
+settings instead.
+
+### Change a plugin's update source
+
+Edit the plugin's service, repository, branch or update policy and save. Updater
+validates the proposed source before saving; failed access or an invalid target
+keeps the previous association. Saving does not replace files or change the
+installation folder. When the source changes, the installed Git ref is treated
+as unknown for that source, so even an identical tag name offers an update from
+the newly selected repository. The version read from installed files remains
+visible. Existing automatic-update settings continue to apply.
+
+### GitHub tags and release previews
+
+Tag checks compare numeric versions independently of the API response order.
+Prefixes such as `v`, `V`, `release-` or `release/` and build metadata are ignored
+for comparison; the original tag is preserved for downloading. The highest
+eligible version wins. A later maintenance release of an older version does not
+replace a higher version. If no numeric version tags exist, the most recently
+published associated release wins; undated tags retain GitHub's order.
+
+On the plugin/theme detail page, **Ignore pre-releases** excludes both GitHub's
+prerelease flag (even for a plain numeric tag) and version suffixes such as beta
+or rc. Draft releases are excluded. The filter is opt-in and applies to Tags;
+Releases mode continues to select GitHub's latest stable release. Changing only
+this filter preserves the known installed ref. Comparable GitHub version tags
+never offer an equivalent version or a downgrade.
+
+When an update is available, the detail page shows the exact tag, release title
+and link, GitHub author, publication date, stability status and release notes.
+These details come from the same check as the selected archive; no release is
+inferred for a tag without one. Release notes are sanitized before rendering.
+Checks read paginated tags and releases (up to ten pages of 100 each) and fail
+instead of selecting from incomplete results after an API error or page limit.
+
+### Install a specific GitHub release or roll back
+
+For a managed GitHub plugin saved in **Releases** mode, **Choose release** opens
+a paginated list of published releases with their title, original version/tag,
+GitHub link, author, publication date and prerelease status. Drafts are excluded;
+published prereleases can be selected explicitly. This chooser is available even
+when the plugin is already up to date.
+
+Selecting a release opens a confirmation showing the installed version and the
+chosen release. The server verifies the release ID within the saved repository
+and resolves its tag to an immutable commit. Confirmation installs that exact
+commit through the existing recoverable plugin-directory replacement transaction,
+even if the tag moves afterwards. Nothing is installed while browsing or preparing
+the review. Ordinary update checks still never offer downgrades.
+
+After successful installation, the release is **held** until **Resume release
+updates** is used. Routine checks, update offers and queued WordPress update jobs
+cannot override the hold. Reinstalling uses the same saved commit. You can select
+another release at any time; resume updates before changing the repository source.
+Resuming only clears the hold and refreshes the ordinary update offer; it does not
+immediately replace plugin files or change WordPress's automatic-update settings.
+
+Only plugin files are rolled back. Activation and database contents are preserved;
+database migrations performed by a newer version are not reversed. The selected
+older version must be compatible with the current database. The operation requires
+plugin installation/update permissions and, on multisite, network administrator
+access. It applies to the shared plugin files throughout the network.
+
+### Install a specific GitHub commit or roll back
+
+For a managed GitHub plugin saved in **Commits** mode, **Choose commit** lists the
+history of its configured branch, 20 commits per page. Each row shows the commit
+message, abbreviated ID, GitHub link, author and commit date in the WordPress
+timezone with a 24-hour time. Authors without linked GitHub accounts still appear
+by the name stored in the commit.
+
+Selecting a commit prepares a confirmation with its full message, immutable SHA
+and target plugin version. The server verifies that the SHA belongs to the saved
+repository and is reachable from the configured branch. Posted repository,
+branch or download URL overrides are ignored. A branch advancing after review
+does not change the confirmed installation target.
+
+Successful installation **holds the commit** until **Resume commit updates** is
+used. Normal checks, automatic updates and already queued managed WordPress
+updates cannot replace the held version. Another commit can be explicitly chosen
+while held. Reinstallation also uses the held SHA. Source changes require first
+resuming updates; resuming itself preserves the installed files and then checks
+the saved branch for a new update offer.
+
+Commit selection uses the same permissions, single-use confirmation, package
+validation and recovery transaction as release selection. Only files are rolled
+back: database migrations from newer plugin versions are not reversed, so the
+chosen version must remain compatible with the existing data. The chooser does
+not perform dependency builds or generate missing distribution files.
+
+### Reinstall or repair plugin files
+
+**Reinstall plugin files** on the plugin editor downloads the offered target for
+the configured commits, tags or releases policy. It may therefore install a
+newer version. Its confirmation shows the source, target folder, version and
+pinned commit. A confirmation belongs to its administrator and installation,
+expires after 15 minutes, and can be used only once. Changed source settings or
+local files require a fresh review.
+
+Replacement exchanges the **entire plugin directory**, removing leftover files
+and local modifications. It does not call uninstall, activate or deactivate and
+does not delete plugin settings from the database. Existing plugin main filenames
+must remain present. Symlinks, unsafe paths and conflicting associations are
+rejected. A mapped plugin with a remaining folder but no recognized entrypoint
+stays visible as **Installation incomplete**, with repair available instead of a
+normal update action. Completely removed directories are still removed from the
+Updater registry during synchronization.
+
+The archive is checked before the old directory is moved. Updater keeps a
+temporary backup until both the new files and their repository association are
+saved. A short WordPress maintenance window covers the exchange and recovery;
+an existing maintenance file prevents a replacement from starting. Failed file
+or settings operations restore the previous files. If that
+restore also fails, the error reports the retained backup directory under
+`wp-content/rrze-updater-recovery/` for manual recovery. Replacement requires the
+PHP ZIP extension and filesystem paths that PHP can inspect locally.
+
+These actions are available in the classic plugin administration to authorized
+Single-Site administrators and Multisite superadministrators, subject to
+WordPress installation/update capabilities and file-modification settings.
+Themes, CLI, repository browser and bundles do not expose replacement actions.
+Concurrent Updater file operations share a database advisory lock across networks.
+
+### Maintenance notices in network administration
+
+Authorized superadministrators see maintenance guidance before relevant managed
+plugin/theme actions in the Multisite network administration. Repair buttons and
+their existing confirmation show that **all websites sharing this WordPress
+installation** can temporarily display a maintenance message. Form submissions
+and interactive requests can fail and need to be repeated. Replacement downloads
+and validates its package before entering maintenance mode.
+
+The displayed **few seconds to a few minutes** is a rough orientation, not a
+measurement or a guaranteed upper limit. Multiple updates, large packages, slow
+servers and recovery can take longer. No timing history or additional settings
+are stored, and the notices add no confirmation steps.
+
+The core theme list and the Updates page explain WordPress bulk/AJAX maintenance
+through a shared page notice. The plugin list omits this page notice, and
+automatic-update controls do not repeat the explanation under each entry.
+The Updater overview uses individual
+updates instead of core bulk updates, so only its maintenance-triggering theme
+updates receive warnings, including a conditional note for mixed selections.
+Manual plugin single updates, ordinary first installation, source edits and update
+checks do not receive a maintenance warning. These notices do not change the
+actual maintenance behavior and are not displayed on Single-Site or ordinary
+site dashboards.
 
 GitHub ZIP downloads stream over HTTPS directly to a temporary file, avoiding a
 complete archive in PHP memory. Certificate verification stays enabled. Archive
@@ -148,6 +330,7 @@ Both commands accept:
 - `--folder=<name>`: installation folder, defaulting to the repository name.
 - `--branch=<ref>`: branch for commit updates, defaulting to `main`.
 - `--updates=tags|commits|releases`: update policy, defaulting to **tags**.
+- `--ignore-prereleases`: persist the GitHub prerelease filter for tag checks.
 - `--only-release`: select release mode and persist it for
   future update checks. This flag conflicts with `--updates=tags|commits`.
 
@@ -345,11 +528,44 @@ private implementation APIs. Transitive Babel runtime and UUID overrides apply
 security fixes without raising the WordPress minimum. The normal `npm run build`
 and release scripts also rebuild the installer.
 
+The [classical administration architecture](docs/admin-architecture.md) describes
+the controller boundaries, compatibility rules and follow-up refactoring tasks.
+
 The standalone PHP tests cover recommended bundles, discovered repositories,
 GitHub/GitLab pagination and owner boundaries, package inspection, immutable refs,
 retries, parent dependencies, authorization, network isolation, and file installation
 through fixtures. They do not call real services or modify installed extensions.
-Browser validation and a real installation should be tested on staging.
+The replacement suite additionally uses real temporary directories and ZIP files
+to check complete replacement, permission failures, maintenance and rollback.
+
+For a disposable WordPress installation backed by MySQL, add
+`define('RRZE_UPDATER_TEST_INSTALLATION', true);` to that installation's
+`wp-config.php`, then run the optional integration fixture:
+
+```sh
+wp eval-file /path/to/rrze-updater/tests/wordpress-repair.php /path/to/rrze-updater --path=/path/to/disposable-wordpress --skip-plugins --skip-themes --user=1
+```
+
+Use the same command with `tests/wordpress-admin.php` on an empty updater registry
+to exercise the real administration pages on both Single-Site and Multisite.
+It verifies the compatibility facade, actual list-table rendering, form content,
+shared save-failure notices and the handling of incomplete installations. The
+standalone PHP command also runs isolated metadata, optional-tool and table/update
+runner tests; these require no database or live service credentials.
+
+On the disposable Multisite, `tests/wordpress-maintenance.php` runs that repair
+suite plus real core single, bulk/AJAX-equivalent and automatic plugin/theme
+updates against local fixture archives. It compares the maintenance marker with
+the notice classification, checks network screen visibility, and reports local
+maintenance timings for small and larger replacement packages. Use the same
+`wp eval-file` command with this filename. All HTTP is intercepted; these timings
+are a plausibility check, not an estimate for a production server.
+
+Run `wordpress-repair.php` once on a Single-Site installation and once on a
+Multisite installation. Both fixtures change the test installation's Updater
+settings and create test plugins, so use an isolated database and content directory. They exercise real
+WordPress options, activation state, filesystem operations and ZIP extraction;
+GitHub/GitLab responses are supplied locally without external API access.
 
 ### Updating translations
 

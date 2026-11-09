@@ -120,6 +120,7 @@ defined('ABSPATH') || exit;
 </form>
 
 <form method="get" class="rrze-updater-bulk-action-form">
+    <?php echo $data['bulkMaintenanceNotice'] ?? ''; ?>
     <input type="hidden" name="page" value="<?php echo esc_attr($_REQUEST['page']); ?>" />
     <?php $data['listTable']->display(); ?>
 </form>

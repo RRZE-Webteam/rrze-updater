@@ -41,7 +41,8 @@ foreach ([0, 1] as $remaining) {
             wp_delete_file($temporary);
         }
         check($result === $expected && $github->error === '', "Accept $method with $remaining requests remaining.");
-        check(count($discovery_requests) === 1, 'A successful repository operation needs only its own API request.');
+        check(count($discovery_requests) === ($method === 'getRemoteTag' ? 2 : 1),
+            'Tag selection reads tags and release flags; other successful operations need only their own request.');
     }
 }
 

@@ -22,6 +22,18 @@ function wp_hash($value) { return hash('sha256', $value); }
 function get_site_transient($key) { return $GLOBALS['admin_transients'][$key] ?? false; }
 function set_site_transient($key, $value) { $GLOBALS['admin_transients'][$key] = $value; return true; }
 function is_network_admin() { return $GLOBALS['admin_network_screen'] ?? false; }
+/**
+ * Supply the authorization boundary for network presentation fixtures.
+ *
+ * @return bool Whether the fixture user is a superadministrator.
+ */
+function is_super_admin(): bool { return $GLOBALS['token_super_admin'] ?? false; }
+/**
+ * Return the current stylesheet without loading a live WordPress theme.
+ *
+ * @return string Fixture stylesheet directory.
+ */
+function get_stylesheet() { return $GLOBALS['maintenance_stylesheet'] ?? 'target'; }
 function get_current_screen() { return $GLOBALS['admin_screen'] ?? null; }
 function self_admin_url($path = '') { return '/wp-admin/' . $path; }
 function network_admin_url($path = '') { return '/wp-admin/network/' . $path; }
@@ -42,7 +54,8 @@ $beforeAdminIntegration = $checks;
 $savedAdminHooks = $wp_filter;
 foreach ([false, true] as $multisite) {
     $wp_filter = [];
-    [$settings, $controller] = adminSaveFixture();
+    [$settings] = adminSaveFixture();
+    $controller = new RRZE\Updater\Controller($settings);
     $settings->plugins[0]->installationFolder = $settings->themes[0]->installationFolder = 'target';
     $settings->plugins[0]->remoteVersion = 'next';
     $settings->plugins[0]->localVersion = 'current';

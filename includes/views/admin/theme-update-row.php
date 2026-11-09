@@ -37,6 +37,7 @@ if (!current_user_can('update_themes')) {
             )
         )
     );
+    echo MaintenanceNotice::render('manual', 'theme', $theme_key, true);
 }
 
 /**

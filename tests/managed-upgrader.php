@@ -12,6 +12,8 @@ $savedMultisite = $multisite;
 foreach ([false, true] as $multisite) {
     foreach (['plugin', 'theme'] as $type) {
         foreach ([WP_Upgrader_Skin::class, WP_Ajax_Upgrader_Skin::class, Automatic_Upgrader_Skin::class] as $skinClass) {
+            // Each lifecycle fixture represents a separate completed request.
+            RRZE\Updater\FilesystemLock::releaseAll();
             $wp_filter = [];
             adminSaveFixture();
             $main = new Main();

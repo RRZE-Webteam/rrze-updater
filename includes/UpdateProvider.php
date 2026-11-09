@@ -19,7 +19,12 @@ class UpdateProvider
         add_filter('pre_set_site_transient_update_themes', [$this, 'filterThemeUpdates']);
     }
 
-    /** Use managed Git versions on both transient reads and writes. */
+    /**
+     * Project eligible managed Git updates into plugin transient reads and writes.
+     *
+     * @param mixed $transient WordPress plugin update transient.
+     * @return mixed Transient with managed update and no-update entries.
+     */
     public function filterPluginUpdates($transient)
     {
         if (empty($transient->checked)) {
@@ -33,8 +38,7 @@ class UpdateProvider
                 // A managed installation must never inherit a same-slug .org offer,
                 // including during an API outage or when its Git ref is current.
                 unset($transient->response[$pluginFile], $transient->no_update[$pluginFile]);
-                $hasUpdate = $extension->connector && $extension->remoteVersion
-                    && $extension->remoteVersion !== $extension->localVersion;
+                $hasUpdate = $extension->connector && $extension->hasUpdate();
                 $response = (object) [
                     'id' => $pluginFile, 'slug' => $extension->installationFolder, 'plugin' => $pluginFile,
                     'new_version' => $hasUpdate ? $extension->getRemoteVersionLabel() : ($data['Version'] ?? ''),
@@ -51,7 +55,12 @@ class UpdateProvider
         return $transient;
     }
 
-    /** Keep theme update and no-update entries tied to the managed repository. */
+    /**
+     * Keep theme update offers tied to the repository's eligible target policy.
+     *
+     * @param mixed $transient WordPress theme update transient.
+     * @return mixed Transient with managed update and no-update entries.
+     */
     public function filterThemeUpdates($transient)
     {
         if (empty($transient->checked)) {
@@ -63,8 +72,7 @@ class UpdateProvider
                     continue;
                 }
                 unset($transient->response[$themeFolder], $transient->no_update[$themeFolder]);
-                $hasUpdate = $extension->connector && $extension->remoteVersion
-                    && $extension->remoteVersion !== $extension->localVersion;
+                $hasUpdate = $extension->connector && $extension->hasUpdate();
                 $response = [
                     'theme' => $themeFolder,
                     'new_version' => $hasUpdate ? $extension->getRemoteVersionLabel() : $theme->get('Version'),
